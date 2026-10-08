@@ -1,0 +1,34 @@
+# Working on this repo
+
+OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML output. All data is mocked in `src/data.js`; there is no backend. See README.md for the product and layout.
+
+## Commands
+
+- `npm run build`: bundle to `dist/opspro-prototype.html`
+- `npm run check`: build plus a headless click-through of every screen; must print "No page errors." before you commit. In the cloud container use `CHROMIUM_PATH=/opt/pw-browsers/chromium`.
+
+## Conventions
+
+- `React`, `useState`, `useEffect` and friends are globals from the UMD build. Don't `import React`.
+- All UI copy is plain, sentence-case English. No uppercase labels, no jargon. Status words are short ("In", "Late", "Absent", "Leave", "Off").
+- Metric tiles use `Stat` from `ui.jsx`: plain card, the number coloured by tone, sentence-case label. Status chips use `Pill`. Day outcomes in week grids use `.dchip`.
+- Colours come from CSS tokens on `:root` (`--good`, `--warn`, `--crit`, `--info`, their `-soft` variants, `--line`, `--muted`). Dark mode is handled by the tokens; never hard-code colours.
+- Drawers (`Drawer`) are for editing one thing; modals only for confirmations. Toasts confirm actions.
+- Each screen header shows its phase (P1, P2, P3) and spec section via `ScreenHeader`.
+
+## Domain model (the parts that bite)
+
+- **Access levels:** Employee, Floater, Manager, Admin. Designations map to them in `DESIG_ACCESS` (Reliever → Floater). `isFloat(w)` tells floaters apart. A designation's access is locked once anyone holds it.
+- **Floaters** belong to a vendor, not a manager. They sit in the pool group (`site: 'pool'`, `float: true`). Cells are `'A'` (available, unpaid) until they cover a shift.
+- **Roster cells** (`ROSTER_GROUPS[].cells[row][day]`): `'O'` weekly off, `'L'` leave, `'X'` not rostered, `'A'` available (floaters), or an array of shifts `[templateId, start, siteId?, coveredWorkerId?, prevCell?]`. Days are 0 = Mon … 6 = Sun.
+- **Shift templates** are lengths only (`base` hours + optional `ot`); the start time is set on the roster.
+- **Cover engine** (`coverCands`, `COVER_RULES` in operator.jsx): floaters first, then people on a day off; same vendor first, then nearest.
+- **Weekly offs** (`OFF_RULES`): set once for the organisation, minimum 1. Mode `'roster'` staggers offs week by week (warning when too many are off at one location on one day); mode `'fixed'` gives everyone the same day(s), e.g. Sunday. Never set per worker. A roster that breaks the rule is rejected on upload and can't be published (`offErrors`).
+- **Attendance rules** are per access level (Employee, Floater, Manager), except weekly offs and overtime, which are organisation-wide.
+- **Leave types** have days a year, pay, carry over, per-request limit and certificate rule.
+
+## Gotchas
+
+- The Liveboard map is Leaflet with animations off; keep them off or a pan finishing after navigation throws.
+- The roster's sticky headers sit under drawers via `.overlay { z-index: 200 }`.
+- Settings mutate shared rule objects (`OFF_RULES`, `DESIG_ACCESS`) so other screens pick them up on their next render; there is no global store.

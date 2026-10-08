@@ -1,0 +1,54 @@
+# OpsPro: gig workforce dashboard
+
+A workforce platform for contracted gig and blue-collar labour supplied by several manpower vendors to one client. Ops builds the weekly roster, workers clock in on their phones, vendors see their own people, and everyone is scored on attendance.
+
+This repo is the **clickable prototype**: React, all data mocked in the browser, built into one self-contained HTML file. The first client is GH FZE, supplying pickers to Deliveroo UAE grocery locations in Dubai.
+
+**Live prototype:** https://claude.ai/artifact/QG5E8AoyoiGVX4V1mYhXqk
+
+## Three surfaces
+
+Switch between them with the tabs at the top of the prototype.
+
+- **Ops dashboard:** for the client's operations team. Liveboard with a map, notifications, the roster, leave, workforce, onboarding, vendors, locations, performance, vendor costs, forms (phase 2), announcements and settings.
+- **Vendor portal:** for each manpower vendor. Its own workers, their attendance and scorecard, proposals for new hires, requests and statements. A vendor never sees other vendors or what they charge.
+- **Phone app:** one app for everyone. A picker clocks in and out (face, location, any required form), sees their schedule and asks for leave. A supervisor sees who is in at their locations, finds cover and handles approvals.
+
+## How it differs from shift marketplaces
+
+Instawork, Shiftsmart and Indeed Flex are marketplaces: the platform employs the worker and the client posts open shifts. OpsPro assumes the opposite. Workers are employed by vendors, work a recurring roster, and the client manages several vendors in one place. That is why the vendor portal, vendor scores, floaters and enforced weekly offs exist.
+
+## Run it
+
+```bash
+npm install
+npm run build        # writes dist/opspro-prototype.html; open it in a browser
+npm run watch        # rebuilds on every change to src/*.jsx (restart for style.css changes)
+npm run check        # build, then click through every screen headless and fail on any page error
+```
+
+`npm run check` uses Playwright's Chromium. If Playwright can't find a browser, either run `npx playwright install chromium` or point it at one: `CHROMIUM_PATH=/path/to/chromium npm run check`.
+
+React loads from cdnjs at runtime. Everything else, including the Dubai map tiles in `map/tiles`, is inlined into the HTML, so the file works offline once React is cached.
+
+## Layout
+
+```
+src/
+  main.jsx       app shell: top bar, persona tabs, side navigation, routing
+  data.js        all mock data: workers, sites, vendors, roster, shift templates, alerts, leave
+  operator.jsx   every Ops dashboard screen, plus shared engines (cover, weekly offs, timesheets)
+  vendor.jsx     Vendor portal screens
+  phone.jsx      Phone app (picker and supervisor flows) with its screen list
+  forms.jsx      Forms builder, phone preview, submissions (phase 2)
+  mobile.jsx     CameraSheet (used by the phone app); the older worker and supervisor apps are unused
+  ui.jsx         shared components: Stat, Pill, Tabs, Drawer, Modal, Field, Toggle, Icon, toasts
+  style.css      all styles, light and dark
+map/tiles/       cached OpenStreetMap tiles for Dubai, zoom 10 to 14
+scripts/smoke.mjs  headless click-through test
+build.mjs        esbuild bundle into one HTML file
+```
+
+## Map data
+
+Map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Attribution is shown on the map.
