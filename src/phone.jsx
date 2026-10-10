@@ -1,8 +1,8 @@
 import { WORKERS, SITES, MANAGERS, ALERTS as OPS_ALERTS, LEAVE, ROSTER_GROUPS, DAYS, tplOf, tplLabel, endOf, vendorOf, siteOf } from './data.js';
 import { Icon, useToast } from './ui.jsx';
 import { clockInForm, formByKey, FormBody } from './forms.jsx';
-import { CameraSheet } from './mobile.jsx';
-import { offDaysOf } from './operator.jsx';
+import { CameraSheet } from './camera.jsx';
+import { offDaysOf } from './lib/roster.js';
 const offThisWeek = (id) => { const ds = offDaysOf(id); return ds === 'rot' || !ds.length ? 'None this week' : ds.map((k) => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][k]).join(', '); };
 
 const { useState } = React;

@@ -1,5 +1,5 @@
 import { ToastHost, Phase, Icon } from './ui.jsx';
-import * as Op from './operator.jsx';
+import * as Op from './screens/ops/index.js';
 import * as Vd from './vendor.jsx';
 import { Forms } from './forms.jsx';
 import { PhoneApp } from './phone.jsx';

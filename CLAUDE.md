@@ -9,6 +9,7 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 
 ## Conventions
 
+- One file per Ops screen in `src/screens/ops/`, registered in `index.js`. Logic shared by more than one screen goes in `src/lib/`. Screens never import other screens.
 - `React`, `useState`, `useEffect` and friends are globals from the UMD build. Don't `import React`.
 - All UI copy is plain, sentence-case English. No uppercase labels, no jargon. Status words are short ("In", "Late", "Absent", "Leave", "Off").
 - Metric tiles use `Stat` from `ui.jsx`: plain card, the number coloured by tone, sentence-case label. Status chips use `Pill`. Day outcomes in week grids use `.dchip`.
@@ -22,8 +23,8 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - **Floaters** belong to a vendor, not a manager. They sit in the pool group (`site: 'pool'`, `float: true`). Cells are `'A'` (available, unpaid) until they cover a shift.
 - **Roster cells** (`ROSTER_GROUPS[].cells[row][day]`): `'O'` weekly off, `'L'` leave, `'X'` not rostered, `'A'` available (floaters), or an array of shifts `[templateId, start, siteId?, coveredWorkerId?, prevCell?]`. Days are 0 = Mon … 6 = Sun.
 - **Shift templates** are lengths only (`base` hours + optional `ot`); the start time is set on the roster.
-- **Cover engine** (`coverCands`, `COVER_RULES` in operator.jsx): floaters first, then people on a day off; same vendor first, then nearest.
-- **Weekly offs** (`OFF_RULES`): set once for the organisation, minimum 1. Mode `'roster'` staggers offs week by week (warning when too many are off at one location on one day); mode `'fixed'` gives everyone the same day(s), e.g. Sunday. Never set per worker. A roster that breaks the rule is rejected on upload and can't be published (`offErrors`).
+- **Cover engine** (`coverCands`, `COVER_RULES` in `src/lib/cover.jsx`): floaters first, then people on a day off; same vendor first, then nearest.
+- **Weekly offs** (`OFF_RULES` in `src/lib/offs.js`): set once for the organisation, minimum 1. Mode `'roster'` staggers offs week by week (warning when too many are off at one location on one day); mode `'fixed'` gives everyone the same day(s), e.g. Sunday. Never set per worker. A roster that breaks the rule is rejected on upload and can't be published (`offErrors`).
 - **Attendance rules** are per access level (Employee, Floater, Manager), except weekly offs and overtime, which are organisation-wide.
 - **Leave types** have days a year, pay, carry over, per-request limit and certificate rule.
 

@@ -35,18 +35,26 @@ React loads from cdnjs at runtime. Everything else, including the Dubai map tile
 
 ```
 src/
-  main.jsx       app shell: top bar, persona tabs, side navigation, routing
-  data.js        all mock data: workers, sites, vendors, roster, shift templates, alerts, leave
-  operator.jsx   every Ops dashboard screen, plus shared engines (cover, weekly offs, timesheets)
-  vendor.jsx     Vendor portal screens
-  phone.jsx      Phone app (picker and supervisor flows) with its screen list
-  forms.jsx      Forms builder, phone preview, submissions (phase 2)
-  mobile.jsx     CameraSheet (used by the phone app); the older worker and supervisor apps are unused
-  ui.jsx         shared components: Stat, Pill, Tabs, Drawer, Modal, Field, Toggle, Icon, toasts
-  style.css      all styles, light and dark
-map/tiles/       cached OpenStreetMap tiles for Dubai, zoom 10 to 14
+  main.jsx         app shell: top bar, persona tabs, side navigation, routing
+  data.js          all mock data: workers, sites, vendors, roster, shift templates, alerts, leave
+  ui.jsx           shared components: Stat, Pill, Tabs, Drawer, Modal, Field, Toggle, Icon, toasts
+  style.css        all styles, light and dark
+  screens/ops/     one file per Ops dashboard screen (index.js lists them in nav order)
+  vendor.jsx       Vendor portal screens
+  phone.jsx        Phone app (picker and supervisor flows) with its screen list
+  camera.jsx       clock-in camera check used by the phone app
+  forms.jsx        Forms builder, phone preview, submissions (phase 2)
+  lib/
+    roster.js      roster helpers: next week, usual shift, hours, timesheets, missed clock-ins
+    offs.js        weekly off rules and the checks run on upload and publish
+    cover.jsx      cover rules, candidate ranking and the Find cover drawer
+    live.js        today's live status per location and per worker
+    leave.js       leave types and UAE public holidays
+    geo.js         site coordinates and distances
+    dates.js       day names, week labels, time maths
+map/tiles/         cached OpenStreetMap tiles for Dubai, zoom 10 to 14
 scripts/smoke.mjs  headless click-through test
-build.mjs        esbuild bundle into one HTML file
+build.mjs          esbuild bundle into one HTML file
 ```
 
 ## Map data

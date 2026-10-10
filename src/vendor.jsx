@@ -1,5 +1,6 @@
 import { WORKERS, PROPOSALS, DAYS, SITES, ROSTER_GROUPS, tplOf, endOf, siteOf, vendorOf } from './data.js';
-import { todayOf, timesheetOf, missedAt } from './operator.jsx';
+import { todayOf } from './lib/live.js';
+import { timesheetOf, missedAt } from './lib/roster.js';
 import { ScreenHeader, Stat, Pill, Bar, Spark, Avatar, statusTone, aed, Field, Note, useToast, Icon } from './ui.jsx';
 
 const { useState } = React;
