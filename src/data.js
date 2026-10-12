@@ -100,10 +100,11 @@ export const DAYS = ['Mon 5', 'Tue 6', 'Wed 7', 'Thu 8', 'Fri 9', 'Sat 10', 'Sun
 
 // A shift is just a length: base hours + optional overtime. The start time is picked on the roster, per day.
 const SHIFT_TEMPLATES_RAW = [
-  { id: 'f5', base: 11, ot: 1, used: 27 },
-  { id: 'f3', base: 10, ot: 1, used: 7 },
-  { id: 'f1', base: 8, ot: 0, used: 3 },
-  { id: 'f7', base: 4, ot: 0, used: 8 },
+  // Defaults from opspro-app: worked hours + a 1 h unpaid break, so 11+1 is 12 h on site (the most allowed).
+  { id: 'f5', base: 11, brk: 1, used: 27 },
+  { id: 'f3', base: 10, brk: 1, used: 7 },
+  { id: 'f1', base: 8, brk: 1, used: 3 },
+  { id: 'f7', base: 4, brk: 0, used: 8 }, // added by this client for split shifts
 ];
 
 // Roster: each cell is OFF ('O'), leave ('L'), an unfilled slot ('X'), or a list of shifts.
@@ -224,7 +225,10 @@ export const COST_BY_SITE = [
 // Shifts: each one is a single start time + base hours + optional overtime ("+1" = one optional overtime hour, paid at the overtime rate only if worked).
 export const SHIFT_TEMPLATES = SHIFT_TEMPLATES_RAW;
 export const tplOf = (id) => SHIFT_TEMPLATES.find((t) => t.id === id);
-export const tplLabel = (t) => `${t.base}${t.ot ? '+' + t.ot : ''} hr`;
+export const tplLabel = (t) => `${t.base}${t.brk ? '+' + t.brk : ''} hr`;
+// Time on site: worked hours plus the unpaid break. A shift ends at start + span.
+export const spanOf = (t) => t.base + (t.brk || 0);
+export const MAX_ON_SITE = 12; // hours, from opspro-app
 export const TRAVEL = { 's3|s1': 25, 's1|s3': 25, 's2|s3': 15, 's3|s2': 15, 's2|s1': 10, 's1|s2': 10 };
 // End time is inferred from start + hours; past midnight means it ends the next day.
 export const endOf = (start, hours) => {

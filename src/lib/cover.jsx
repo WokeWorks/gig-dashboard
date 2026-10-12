@@ -1,4 +1,4 @@
-import { MANAGERS, WORKERS, HOME_AREAS, DESIG_ACCESS, tplOf, endOf, vendorOf, siteOf } from '../data.js';
+import { MANAGERS, WORKERS, HOME_AREAS, DESIG_ACCESS, tplOf, spanOf, endOf, vendorOf, siteOf } from '../data.js';
 import { Drawer } from '../ui.jsx';
 import { toMin } from './dates.js';
 import { kmBetween, GEO } from './geo.js';
@@ -18,7 +18,7 @@ export const coverOf = (groups, wid, ci) => { for (const g of groups) for (let r
 
 // Everyone who could take this shift, judged by the cover rules.
 export const coverCands = ({ groups, site, ci, absent, sh }) => {
-  const R = COVER_RULES; const T = tplOf(sh[0]); const s0 = toMin(sh[1]); const e0 = s0 + (T.base + T.ot) * 60;
+  const R = COVER_RULES; const T = tplOf(sh[0]); const s0 = toMin(sh[1]); const e0 = s0 + spanOf(T) * 60;
   const absW = WORKERS.find((w) => w.id === absent); const tgtMgr = mgrOfSite(site); const out = [];
   groups.forEach((g) => g.people.forEach((id, r) => {
     if (id === absent) return;
@@ -28,7 +28,7 @@ export const coverCands = ({ groups, site, ci, absent, sh }) => {
     let ok = true, warn = false, note;
     if (c === 'L') { ok = false; note = 'On leave'; }
     else if (Array.isArray(c)) {
-      const clash = c.find(([t2, st2]) => { const a = toMin(st2), b = a + (tplOf(t2).base + tplOf(t2).ot) * 60; return a < e0 && s0 < b; });
+      const clash = c.find(([t2, st2]) => { const a = toMin(st2), b = a + spanOf(tplOf(t2)) * 60; return a < e0 && s0 < b; });
       if (R.working === 'no') { ok = false; note = fl && c[0][2] ? `Covering at ${siteOf(c[0][2]).name.replace(/^(Spinneys|Carrefour) /, '')}` : 'Already working today'; }
       else if (clash) { ok = false; note = `Clashes with their ${clash[1]} shift`; }
       else { warn = true; note = 'Second shift that day'; }
@@ -60,7 +60,7 @@ export function CoverDrawer({ open, onClose, ctx, onAssign, onSkip, skipLabel })
   const list = coverCands({ groups, site, ci, absent, sh }).best;
   const shown = all ? list : list.slice(0, 6);
   return (
-    <Drawer open onClose={onClose} title={`Cover ${absW.name.split(' ')[0]}`} sub={`${dayLabel} · ${sh[1]} to ${endOf(sh[1], T.base).time} · ${siteOf(site).name}`}>
+    <Drawer open onClose={onClose} title={`Cover ${absW.name.split(' ')[0]}`} sub={`${dayLabel} · ${sh[1]} to ${endOf(sh[1], T.base + (T.brk || 0)).time} · ${siteOf(site).name}`}>
       {list.length === 0 && <p className="small muted">Nobody is free for this shift.</p>}
       {shown.map((x, i) => (
         <div key={x.w.id} className="cv-row">

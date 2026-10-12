@@ -9,12 +9,12 @@ export const liveOf = (sid) => {
   const g = ROSTER_GROUPS.find((x) => x.site === sid);
   const out = [];
   const add = (w, sh, visiting) => {
-    const [t, st] = sh; const T = tplOf(t); const s0 = toM(st); const e0 = s0 + T.base * 60; const n = parseInt(w.id.slice(1), 10);
+    const [t, st] = sh; const T = tplOf(t); const s0 = toM(st); const e0 = s0 + (T.base + (T.brk || 0)) * 60; const n = parseInt(w.id.slice(1), 10);
     let status, inAt = null, late = 0;
     if (s0 > NOW_MIN) status = 'upcoming';
     else if (missedAt(sid, w.id, 0, 2) || w.status === 'No-show') status = NOW_MIN - s0 >= 60 ? 'noshow' : 'waiting';
     else { late = w.status === 'Late' || n % 11 === 4 ? 14 + (n % 3) * 6 : 0; inAt = s0 + (late || -(n % 5)); status = w.status === 'On break' ? 'break' : late ? 'late' : 'in'; }
-    out.push({ w, t, start: st, end: endOf(st, T.base).time, s0, e0, status, inAt, late, visiting, label: tplLabel(T) });
+    out.push({ w, t, start: st, end: endOf(st, T.base + (T.brk || 0)).time, s0, e0, status, inAt, late, visiting, label: tplLabel(T) });
   };
   if (g) g.people.forEach((id, r) => { const c = g.cells[r][2]; if (Array.isArray(c)) c.filter((x) => !x[2] || x[2] === sid).forEach((sh) => add(WORKERS.find((w) => w.id === id), sh, false)); });
   ROSTER_GROUPS.forEach((og) => { if (og.site === sid) return; og.people.forEach((id, r) => { const c = og.cells[r][2]; if (Array.isArray(c)) c.filter((x) => x[2] === sid).forEach((sh) => add(WORKERS.find((w) => w.id === id), sh, true)); }); });

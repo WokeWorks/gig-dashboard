@@ -25,11 +25,12 @@ npm install
 npm run build        # writes dist/opspro-prototype.html; open it in a browser
 npm run watch        # rebuilds on every change to src/*.jsx (restart for style.css changes)
 npm run check        # build, then click through every screen headless and fail on any page error
+npm run serve        # serve the build at http://localhost:5173 (for a website-restricted Maps key)
 ```
 
 `npm run check` uses Playwright's Chromium. If Playwright can't find a browser, either run `npx playwright install chromium` or point it at one: `CHROMIUM_PATH=/path/to/chromium npm run check`.
 
-React loads from cdnjs and the Liveboard map loads live basemap tiles from CARTO, so both need an internet connection. Everything else is inlined into the HTML. CARTO needs a key: get one free at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/), copy `.env.example` to `.env` and set `MAP_KEY`, then rebuild. Without it the map shows an "API key required" watermark. The free tier covers 1M tile requests a month for commercial use; the tile URLs live in `MAP_TILES` in `src/lib/geo.js`.
+React loads from cdnjs and the Liveboard map from Google Maps, so both need an internet connection; everything else is inlined into the HTML. Copy `.env.example` to `.env` and set `GOOGLE_MAPS_API_KEY` (the same key opspro-app uses), then rebuild. If the key is restricted to certain websites, a page opened straight from disk is refused: run `npm run serve` and open http://localhost:5173, after allowing `http://localhost:5173/*` for the key in Google Cloud.
 
 ## Layout
 
@@ -54,9 +55,10 @@ src/
     geo.js         site coordinates and distances
     dates.js       day names, week labels, time maths
 scripts/smoke.mjs  headless click-through test
+scripts/serve.mjs  local server for the build
 build.mjs          esbuild bundle into one HTML file
 ```
 
 ## Map data
 
-Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, basemap © [CARTO](https://carto.com/attributions). Attribution is shown on the map.
+The Liveboard map is Google Maps; Google's attribution is shown on the map.

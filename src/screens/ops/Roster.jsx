@@ -1,9 +1,9 @@
-import { MANAGERS, SITES, VENDORS, WORKERS, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, TRAVEL, tplOf, tplLabel, endOf, vendorOf, siteOf } from '../../data.js';
+import { MANAGERS, SITES, VENDORS, WORKERS, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, TRAVEL, tplOf, tplLabel, spanOf, MAX_ON_SITE, endOf, vendorOf, siteOf } from '../../data.js';
 import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon } from '../../ui.jsx';
 import { isFloat, coverOf, coverCell, undoCell, CoverDrawer } from '../../lib/cover.jsx';
 import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/dates.js';
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
-import { shiftHours, shiftOt, UNACK, usual, shiftWeek } from '../../lib/roster.js';
+import { shiftHours, shiftBrk, UNACK, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
 import * as XLSX from 'xlsx';
 
@@ -15,25 +15,25 @@ export const DAY0 = 5 * 60, DAYLEN = 22 * 60; // timeline window 05:00 → 03:00
 export const pos = (min) => Math.max(0, Math.min(1, (min < DAY0 ? min + 1440 - DAY0 : min - DAY0) / DAYLEN));
 
 export function dayChecks(list, home) {
-  const iv = list.map(([t, st, s2]) => { const s0 = toMin(st); return { s0, endBase: s0 + tplOf(t).base * 60, endOt: s0 + (tplOf(t).base + tplOf(t).ot) * 60, site: s2 || home }; }).sort((a, b) => a.s0 - b.s0);
+  const iv = list.map(([t, st, s2]) => { const s0 = toMin(st); return { s0, end: s0 + spanOf(tplOf(t)) * 60, site: s2 || home }; }).sort((a, b) => a.s0 - b.s0);
   const out = [];
   for (let k = 1; k < iv.length; k++) {
     const a = iv[k - 1], b = iv[k];
     const travel = a.site !== b.site ? (TRAVEL[a.site + '|' + b.site] || 30) : 0;
-    if (b.s0 < a.endBase) out.push(['crit', 'Blocked', 'These shifts overlap']);
-    else if (b.s0 < a.endBase + travel) out.push(['crit', 'Blocked', `Not enough time to travel to ${siteOf(b.site).name} (about ${travel} min)`]);
-    else if (b.s0 < a.endOt + travel) out.push(['warn', 'Check', 'The optional overtime hour would run into the next shift']);
-    else if (b.s0 - a.endOt < 60) out.push(['warn', 'Check', 'Less than 1 h between shifts (policy minimum)']);
+    if (b.s0 < a.end) out.push(['crit', 'Blocked', 'These shifts overlap']);
+    else if (b.s0 < a.end + travel) out.push(['crit', 'Blocked', `Not enough time to travel to ${siteOf(b.site).name} (about ${travel} min)`]);
+    else if (b.s0 - a.end - travel < 60) out.push(['warn', 'Check', 'Less than 1 h between shifts (policy minimum)']);
   }
-  const hrs = list.reduce((a, [t]) => a + tplOf(t).base, 0);
-  if (hrs > 12) out.push(['warn', 'Check', `${hrs} base hours in one day`]);
+  // opspro-app allows at most 12 h on site in a day (an 11+1 fills it).
+  const onSite = list.reduce((a, [t]) => a + spanOf(tplOf(t)), 0);
+  if (onSite > MAX_ON_SITE) out.push(['warn', 'Check', `${onSite} h on site in one day, over the ${MAX_ON_SITE} h maximum; the extra is overtime`]);
   return out;
 }
 
 export function MiniBar({ list, home }) {
   return (
     <span className="minibar" aria-hidden="true">
-      {list.map(([t, st, s2], k) => { const a = pos(toMin(st)); const b = pos(toMin(st) + tplOf(t).base * 60); return <span key={k} className={s2 && s2 !== home ? 'away' : ''} style={{ left: a * 100 + '%', width: Math.max(4, (b - a) * 100) + '%' }} />; })}
+      {list.map(([t, st, s2], k) => { const a = pos(toMin(st)); const b = pos(toMin(st) + spanOf(tplOf(t)) * 60); return <span key={k} className={s2 && s2 !== home ? 'away' : ''} style={{ left: a * 100 + '%', width: Math.max(4, (b - a) * 100) + '%' }} />; })}
     </span>
   );
 }
@@ -48,18 +48,17 @@ export function DayTimeline({ list, home }) {
       {ticks.map((h) => <g key={h}><line x1={X(h * 60)} x2={X(h * 60)} y1={top - 4} y2={top + bh + 4} className="tl-grid" /><text x={X(h * 60)} y={H - 6} textAnchor={h === 3 ? "end" : h === 6 ? "start" : "middle"} className="tl-tick">{String(h).padStart(2, '0')}:00</text></g>)}
       {sorted.map(([t, st, s2], k) => {
         const T = tplOf(t), s0 = toMin(st), site = s2 || home;
-        const x0 = X(s0), x1 = X(s0 + T.base * 60), x2 = X(s0 + (T.base + T.ot) * 60);
+        const x0 = X(s0), x1 = X(s0 + spanOf(T) * 60);
         return (
           <g key={k}>
             <rect x={x0} y={top} width={Math.max(2, x1 - x0)} height={bh} rx="5" className={'tl-seg' + (site !== home ? ' away' : '')} />
-            {T.ot > 0 && <rect x={x1} y={top} width={Math.max(2, x2 - x1)} height={bh} rx="5" className={'tl-ot' + (site !== home ? ' away' : '')} />}
             <text x={x0 + 6} y={top + 13} className={'tl-lab' + (site !== home ? ' away' : '')}>{siteOf(site).name}</text>
             <text x={x0 + 6} y={top + 25} className={'tl-sub' + (site !== home ? ' away' : '')}>{st} · {tplLabel(T)}</text>
           </g>
         );
       })}
       {sorted.slice(1).map((b, k) => {
-        const a = sorted[k]; const ea = toMin(a[1]) + tplOf(a[0]).base * 60; const sb = toMin(b[1]); const gap = sb - ea;
+        const a = sorted[k]; const ea = toMin(a[1]) + spanOf(tplOf(a[0])) * 60; const sb = toMin(b[1]); const gap = sb - ea;
         const sa = a[2] || home, sb2 = b[2] || home; const tr = sa !== sb2 ? (TRAVEL[sa + '|' + sb2] || 30) : 0;
         if (gap <= 0) return null;
         return <text key={'g' + k} x={(X(ea) + X(sb)) / 2} y={top - 8} textAnchor="middle" className="tl-gap">{Math.floor(gap / 60)}h{gap % 60 ? ` ${gap % 60}m` : ''} gap{tr ? ` · ${tr} min travel` : ''}</text>;
@@ -126,7 +125,7 @@ export function Scheduling({ go }) {
   const dayWorker = day && W(G(day.g).people[day.r]);
   const isPool = day && day.g === 'pool';
   const checks = [...(cur === 'O' ? [['warn', 'Weekly off', `${dayWorker.name.split(' ')[0]}'s weekly off: this counts as rest-day work, paid at the overtime rate`]] : []), ...dayChecks(preview, site)];
-  const fmtShift = ([t, st]) => { const T = tplOf(t); const e = endOf(st, T.base); return `${st} – ${e.time}${e.nextDay ? ' (overnight)' : ''}`; };
+  const fmtShift = ([t, st]) => { const T = tplOf(t); const e = endOf(st, T.base + (T.brk || 0)); return `${st} – ${e.time}${e.nextDay ? ' (overnight)' : ''}`; };
   const openDay = (g, r, c) => { if (wk < 0) { toast('Past weeks are read-only. Timesheets has what was worked.'); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
     // Suggest a start: an hour after their last shift that day, otherwise their usual start.
     const st = last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : (usual(G(g).cells[r])[0] || [null, '07:00'])[1];
@@ -176,7 +175,7 @@ export function Scheduling({ go }) {
     }
     try { XLSX.writeFile(wb, name); toast(`Downloaded ${name}`); } catch (e) { toast('Downloads aren\'t available here'); }
   };
-  const HOW = [['What to type in a day', 'Means'], ['07:00-18:00', 'One shift, 07:00 to 18:00'], ['7-6  or  7am to 6pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-18:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shift lengths allowed', SHIFT_TEMPLATES.map((x) => x.base + ' h').join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
+  const HOW = [['What to type in a day', 'Means'], ['07:00-19:00', 'One shift, 07:00 to 19:00 on site (11 h worked + 1 h break)'], ['7-7  or  7am to 7pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours worked'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-19:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shifts allowed', SHIFT_TEMPLATES.map((x) => `${x.base}${x.brk ? '+' + x.brk : ''} (${x.base + (x.brk || 0)} h on site)`).join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
   const downloadTemplate = (w) => saveXlsx(templateRows(sourceFor(w), shown.map((x) => x.id), w), `roster-${fileWeek(w)}.xlsx`, HOW);
   const readFile = (f, w) => {
     const r = new FileReader();
@@ -204,8 +203,8 @@ export function Scheduling({ go }) {
   };
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
-    const night = endOf(st, tplOf(t).base).nextDay;
-    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}>{night && <span className="sc-moon filled" title="Overnight: ends after midnight" aria-label="Overnight shift"><Icon name="moon" size={12} /></span>}<span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
+    const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay;
+    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}>{night && <span className="sc-moon filled" title="Overnight: ends after midnight" aria-label="Overnight shift"><Icon name="moon" size={12} /></span>}<span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
   };
   return (
     <>
@@ -268,7 +267,7 @@ export function Scheduling({ go }) {
                   <button key={x.w.id + (x.visiting ? 'v' : '')} className="dv-row" onClick={() => openDay(x.g, x.r, dIdx)}>
                     <span className="dv-who"><span className="namerow"><b>{x.w.name}</b>{pub[wk] === 'published' && wk >= 0 && UNACK.includes(x.w.id) && <span className="unack"><Icon name="alert" size={12} /></span>}</span><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.w.role}</span></span>
                     <span className="dv-what">
-                      {here.map((y, k) => <span key={k} className={'dv-shift' + segCls(s.id, x.w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base).time}</span>{endOf(y[1], tplOf(y[0]).base).nextDay && <span className="sc-moon filled"><Icon name="moon" size={11} /></span>}</span>)}
+                      {here.map((y, k) => <span key={k} className={'dv-shift' + segCls(s.id, x.w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span>{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).nextDay && <span className="sc-moon filled"><Icon name="moon" size={11} /></span>}</span>)}
                       {x.c === 'O' && <span className="dv-tag">Weekly off</span>}
                       {x.c === 'L' && <span className="dv-tag">Annual leave{covBy(x.w.id, dIdx) ? ` · covered by ${first(covBy(x.w.id, dIdx).w.name)}` : ''}</span>}
                       {x.c === 'X' && <span className="dv-tag faint">Not rostered</span>}
@@ -286,7 +285,7 @@ export function Scheduling({ go }) {
             <button key={w.id} className="dv-row" onClick={() => openDay('pool', r, dIdx)}>
               <span className="dv-who"><b>{w.name}</b><span className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</span></span>
               <span className="dv-what">
-                {Array.isArray(c) && c.map((y, k) => <span key={k} className={'dv-shift' + segCls('pool', w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base).time}</span><span className="small muted"> {siteOf(y[2]).name.replace(/^(Spinneys|Carrefour) /, '')}</span></span>)}
+                {Array.isArray(c) && c.map((y, k) => <span key={k} className={'dv-shift' + segCls('pool', w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span><span className="small muted"> {siteOf(y[2]).name.replace(/^(Spinneys|Carrefour) /, '')}</span></span>)}
                 {c === 'A' && <span className="dv-tag faint">Available</span>}
                 {c === 'O' && <span className="dv-tag">Weekly off</span>}
               </span>
@@ -464,7 +463,7 @@ export function Scheduling({ go }) {
             <li><b>Download the template.</b> <span className="muted">It lists your workers and is already filled in with {has(up.wk) ? 'this week' : weekLabel(latestBefore(up.wk), true)}, so you only change what's different.</span>
               <div><button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} /> roster-{fileWeek(up.wk)}.xlsx</button></div></li>
             <li><b>Fill in each day.</b> <span className="muted">Any of these work:</span>
-              <div className="up-fmt"><span className="mono">07:00-18:00</span><span className="mono">7-6</span><span className="mono">7am to 6pm</span><span className="mono">OFF</span><span className="mono">LEAVE</span><span className="mono">07:00-11:00 + 17:00-21:00</span><span className="mono">07:00-18:00 @ Barsha Heights</span></div></li>
+              <div className="up-fmt"><span className="mono">07:00-19:00</span><span className="mono">7-7</span><span className="mono">7am to 7pm</span><span className="mono">OFF</span><span className="mono">LEAVE</span><span className="mono">07:00-11:00 + 17:00-21:00</span><span className="mono">07:00-19:00 @ Barsha Heights</span></div></li>
             <li><b>Upload it back.</b> <span className="muted">Columns are matched by name, so your own sheet works too.</span></li>
           </ol>
           <label className={'up-drop' + (up.over ? ' over' : '')} onDragOver={(e) => { e.preventDefault(); if (!up.over) setUp({ ...up, over: true }); }} onDragLeave={() => setUp({ ...up, over: false })} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f, up.wk); }}>
@@ -523,16 +522,16 @@ export function Scheduling({ go }) {
           </>;
         })()}
       </Drawer>
-      <Drawer open={!!day} onClose={() => setDay(null)} title={day && `${W(G(day.g).people[day.r]).name} · ${days[day.c]}`} sub={day && (list.length ? `${list.length} ${list.length === 1 ? 'shift' : 'shifts'} · ${shiftHours(cur)} h${shiftOt(cur) ? ` + ${shiftOt(cur)} h optional` : ''} · ${locsIn(cur, site).map((x) => siteOf(x).name).join(', ')}` : cur === 'L' ? 'Annual leave' : cur === 'O' ? 'Weekly off' : cur === 'A' ? 'Available to cover · not paid' : 'Not rostered')}>
+      <Drawer open={!!day} onClose={() => setDay(null)} title={day && `${W(G(day.g).people[day.r]).name} · ${days[day.c]}`} sub={day && (list.length ? `${list.length} ${list.length === 1 ? 'shift' : 'shifts'} · ${shiftHours(cur)} h${shiftBrk(cur) ? ` worked + ${shiftBrk(cur)} h break` : ''} · ${locsIn(cur, site).map((x) => siteOf(x).name).join(', ')}` : cur === 'L' ? 'Annual leave' : cur === 'O' ? 'Weekly off' : cur === 'A' ? 'Available to cover · not paid' : 'Not rostered')}>
         {day && <>
           <div className="small muted">{isPool ? `Floater · lives in ${dayWorker.homeArea} · no fixed location` : `Works from ${siteOf(site).name}`}</div>
           {cur === 'L' && (() => { const cv = covBy(dayWorker.id, day.c); const sh0 = usual(G(day.g).cells[day.r])[0]; return (
             <section className={'cv-status' + (cv ? ' ok' : '')}>
               {cv ? <>
-                <div><b>Covered by {cv.w.name}</b><div className="small muted"><span className="vtag">{vendorOf(cv.w.vendor).code}</span> {isFloat(cv.w) ? `Floater · ${cv.w.homeArea}` : siteOf(cv.g).name} · {cv.sh[1]} to {endOf(cv.sh[1], tplOf(cv.sh[0]).base).time}</div></div>
+                <div><b>Covered by {cv.w.name}</b><div className="small muted"><span className="vtag">{vendorOf(cv.w.vendor).code}</span> {isFloat(cv.w) ? `Floater · ${cv.w.homeArea}` : siteOf(cv.g).name} · {cv.sh[1]} to {endOf(cv.sh[1], tplOf(cv.sh[0]).base + (tplOf(cv.sh[0]).brk || 0)).time}</div></div>
                 {day.c >= nowIdx && <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>}
               </> : <>
-                <div><b>{day.c >= nowIdx ? 'Not covered yet' : 'Was not covered'}</b><div className="small muted">Usual shift {sh0[1]} to {endOf(sh0[1], tplOf(sh0[0]).base).time} · {tplLabel(tplOf(sh0[0]))}</div></div>
+                <div><b>{day.c >= nowIdx ? 'Not covered yet' : 'Was not covered'}</b><div className="small muted">Usual shift {sh0[1]} to {endOf(sh0[1], tplOf(sh0[0]).base + (tplOf(sh0[0]).brk || 0)).time} · {tplLabel(tplOf(sh0[0]))}</div></div>
                 {day.c >= nowIdx && <button className="btn sm" onClick={() => findCover(dayWorker.id, day.g, day.c, G(day.g).cells[day.r])}>Find cover</button>}
               </>}
             </section>
@@ -563,7 +562,7 @@ export function Scheduling({ go }) {
             <h3>{list.length ? 'Add another shift' : 'Add a shift'}</h3>
             <div className="form-grid">
               <Field label="Shift"><select id="as-t" className="input" value={add.t} onChange={(e) => setAdd({ ...add, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>
-              <Field label="Starts" hint={`Ends ${endOf(add.st, tplOf(add.t).base).time}${endOf(add.st, tplOf(add.t).base).nextDay ? ', after midnight' : ''}`}><input id="as-st" type="time" className="input mono" value={add.st} onChange={(e) => setAdd({ ...add, st: e.target.value || add.st })} /></Field>
+              <Field label="Starts" hint={`Ends ${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).time}${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).nextDay ? ', after midnight' : ''}`}><input id="as-st" type="time" className="input mono" value={add.st} onChange={(e) => setAdd({ ...add, st: e.target.value || add.st })} /></Field>
               <Field label="Location"><select id="as-site" className="input" value={add.site} onChange={(e) => setAdd({ ...add, site: e.target.value })}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}{x.id === site ? ' (their location)' : ''}</option>)}</select></Field>
             </div>
             <DayTimeline list={preview.map(norm)} home={site} />

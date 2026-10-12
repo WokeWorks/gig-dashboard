@@ -22,11 +22,11 @@ export const timesheetOf = (w) => {
     const here = Array.isArray(c) ? c : null;
     if (!here) { days.push({ iso, kind: c === 'O' ? 'Weekly off' : c === 'L' ? (coverOf(gs, w.id, ci) ? 'Leave · covered' : 'Leave') : c === 'A' ? 'Available' : 'Not rostered' }); continue; }
     const [t, st] = here[0]; const T = tplOf(t);
-    if (date === 7) { days.push({ iso, kind: 'Today', shift: `${st}–${endOf(st, T.base).time}`, inT: addMin(st, -(n % 6)) }); continue; }
-    if (missedAt(g.site, w.id, wk, ci)) { days.push({ iso, kind: 'Absent', shift: `${st}–${endOf(st, T.base).time}` }); continue; }
-    const late = n % 7 === 3 && ci === 1 ? 14 : 0; const stay = T.ot && n % 3 === 0 ? 1 : 0; const auto = (n + date) % 9 === 0;
+    if (date === 7) { days.push({ iso, kind: 'Today', shift: `${st}–${endOf(st, T.base + (T.brk || 0)).time}`, inT: addMin(st, -(n % 6)) }); continue; }
+    if (missedAt(g.site, w.id, wk, ci)) { days.push({ iso, kind: 'Absent', shift: `${st}–${endOf(st, T.base + (T.brk || 0)).time}` }); continue; }
+    const late = n % 7 === 3 && ci === 1 ? 14 : 0; const stay = T.base >= 10 && n % 3 === 0 ? 1 : 0; /* overtime, verified separately */ const auto = (n + date) % 9 === 0;
     const worked = +(T.base - late / 60 + stay).toFixed(1);
-    days.push({ iso, kind: 'Full', shift: `${st}–${endOf(st, T.base).time}`, inT: addMin(st, late ? late : -(n % 6)), outT: auto ? 'auto' : addMin(st, (T.base + stay) * 60 + (n % 4)), worked, ot: stay, late });
+    days.push({ iso, kind: 'Full', shift: `${st}–${endOf(st, T.base + (T.brk || 0)).time}`, inT: addMin(st, late ? late : -(n % 6)), outT: auto ? 'auto' : addMin(st, (T.base + (T.brk || 0) + stay) * 60 + (n % 4)), worked, ot: stay, late });
   }
   const sum = { full: days.filter((x) => x.kind === 'Full').length, absent: days.filter((x) => x.kind === 'Absent').length, hours: days.reduce((a, x) => a + (x.worked || 0), 0), ot: days.reduce((a, x) => a + (x.ot || 0), 0) };
   return { days, sum };
@@ -34,7 +34,7 @@ export const timesheetOf = (w) => {
 
 export const shiftHours = (cell) => (Array.isArray(cell) ? cell.reduce((a, [t]) => a + tplOf(t).base, 0) : 0);
 
-export const shiftOt = (cell) => (Array.isArray(cell) ? cell.reduce((a, [t]) => a + tplOf(t).ot, 0) : 0);
+export const shiftBrk = (cell) => (Array.isArray(cell) ? cell.reduce((a, [t]) => a + (tplOf(t).brk || 0), 0) : 0);
 
 export const UNACK = ['w2', 'w9', 'w14']; // haven't acknowledged the published roster
 

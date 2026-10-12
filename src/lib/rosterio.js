@@ -1,6 +1,6 @@
 // Getting rosters in and out: copying weeks, the upload template, and reading an uploaded file.
 // A supervisor should be able to fill a week in seconds, so the file format is forgiving:
-// columns are found by name, times can be "07:00-18:00", "7-18", "7am to 6pm" or "07:00 11h",
+// columns are found by name, times can be "07:00-19:00" (time on site), "7-7", "7am to 7pm" or "07:00 11h" (hours worked),
 // and every problem is reported against the exact row and day it came from.
 import { WORKERS, SITES, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, endOf, siteOf } from '../data.js';
 import { WEEK0 } from './dates.js';
@@ -58,7 +58,7 @@ export const cellText = (c, home) => {
   if (!Array.isArray(c)) return '';
   return c.filter((x) => !x[3]).map(([t, st, s2]) => {
     const T = SHIFT_TEMPLATES.find((x) => x.id === t);
-    return `${st}-${endOf(st, T.base).time}${s2 && s2 !== home ? ' @ ' + short(siteOf(s2).name) : ''}`;
+    return `${st}-${endOf(st, T.base + (T.brk || 0)).time}${s2 && s2 !== home ? ' @ ' + short(siteOf(s2).name) : ''}`;
   }).join(' + ');
 };
 // One row per worker at the chosen locations, one column per day, filled from `groups` (or blank).
@@ -131,9 +131,10 @@ export function parseCell(raw, home) {
       len = (((e - s0) % 1440) + 1440) % 1440 / 60;
     }
     else if ((m = when.match(LENGTH))) { s0 = toMinOf(m[1], m[2], m[3]); len = +m[4]; }
-    else return { error: `Can't read "${p}". Use a time range like 07:00-18:00, or OFF, or LEAVE.` };
-    const T = SHIFT_TEMPLATES.find((x) => x.base === len) || SHIFT_TEMPLATES.find((x) => x.base + x.ot === len);
-    if (!T) return { error: `"${p}" is ${len} h. Shifts in Settings are ${SHIFT_TEMPLATES.map((x) => x.base + ' h').join(', ')}.` };
+    else return { error: `Can't read "${p}". Use a time range like 07:00-19:00, or OFF, or LEAVE.` };
+    // A time range is time on site (worked + break); "07:00 11h" gives worked hours.
+    const T = (RANGE.test(when) && SHIFT_TEMPLATES.find((x) => x.base + (x.brk || 0) === len)) || SHIFT_TEMPLATES.find((x) => x.base === len);
+    if (!T) return { error: `"${p}" is ${len} h. Shifts in Settings are ${SHIFT_TEMPLATES.map((x) => `${x.base + (x.brk || 0)} h on site (${x.base}${x.brk ? '+' + x.brk : ''})`).join(', ')}.` };
     let site;
     if (where) { const s = findSite(where); if (!s) return { error: `No location called "${where}".` }; site = s.id; }
     shifts.push(site && site !== home ? [T.id, hhmm(s0), site] : [T.id, hhmm(s0)]);
@@ -142,7 +143,7 @@ export function parseCell(raw, home) {
   for (let k = 1; k < shifts.length; k++) {
     const a = shifts[k - 1], b = shifts[k]; const ta = SHIFT_TEMPLATES.find((x) => x.id === a[0]);
     const [ah, am] = a[1].split(':').map(Number); const [bh, bm] = b[1].split(':').map(Number);
-    if (bh * 60 + bm < ah * 60 + am + ta.base * 60) return { error: `Shifts overlap: ${t}` };
+    if (bh * 60 + bm < ah * 60 + am + (ta.base + (ta.brk || 0)) * 60) return { error: `Shifts overlap: ${t}` };
   }
   return { cell: shifts };
 }

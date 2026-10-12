@@ -56,7 +56,7 @@ export function Onboarding() {
               : <Field label="Location"><select id="ob-site" className="input" value={d.site} onChange={(e) => set('site', e.target.value)}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>}
               <Field label="Designation"><select id="ob-desig" className="input" value={d.desig} onChange={(e) => set('desig', e.target.value)}>{Object.keys(DESIG_ACCESS).filter((k) => DESIG_ACCESS[k] === (d.reliever ? 'Floater' : 'Employee')).map((x) => <option key={x}>{x}</option>)}</select></Field>
               {!d.reliever && <Field label="Usual shift"><select id="ob-shift" className="input" value={d.shift} onChange={(e) => set('shift', e.target.value)}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>}
-              {!d.reliever && <Field label="Usually starts at" hint={`Ends ${endOf(d.shiftStart, T.base).time}`}><input id="ob-shiftst" type="time" className="input mono" value={d.shiftStart} onChange={(e) => set('shiftStart', e.target.value || d.shiftStart)} /></Field>}
+              {!d.reliever && <Field label="Usually starts at" hint={`Ends ${endOf(d.shiftStart, T.base + (T.brk || 0)).time}`}><input id="ob-shiftst" type="time" className="input mono" value={d.shiftStart} onChange={(e) => set('shiftStart', e.target.value || d.shiftStart)} /></Field>}
               <Field label="Vendor"><select id="ob-vendor" className="input" value={d.vendor} onChange={(e) => set('vendor', e.target.value)}>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
             </div>
           </>}
@@ -71,7 +71,7 @@ export function Onboarding() {
             <dt>Mobile</dt><dd className="mono">{d.phone}</dd>
             <dt>Dates</dt><dd>{fmtD(d.start)} – {fmtD(d.end)}</dd>
             <dt>Designation</dt><dd>{d.desig} · {d.reliever ? 'Floater' : 'Employee'} access</dd>
-            {d.reliever ? <><dt>Home area</dt><dd>{d.home}</dd><dt>Shifts</dt><dd>Each cover follows the shift being covered</dd></> : <><dt>Location</dt><dd>{siteOf(d.site).name}</dd><dt>Usual shift</dt><dd>{d.shiftStart} – {endOf(d.shiftStart, T.base).time} · {tplLabel(T)}</dd></>}
+            {d.reliever ? <><dt>Home area</dt><dd>{d.home}</dd><dt>Shifts</dt><dd>Each cover follows the shift being covered</dd></> : <><dt>Location</dt><dd>{siteOf(d.site).name}</dd><dt>Usual shift</dt><dd>{d.shiftStart} – {endOf(d.shiftStart, T.base + (T.brk || 0)).time} · {tplLabel(T)}</dd></>}
             <dt>Vendor</dt><dd>{vendorOf(d.vendor).name}</dd>
             <dt>Photo</dt><dd>{d.photo ? 'Added' : <span className="neg">Not added: cannot clock in yet</span>}</dd>
           </dl>}

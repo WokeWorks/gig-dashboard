@@ -1,68 +1,85 @@
-import L from 'leaflet';
 import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
 import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
-import { GEO, LEFT, MAP_TILES } from '../../lib/geo.js';
+import { GEO, LEFT, loadGoogleMaps, MAP_STYLES } from '../../lib/geo.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
 const { useState, useEffect, useRef } = React;
 
 export function LiveMap({ data, pick, onPick }) {
-  const el = React.useRef(null); const map = React.useRef(null); const layer = React.useRef(null);
-  const [failed, setFailed] = useState(false);
-  const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
-  // Frame every store: room on the right for the labels (left for the few whose label sits on the left),
-  // quarter-step zoom so the fit is snug, and never closer than street level for a single store.
+  const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
+  const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
+  const pts = useRef([]); const moved = useRef(false); const fitting = useRef(false); const fitKey = useRef('');
+  const onPickRef = useRef(onPick); onPickRef.current = onPick;
+  // Frame every store: room on the right for the labels, and clear of the filter bar and count tiles
+  // that sit over the map (top on wide screens, bottom on narrow ones). Never closer than street level.
   const fitAll = () => {
-    const m = map.current; if (!m || !pts.current.length || !el.current || !el.current.clientWidth) return;
-    // The filter bar and the count tiles sit on top of the map: keep stores out from under them.
+    const m = map.current, G = gm.current; if (!m || !G || !pts.current.length || !el.current || !el.current.clientWidth) return;
     const box = el.current.getBoundingClientRect();
-    // Each overlay pads whichever edge it sits on (on narrow screens the tiles move to the bottom).
     let top = 0, bottom = 0;
     el.current.parentElement.querySelectorAll('.lm-over').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top + r.height / 2 < box.top + box.height / 2) top = Math.max(top, r.bottom - box.top); else bottom = Math.max(bottom, box.bottom - r.top); });
-    m.fitBounds(pts.current, { paddingTopLeft: [70, Math.max(50, top + 40)], paddingBottomRight: [190, Math.max(50, bottom + 30)], maxZoom: 15, animate: false });
+    const b = new G.LatLngBounds(); pts.current.forEach(([lat, lng]) => b.extend({ lat, lng }));
+    fitting.current = true;
+    m.fitBounds(b, { top: Math.max(50, top + 40), right: 190, bottom: Math.max(50, bottom + 30), left: 70 });
+    G.event.addListenerOnce(m, 'idle', () => { if (m.getZoom() > 15) m.setZoom(15); fitting.current = false; });
     moved.current = false;
   };
   useEffect(() => {
-    const m = L.map(el.current, { zoomSnap: 0.25, zoomDelta: 0.5, scrollWheelZoom: false, zoomControl: false, attributionControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, maxZoom: MAP_TILES.maxZoom }).setView([25.09, 55.23], 12);
-    L.control.zoom({ position: 'bottomright' }).addTo(m);
-    // Scrolling the page shouldn't zoom the map; once someone clicks into it, the wheel zooms.
-    m.on('focus click', () => m.scrollWheelZoom.enable()); m.on('blur mouseout', () => m.scrollWheelZoom.disable());
-    // Live basemap tiles, light or dark to match the dashboard's theme.
-    const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
-    let ok = 0, bad = 0;
-    const tiles = L.tileLayer(dark() ? MAP_TILES.dark : MAP_TILES.light, { subdomains: MAP_TILES.subdomains, maxZoom: MAP_TILES.maxZoom, attribution: MAP_TILES.attribution, detectRetina: true })
-      .on('tileload', () => { if (++ok === 1) setFailed(false); }).on('tileerror', () => { bad++; if (bad > 8 && ok === 0) setFailed(true); }).addTo(m);
-    const retheme = () => tiles.setUrl(dark() ? MAP_TILES.dark : MAP_TILES.light);
-    const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
-    const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    layer.current = L.layerGroup().addTo(m); map.current = m;
-    // Once someone drags or zooms, leave their view alone until they ask for "Show all".
-    m.on('dragstart', () => { moved.current = true; }); m.getContainer().addEventListener('wheel', () => { moved.current = true; }, { passive: true });
-    const All = L.Control.extend({ options: { position: 'bottomright' }, onAdd() { const b = L.DomUtil.create('button', 'lm-fit'); b.type = 'button'; b.textContent = 'Show all'; b.title = 'Fit every location in view'; L.DomEvent.disableClickPropagation(b); b.onclick = fitAll; return b; } });
-    new All().addTo(m);
-    let alive = true; const fit = () => { if (!alive) return; try { m.invalidateSize(); if (!moved.current) fitAll(); } catch (e) { /* map already gone */ } };
-    const ro = new ResizeObserver(fit); ro.observe(el.current); const tm = setTimeout(fit, 50);
-    return () => { alive = false; clearTimeout(tm); ro.disconnect(); mo.disconnect(); mq.removeEventListener('change', retheme); try { m.stop(); m.off(); } catch (e) {} m.remove(); };
+    let alive = true; let cleanup = () => {};
+    const refused = () => alive && setState('refused');
+    window.addEventListener('opspro-maps-refused', refused);
+    loadGoogleMaps().then((G) => {
+      if (!alive || !el.current) return;
+      gm.current = G;
+      const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
+      const m = new G.Map(el.current, {
+        center: { lat: 25.09, lng: 55.23 }, zoom: 12, styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light,
+        disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: G.ControlPosition.RIGHT_BOTTOM },
+        clickableIcons: false, gestureHandling: 'cooperative', // the page scrolls; ctrl/two fingers zoom the map
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
+      });
+      map.current = m;
+      // Once someone drags or zooms, leave their view alone until they ask for "Show all".
+      m.addListener('dragstart', () => { moved.current = true; });
+      m.addListener('zoom_changed', () => { if (!fitting.current) moved.current = true; });
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lm-fit'; btn.textContent = 'Show all'; btn.title = 'Fit every location in view'; btn.onclick = fitAll;
+      m.controls[G.ControlPosition.RIGHT_BOTTOM].push(btn);
+      const retheme = () => m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light });
+      const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
+      const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      const ro = new ResizeObserver(() => { if (alive && !moved.current) fitAll(); }); ro.observe(el.current);
+      cleanup = () => { mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; G.event.clearInstanceListeners(m); };
+      setState('ready');
+    }).catch((e) => { if (alive) setState(e.message === 'missing_key' ? 'missing_key' : e.message === 'refused' ? 'refused' : 'offline'); });
+    return () => { alive = false; window.removeEventListener('opspro-maps-refused', refused); cleanup(); map.current = null; };
   }, []);
   useEffect(() => {
-    const m = map.current; if (!m) return; layer.current.clearLayers();
+    const m = map.current, G = gm.current; if (!m || !G || state !== 'ready') return;
+    pins.current.forEach((p) => p.setMap(null)); pins.current = [];
+    // Store pins are our own HTML (count, name, status), drawn on a Google overlay so they match the rest of the dashboard.
+    class Pin extends G.OverlayView {
+      constructor(pos, html, cls, z, title, id) { super(); this.pos = pos; this.html = html; this.cls = cls; this.z = z; this.title = title; this.id = id; }
+      onAdd() { const d = document.createElement('div'); d.className = this.cls; d.innerHTML = this.html; d.title = this.title; d.tabIndex = 0; d.setAttribute('role', 'button'); d.style.position = 'absolute'; d.style.zIndex = String(this.z); d.onclick = (e) => { e.stopPropagation(); onPickRef.current(this.id); }; d.onkeydown = (e) => { if (e.key === 'Enter') onPickRef.current(this.id); }; this.div = d; this.getPanes().overlayMouseTarget.appendChild(d); }
+      draw() { const p = this.getProjection().fromLatLngToDivPixel(new G.LatLng(this.pos)); if (p && this.div) { this.div.style.left = (p.x - 13) + 'px'; this.div.style.top = (p.y - 13) + 'px'; } }
+      onRemove() { if (this.div) { this.div.remove(); this.div = null; } }
+    }
     const list = [];
     data.forEach((d) => {
       const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; list.push([lat, lng]);
       const tone = d.bad ? 'crit' : d.late ? 'warn' : d.due.length ? 'good' : 'idle';
       const html = `<div class="lp ${tone}${pick === d.s.id ? ' on' : ''}"><span class="lp-dot">${d.due.length ? d.inn : '–'}</span><span class="lp-lab${tone === 'good' || tone === 'idle' ? ' quiet' : ''}"><b>${d.s.name.replace(/^(Spinneys|Carrefour) /, '')}</b><small>${d.due.length ? d.inn + '/' + d.due.length + ' in' : 'No one due'}${d.bad ? ' · ' + d.bad + ' no-show' : d.late ? ' · ' + d.late + ' late' : ''}</small></span></div>`;
-      L.marker([lat, lng], { icon: L.divIcon({ className: 'lp-wrap' + (LEFT[d.s.id] ? ' left' : ''), html, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: d.bad ? 1000 : d.late ? 500 : 0, keyboard: true, title: d.s.name })
-        .on('click', () => onPick(d.s.id)).addTo(layer.current);
+      const p = new Pin({ lat, lng }, html, 'lp-wrap' + (LEFT[d.s.id] ? ' left' : ''), d.bad ? 30 : d.late ? 20 : 10, d.s.name, d.s.id);
+      p.setMap(m); pins.current.push(p);
     });
     pts.current = list;
     // Refit only when the set of stores changes (e.g. another manager), not on every live update.
     const key = data.map((d) => d.s.id).join(',');
     if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
-    if (pick) { const g = GEO[pick]; if (g && !m.getBounds().pad(-0.15).contains([g[1], g[0]])) m.panTo([g[1], g[0]], { animate: false }); }
-  }, [data, pick]);
-  return <div className="lm-leaf" ref={el}>{failed && <div className="lm-fail small">The map couldn't load. Check the internet connection.</div>}</div>;
+    if (pick) { const g = GEO[pick]; const bb = m.getBounds(); if (g && bb && !bb.contains({ lat: g[1], lng: g[0] })) m.panTo({ lat: g[1], lng: g[0] }); }
+  }, [data, pick, state]);
+  const msg = { missing_key: 'Add GOOGLE_MAPS_API_KEY to .env and rebuild to see the map.', refused: "Google Maps refused the key for this page. Allow this address for the key in Google Cloud, or open the page through npm run serve.", offline: "The map couldn't load. Check the internet connection." }[state];
+  return <div className="lm-leaf" ref={el}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
 }
 
 export function LiveBoard({ go }) {

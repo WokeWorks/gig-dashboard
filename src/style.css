@@ -502,7 +502,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .minibar { position: relative; display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--line); margin-top: 2px; }
 .minibar span { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
 .minibar span.away { background: repeating-linear-gradient(90deg, var(--ink-mid) 0 3px, transparent 3px 5px); }
-.daytl { width: 100%; height: auto; display: block; }
+.daytl { width: 100%; height: auto; display: block; flex-shrink: 0; }
 .tl-grid { stroke: var(--line); stroke-width: 1; } .tl-tick { font: 500 10px var(--mono); fill: var(--muted); }
 .tl-seg { fill: var(--accent); } .tl-ot { fill: var(--accent); opacity: .35; }
 .tl-seg.away { fill: var(--surface); stroke: var(--ink-mid); stroke-width: 1.5; stroke-dasharray: 4 3; } .tl-ot.away { fill: var(--surface-2); stroke: var(--ink-mid); stroke-dasharray: 4 3; opacity: 1; }
@@ -964,7 +964,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lp-lab { display: flex; flex-direction: column; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.18); color: #1d1a19; line-height: 1.2; }
 .lp-lab b { font: 700 12.5px var(--body); } .lp-lab small { font: 500 11px var(--body); color: #5b5351; }
 .lp-wrap.left .lp { flex-direction: row-reverse; transform: translateX(calc(-100% + 26px)); }
-.leaflet-container { font: inherit; }
 .lm-list { position: static; max-height: none; }
 .lm-row-head { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 14px; }
 .lm-state { white-space: nowrap; } .warnt { color: var(--warn); }
@@ -1381,5 +1380,5 @@ label.btn { cursor: pointer; }
 .repeat { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
 .rep-days { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .rep-days .wk-day.same { border-style: dashed; }
-.lm-fit { font: 600 12px var(--body); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
+.lm-fit { margin: 0 10px 8px 0; font: 600 12px var(--body); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
 .lm-fit:hover { border-color: var(--accent); color: var(--accent); }

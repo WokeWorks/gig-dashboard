@@ -1,4 +1,4 @@
-import { WORKERS, DAYS, ROSTER, SHIFT_TEMPLATES, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf } from '../../data.js';
+import { WORKERS, DAYS, ROSTER, SHIFT_TEMPLATES, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf, spanOf, MAX_ON_SITE } from '../../data.js';
 import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Field, Toggle, Note, useToast } from '../../ui.jsx';
 import { FULL_DAYS, fmtRange } from '../../lib/dates.js';
 import { LEAVE_TYPES, UAE_HOL, ltRule } from '../../lib/leave.js';
@@ -19,25 +19,27 @@ export function Settings({ params }) {
   ]);
   const [led, setLed] = useState(null);
   const [role, setRole] = useState('Employee');
+  // Defaults from opspro-app: late after 10 min, no-show after 60 min, a 1 h unpaid break,
+  // auto clock-out 30 min after the rostered end. Each access level can change them.
   const BASE_R = { grace: 10, noshow: 60, early: 15, rounding: '5', full: 'base2', half: 'half', breaks: true, brkMin: 60, brkPaid: 'unpaid', auto: true, autoMin: 30 };
-  const [pr, setPr] = useState({ Employee: BASE_R, Floater: { ...BASE_R, early: 90, noshow: 30, coverEarly: 90, coverLate: 240 }, Manager: { ...BASE_R, track: true, grace: 15, breaks: false } });
+  const [pr, setPr] = useState({ Employee: BASE_R, Floater: { ...BASE_R, early: 90, coverEarly: 90, coverLate: 240 }, Manager: { ...BASE_R, track: true, breaks: false } });
   const rp = pr[role];
   const setR = (k, v) => setPr({ ...pr, [role]: { ...pr[role], [k]: v } });
   const [p, setP] = useState({ grace: 10, noshow: 60, early: 15, rounding: '5', full: 'base2', half: 'half', breaks: true, brkMin: 60, brkPaid: 'unpaid', auto: true, autoMin: 30, beyond: 'approval', hol: true, maxOff: 2, holCal: 'uae', offs: OFF_RULES.perWeek, sameDay: OFF_RULES.sameDay, offWork: 'ot', maxRun: OFF_RULES.maxRun, offMode: OFF_RULES.mode, offDays: OFF_RULES.days });
   const [tpl, setTpl] = useState(SHIFT_TEMPLATES);
   const toast = useToast();
   const set = (k, v) => setP({ ...p, [k]: v });
-  const [ed, setEd] = useState(null); // { id|null, start, base, ot, step, from, notify }
+  const [ed, setEd] = useState(null); // { id|null, start, base, brk, step, from, notify }
   const edOrig = ed && ed.id ? tpl.find((x) => x.id === ed.id) : null;
-  const edChanged = ed && (!edOrig || edOrig.base !== ed.base || edOrig.ot !== ed.ot);
-  const openEd = (t) => (setAffQ(''), setEd)(t ? { id: t.id, base: t.base, ot: t.ot, step: 'edit', from: 'next', notify: true } : { id: null, base: 9, ot: 0, step: 'edit', from: 'next', notify: true });
+  const edChanged = ed && (!edOrig || edOrig.base !== ed.base || edOrig.brk !== ed.brk);
+  const openEd = (t) => (setAffQ(''), setEd)(t ? { id: t.id, base: t.base, brk: t.brk || 0, step: 'edit', from: 'next', notify: true } : { id: null, base: 9, brk: 1, step: 'edit', from: 'next', notify: true });
   const clashes = (() => {
     if (!ed || !ed.id) return [];
     const m = (x) => { const [h, mm] = x.split(':').map(Number); return h * 60 + mm; };
     const out = [];
     ROSTER.forEach((row, r) => row.forEach((cell, c) => {
       if (!Array.isArray(cell) || !cell.some((x) => x[0] === ed.id) || cell.length < 2) return;
-      const iv = cell.map((x) => x[0] === ed.id ? [m(x[1]), m(x[1]) + ed.base * 60] : [m(x[1]), m(x[1]) + tplOf(x[0]).base * 60]).sort((a, b) => a[0] - b[0]);
+      const iv = cell.map((x) => x[0] === ed.id ? [m(x[1]), m(x[1]) + (ed.base + ed.brk) * 60] : [m(x[1]), m(x[1]) + spanOf(tplOf(x[0])) * 60]).sort((a, b) => a[0] - b[0]);
       if (iv.some((v, i) => i && v[0] < iv[i - 1][1])) out.push({ wid: WORKERS[r].id, name: WORKERS[r].name, day: DAYS[c] });
     }));
     return out;
@@ -79,8 +81,8 @@ export function Settings({ params }) {
     );
   };
   const applyEd = () => {
-    if (ed.id) { setTpl(tpl.map((t) => (t.id === ed.id ? { ...t, start: ed.start, base: ed.base, ot: ed.ot } : t))); toast(edOrig.used ? `Shift updated for ${edOrig.used} ${edOrig.used === 1 ? 'employee' : 'employees'}${ed.notify ? ' · they have been notified' : ''}` : 'Shift updated'); }
-    else { setTpl([...tpl, { id: 'f' + Date.now(), start: ed.start, base: ed.base, ot: ed.ot, used: 0 }]); toast('Shift added · assign it on the roster'); }
+    if (ed.id) { setTpl(tpl.map((t) => (t.id === ed.id ? { ...t, start: ed.start, base: ed.base, brk: ed.brk } : t))); toast(edOrig.used ? `Shift updated for ${edOrig.used} ${edOrig.used === 1 ? 'employee' : 'employees'}${ed.notify ? ' · they have been notified' : ''}` : 'Shift updated'); }
+    else { setTpl([...tpl, { id: 'f' + Date.now(), start: ed.start, base: ed.base, brk: ed.brk, used: 0 }]); toast('Shift added · assign it on the roster'); }
     setEd(null);
   };
     return (
@@ -89,14 +91,14 @@ export function Settings({ params }) {
       <Tabs tabs={[{ id: 'templates', label: 'Shifts' }, { id: 'policy', label: 'Attendance rules' }, { id: 'leave', label: 'Leave types' }, { id: 'roles', label: 'Roles & access' }]} value={tab} onChange={setTab} />
       {tab === 'templates' && <>
         <section className="card flush">
-          <div className="card-head pad"><h3>Shifts</h3><span className="small muted">A shift is a length. The start time is picked on the roster, so one shift works for mornings, evenings and nights.</span></div>
+          <div className="card-head pad"><h3>Shifts</h3><span className="small muted">A shift is a length: hours worked plus an unpaid break. The start time is picked on the roster, so one shift works for mornings, evenings and nights.</span></div>
           <div className="table-wrap"><table className="table tpl">
-            <thead><tr><th>Shift</th><th>Base hours</th><th>Overtime</th><th>Assigned this week</th><th></th></tr></thead>
-            <tbody>{[...tpl].sort((x, y) => y.base - x.base || y.ot - x.ot).map((t) => { return (
+            <thead><tr><th>Shift</th><th>Worked</th><th>Unpaid break</th><th>On site</th><th>Assigned this week</th><th></th></tr></thead>
+            <tbody>{[...tpl].sort((x, y) => y.base - x.base || (y.brk || 0) - (x.brk || 0)).map((t) => { return (
               <tr key={t.id} className="rowlink" onClick={() => openEd(t)} tabIndex={0} onKeyDown={(ev) => ev.key === 'Enter' && openEd(t)}>
                 <td><span className="tpl-chip mono">{tplLabel(t)}</span></td>
                 <td className="mono">{t.base} h</td>
-                <td className="mono">{t.ot ? t.ot + ' h' : <span className="muted">—</span>}</td>
+                <td className="mono">{t.brk ? t.brk + ' h' : <span className="muted">—</span>}</td><td className="mono">{spanOf(t)} h</td>
                 <td>{t.used ? <span>{t.used} {t.used === 1 ? 'employee' : 'employees'}</span> : <span className="muted">Nobody</span>}</td>
                 <td className="num"><span className="rowedit">Edit</span></td>
               </tr>
@@ -108,24 +110,24 @@ export function Settings({ params }) {
           {ed && ed.step === 'edit' && <>
             <div className="form-grid">
 
-              <Field label="Base hours"><div className="unit-in"><input id="ed-base" className="input mono" type="number" min="1" max="16" value={ed.base} onChange={(e) => setEd({ ...ed, base: +e.target.value })} /><span>h</span></div></Field>
-              <Field label="Overtime" hint="Optional hours after the base. 0 for none."><div className="unit-in"><input id="ed-ot" className="input mono" type="number" min="0" max="4" value={ed.ot} onChange={(e) => setEd({ ...ed, ot: +e.target.value })} /><span>h</span></div></Field>
+              <Field label="Hours worked" hint="What's paid and billed."><div className="unit-in"><input id="ed-base" className="input mono" type="number" min="1" max="12" value={ed.base} onChange={(e) => setEd({ ...ed, base: +e.target.value })} /><span>h</span></div></Field>
+              <Field label="Unpaid break" hint={`On site ${ed.base + ed.brk} h${ed.base + ed.brk > MAX_ON_SITE ? `, over the ${MAX_ON_SITE} h maximum` : ''}.`}><div className="unit-in"><input id="ed-brk" className="input mono" type="number" min="0" max="2" value={ed.brk} onChange={(e) => setEd({ ...ed, brk: +e.target.value })} /><span>h</span></div></Field>
             </div>
             {edOrig && (edOrig.used ? renderAffected({}) : <div className="small muted">Nobody is on this shift this week.</div>)}
             <div className="drawer-actions">
               {edOrig && edOrig.used === 0 && <button className="btn ghost danger" onClick={() => { setTpl(tpl.filter((x) => x.id !== ed.id)); setEd(null); toast('Shift removed'); }}>Remove shift</button>}
               <span className="grow" />
               <button className="btn ghost" onClick={() => setEd(null)}>Cancel</button>
-              <button className="btn" disabled={!edChanged || ed.base < 1} onClick={() => (edOrig && edOrig.used ? setEd({ ...ed, step: 'confirm' }) : applyEd())}>Confirm</button>
+              <button className="btn" disabled={!edChanged || ed.base < 1 || ed.base + ed.brk > MAX_ON_SITE} onClick={() => (edOrig && edOrig.used ? setEd({ ...ed, step: 'confirm' }) : applyEd())}>Confirm</button>
             </div>
           </>}
           {ed && ed.step === 'confirm' && edOrig && <>
             <section className="impact">
               <div className="impact-num">{edOrig.used}</div>
-              <div><b>{edOrig.used === 1 ? 'employee is' : 'employees are'} on this shift this week</b><div className="small muted">Their start times stay the same; end times, attendance rules and overtime follow the new length.</div></div>
+              <div><b>{edOrig.used === 1 ? 'employee is' : 'employees are'} on this shift this week</b><div className="small muted">Their start times stay the same; end times and attendance rules follow the new length.</div></div>
             </section>
             <table className="table diff"><thead><tr><th></th><th>Now</th><th>After</th></tr></thead><tbody>
-              {[['Base hours', edOrig.base + ' h', ed.base + ' h'], ['Overtime', edOrig.ot + ' h', ed.ot + ' h'], ['A 07:00 start ends', endOf('07:00', edOrig.base).time, endOf('07:00', ed.base).time]].map(([k, a, b]) => <tr key={k} className={a !== b ? 'changed' : ''}><td>{k}</td><td className="mono">{a}</td><td className="mono"><b>{b}</b></td></tr>)}
+              {[['Hours worked', edOrig.base + ' h', ed.base + ' h'], ['Unpaid break', (edOrig.brk || 0) + ' h', ed.brk + ' h'], ['A 07:00 start ends', endOf('07:00', edOrig.base + (edOrig.brk || 0)).time, endOf('07:00', ed.base + (ed.brk || 0)).time]].map(([k, a, b]) => <tr key={k} className={a !== b ? 'changed' : ''}><td>{k}</td><td className="mono">{a}</td><td className="mono"><b>{b}</b></td></tr>)}
             </tbody></table>
             {clashes.length > 0 && <div className="row-line"><Pill tone="crit">{clashes.length} {clashes.length === 1 ? 'overlap' : 'overlaps'}</Pill><span className="small">The new length makes a shift overlap another one for the people marked below. Fix them on the roster after applying.</span></div>}
             {renderAffected({ withClash: true })}

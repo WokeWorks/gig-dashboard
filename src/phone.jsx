@@ -23,7 +23,7 @@ const initials = (n) => n.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpp
 
 const ST = { 'Clocked in': 'in', 'On break': 'in', Late: 'late', 'No-show': 'missing', 'On leave': 'leave', 'Off today': 'off' };
 const PILL = { in: 'Clocked in', late: 'Late', missing: 'No-show', leave: 'On leave', off: 'Day off' };
-const todayShift = (w) => { const g = ROSTER_GROUPS.find((x) => x.people.includes(w.id)); const c = g && g.cells[g.people.indexOf(w.id)][2]; if (!Array.isArray(c)) return null; const [t, st] = c[0]; return `${st} – ${endOf(st, tplOf(t).base).time}`; };
+const todayShift = (w) => { const g = ROSTER_GROUPS.find((x) => x.people.includes(w.id)); const c = g && g.cells[g.people.indexOf(w.id)][2]; if (!Array.isArray(c)) return null; const [t, st] = c[0]; return `${st} – ${endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}`; };
 const addMin = (hhmm, m) => { const [h, mm] = hhmm.split(':').map(Number); const t = ((h * 60 + mm + m) % 1440 + 1440) % 1440; return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 const PEOPLE = WORKERS.filter((w) => SUP_SITES.includes(w.site)).map((w, i) => {
   const s0 = ST[w.status] || 'in'; const sh = todayShift(w);
@@ -60,9 +60,9 @@ const apprCount = () => APPR_ORDER.reduce((a, k) => a + APPR[k].items.length, 0)
 
 // The picker's week, straight from the roster.
 const myRow = (() => { const g = ROSTER_GROUPS.find((x) => x.people.includes(ME.id)); return g.cells[g.people.indexOf(ME.id)]; })();
-const MY_WEEK = DAYS.map((d, i) => { const c = myRow[i]; if (!Array.isArray(c)) return [d, c === 'L' ? 'Leave' : 'Day off', '']; return [d, c.map(([t, st]) => `${st} – ${endOf(st, tplOf(t).base).time}`).join(', '), c.map((x) => short(siteOf(x[2] || ME.site).name)).join(', ')]; });
+const MY_WEEK = DAYS.map((d, i) => { const c = myRow[i]; if (!Array.isArray(c)) return [d, c === 'L' ? 'Leave' : 'Day off', '']; return [d, c.map(([t, st]) => `${st} – ${endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}`).join(', '), c.map((x) => short(siteOf(x[2] || ME.site).name)).join(', ')]; });
 const myShift = Array.isArray(myRow[2]) ? myRow[2][0] : ['f5', '07:00'];
-const MY_TODAY = `${myShift[1]} – ${endOf(myShift[1], tplOf(myShift[0]).base).time}`;
+const MY_TODAY = `${myShift[1]} – ${endOf(myShift[1], tplOf(myShift[0]).base + (tplOf(myShift[0]).brk || 0)).time}`;
 const MYLEAVE = [
   { t: 'Annual leave', d: 'Mon 20 – Wed 22 Oct', st: 'waiting', meta: 'Sent yesterday. Your supervisor has not decided yet.' },
   { t: 'Sick', d: 'Thu 25 Sep', st: 'approved', meta: `Approved by ${SUP.name}` },
