@@ -225,7 +225,14 @@ export function Scheduling({ go }) {
   const shotRows = () => {
     if (!shot) return [];
     const g = G(shot.sid);
-    if (shot.kind === 'worker') return [{ w: W(g.people[shot.r]), cells: g.cells[shot.r], home: shot.sid }];
+    // One worker: a row per location, as on the roster, so a shift shows under the location it's at.
+    if (shot.kind === 'worker') {
+      const w = W(g.people[shot.r]); const row = g.cells[shot.r]; const home = shot.sid;
+      const at = (c, loc) => (Array.isArray(c) ? c.filter((x) => (x[2] || home) === loc) : []);
+      const others = [...new Set(row.flatMap((c) => (Array.isArray(c) ? c.map((x) => x[2] || home) : [])))].filter((loc) => loc !== home);
+      const homeRow = { w, key: home, label: home === 'pool' ? 'Floater' : siteOf(home).name, home, cells: row.map((c) => (Array.isArray(c) ? (at(c, home).length ? at(c, home) : 'X') : c)) };
+      return [homeRow, ...others.map((loc) => ({ w, key: loc, label: siteOf(loc).name, home: loc, cells: row.map((c) => (at(c, loc).length ? at(c, loc) : 'X')) }))];
+    }
     return [...g.people.map((id, r) => ({ w: W(id), cells: g.cells[r], home: shot.sid })).filter((x) => match(x.w)),
       ...visitorsOf(shot.sid).filter((v) => match(v.w)).map((v) => ({ w: v.w, cells: v.days.map((d) => (d.length ? d : 'X')), home: shot.sid, visiting: true }))];
   };
@@ -711,9 +718,9 @@ export function Scheduling({ go }) {
         })()}
       </Drawer>
       {shot && <div className="shot-wrap" aria-hidden="true"><div className="shot" ref={shotRef}>
-        <div className="shot-head"><b>{shot.kind === 'worker' ? W(G(shot.sid).people[shot.r]).name : siteOf(shot.sid).name}</b><span>{weekLabel(wk)}{shot.kind === 'worker' ? ` · ${shot.sid === 'pool' ? 'Floater' : siteOf(shot.sid).name}` : ''}</span></div>
-        <table className="shot-t"><thead><tr>{shot.kind === 'loc' && <th>Worker</th>}{days.map((d) => <th key={d}>{d}</th>)}</tr></thead>
-          <tbody>{shotRows().map((x) => <tr key={x.w.id + (x.visiting ? 'v' : '')}>{shot.kind === 'loc' && <td className="shot-who"><b>{x.w.name}</b><span>{x.visiting ? 'From another location' : x.w.role}</span></td>}{x.cells.map((c, i) => <td key={i} className={c === 'O' || c === 'L' ? 'shot-off' : ''}>{shotText(c, x.home).map((t, k) => <div key={k}>{t}</div>)}</td>)}</tr>)}</tbody></table>
+        <div className="shot-head"><b>{shot.kind === 'worker' ? W(G(shot.sid).people[shot.r]).name : siteOf(shot.sid).name}</b><span>{weekLabel(wk)}</span></div>
+        <table className="shot-t"><thead><tr><th>{shot.kind === 'loc' ? 'Worker' : 'Location'}</th>{days.map((d) => <th key={d}>{d}</th>)}</tr></thead>
+          <tbody>{shotRows().map((x) => <tr key={x.w.id + (x.key || '') + (x.visiting ? 'v' : '')}>{shot.kind === 'loc' ? <td className="shot-who"><b>{x.w.name}</b><span>{x.visiting ? 'From another location' : x.w.role}</span></td> : <td className="shot-who"><b>{x.label}</b>{x.home === shot.sid && shot.sid !== 'pool' && <span>Their location</span>}</td>}{x.cells.map((c, i) => <td key={i} className={c === 'O' || c === 'L' ? 'shot-off' : ''}>{shotText(c, x.home).map((t, k) => <div key={k}>{t}</div>)}</td>)}</tr>)}</tbody></table>
         <div className="shot-foot">OpsPro · {pub[wk] === 'published' ? 'published roster' : 'draft, not yet published'}</div>
       </div></div>}
       <CoverDrawer open={!!cover} onClose={() => setCover(null)} onAssign={assign}

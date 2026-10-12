@@ -1409,7 +1409,8 @@ label.btn { cursor: pointer; }
 .shot { width: max-content; min-width: 640px; padding: 20px 22px; background: var(--surface); color: var(--fg); font-family: inherit; border-radius: 12px; }
 .shot-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
 .shot-head b { font-size: 18px; }
-.shot-head span { color: var(--muted); font-size: 13px; }
+.shot-head span { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.shot-head b { white-space: nowrap; }
 .shot-t { border-collapse: collapse; font-size: 12.5px; }
 .shot-t th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .shot-t td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; font-variant-numeric: tabular-nums; }
