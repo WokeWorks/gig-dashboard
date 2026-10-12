@@ -173,6 +173,8 @@ const GLYPHS = {
   home: <><path d="M3.5 10.8L12 3.5l8.5 7.3" /><path d="M5.5 9.6V20h13V9.6" /><path d="M9.8 20v-5.4h4.4V20" /></>,
   document: <><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z" /><path d="M14 3.5v5h5" /><path d="M9 13h6M9 16.5h4" /></>,
   upload: <><path d="M4 16.5v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /><path d="M12 16V3.5" /><path d="M7.5 8L12 3.5 16.5 8" /></>,
+  download: <><path d="M4 16.5v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /><path d="M12 3.5V16" /><path d="M7.5 11.5L12 16l4.5-4.5" /></>,
+  copy: <><rect x="8" y="8" width="12.5" height="12.5" rx="2.5" /><path d="M16 8V5.5A2 2 0 0 0 14 3.5H5.5a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2H8" /></>,
   signOut: <><path d="M13 4.5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h6" /><path d="M17 8.5l3.5 3.5L17 15.5" /><path d="M20 12h-9" /></>,
   swap: <><path d="M7 4.5L3.5 8 7 11.5" /><path d="M3.5 8H17" /><path d="M17 12.5l3.5 3.5-3.5 3.5" /><path d="M20.5 16H7" /></>,
   plus: <path d="M12 5v14M5 12h14" />,

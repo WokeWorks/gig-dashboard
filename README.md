@@ -47,6 +47,7 @@ src/
   lib/
     roster.js      roster helpers: next week, usual shift, hours, timesheets, missed clock-ins
     offs.js        weekly off rules and the checks run on upload and publish
+    rosterio.js    copying weeks, the Excel/CSV template, and reading uploaded rosters
     cover.jsx      cover rules, candidate ranking and the Find cover drawer
     live.js        today's live status per location and per worker
     leave.js       leave types and UAE public holidays

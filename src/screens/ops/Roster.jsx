@@ -4,9 +4,12 @@ import { isFloat, coverOf, coverCell, undoCell, CoverDrawer } from '../../lib/co
 import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/dates.js';
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
 import { shiftHours, shiftOt, UNACK, usual, shiftWeek } from '../../lib/roster.js';
+import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
+import * as XLSX from 'xlsx';
 
 const { useState, useEffect } = React;
 
+export const MAXWK = 4; // how far ahead a roster can be planned, in weeks
 export const DAY0 = 5 * 60, DAYLEN = 22 * 60; // timeline window 05:00 → 03:00 next day
 
 export const pos = (min) => Math.max(0, Math.min(1, (min < DAY0 ? min + 1440 - DAY0 : min - DAY0) / DAYLEN));
@@ -72,7 +75,7 @@ export function Scheduling({ go }) {
   const [collapsed, setCollapsed] = useState({});
   const [cover, setCover] = useState(null);
   const [day, setDay] = useState(null); // { g: siteId, r, c }
-  const [wk, setWk] = useState(0); // -1 last week, 0 this week, 1 next week
+  const [wk, setWk] = useState(0); // -1 last week, 0 this week, 1 next week, up to MAXWK weeks ahead
   const [weeks, setWeeks] = useState(() => ({ '-1': shiftWeek(ROSTER_GROUPS, -1, false), 0: ROSTER_GROUPS, 1: shiftWeek(ROSTER_GROUPS, 1, true) }));
   const [pub, setPub] = useState({ '-1': 'published', 0: 'published', 1: 'draft' });
   const [dirty, setDirty] = useState({ '-1': 0, 0: 0, 1: 0 });
@@ -81,9 +84,13 @@ export function Scheduling({ go }) {
   const [dIdx, setDIdx] = useState(TODAY);
   useEffect(() => { const tb = document.querySelector('.topbar'); if (!tb) return; const set = () => document.documentElement.style.setProperty('--tb', tb.getBoundingClientRect().height + 'px'); set(); const ro = new ResizeObserver(set); ro.observe(tb); return () => ro.disconnect(); }, []);
   const [pubOpen, setPubOpen] = useState(false);
-  const [up, setUp] = useState(null); // upload: { step: 'pick' | 'report', data, file }
+  const [up, setUp] = useState(null); // upload: { wk, step: 'pick' | 'report', file, aoa, map }
+  const [cp, setCp] = useState(null); // copy: { from, to, n, sites }
+  const [rep, setRep] = useState([]); // "copy this day to" days in the day drawer
   const [pubOpt, setPubOpt] = useState({ notify: true, ack: true });
-  const groups = fixedOff(weeks[wk]);
+  const has = (w) => !!weeks[w];
+  const groups = fixedOff(weeks[wk] || emptyWeek());
+  const empty = !has(wk);
   const fixedMode = OFF_RULES.mode === 'fixed';
   const days = weekDays(wk);
   const nowIdx = wk < 0 ? 7 : wk > 0 ? -1 : TODAY; // days before this index have happened
@@ -91,8 +98,20 @@ export function Scheduling({ go }) {
   const toast = useToast();
   const W = (id) => WORKERS.find((w) => w.id === id);
   const G = (sid) => groups.find((g) => g.site === sid);
-  const setCell = (g, r, c, v) => { setWeeks((Wk) => ({ ...Wk, [wk]: Wk[wk].map((x) => (x.site !== g ? x : { ...x, cells: x.cells.map((row, ri) => row.map((y, ci) => (ri === r && ci === c ? v : y))) })) })); setDirty((d) => ({ ...d, [wk]: d[wk] + 1 })); };
-  const copyPrev = () => { setWeeks((Wk) => ({ ...Wk, [wk]: shiftWeek(Wk[wk - 1], 1, false) })); setDirty((d) => ({ ...d, [wk]: d[wk] + 1 })); toast(`Copied ${weekLabel(wk - 1)} into ${weekLabel(wk)} · review, then publish`); };
+  const setCells = (g, r, cs, v) => { setWeeks((Wk) => ({ ...Wk, [wk]: Wk[wk].map((x) => (x.site !== g ? x : { ...x, cells: x.cells.map((row, ri) => row.map((y, ci) => (ri === r && cs.includes(ci) ? v : y))) })) })); setDirty((d) => ({ ...d, [wk]: (d[wk] || 0) + 1 })); };
+  const setCell = (g, r, c, v) => setCells(g, r, [c], v);
+  // Latest week that has a roster, before `w`: the natural thing to copy from.
+  const latestBefore = (w) => { for (let k = w - 1; k >= -1; k--) if (has(k)) return k; return 0; };
+  const openCopy = (to) => setCp({ from: latestBefore(to), to, n: 1, sites: shown.map((x) => x.id) });
+  const doCopy = () => {
+    const targets = Array.from({ length: cp.n }, (_, i) => cp.to + i).filter((t) => t <= MAXWK);
+    setWeeks((Wk) => { const next = { ...Wk }; targets.forEach((t) => { next[t] = copyWeek(Wk[cp.from], Wk[t], cp.sites, t); }); return next; });
+    setPub((x) => { const n = { ...x }; targets.forEach((t) => { if (n[t] !== 'published') n[t] = 'draft'; }); return n; });
+    setDirty((d) => { const n = { ...d }; targets.forEach((t) => { n[t] = (n[t] || 0) + 1; }); return n; });
+    setWk(cp.to); setCp(null);
+    toast(`Copied ${weekLabel(cp.from)} into ${targets.length === 1 ? weekLabel(cp.to) : `${targets.length} weeks, ${weekLabel(cp.to, true)} onwards`} · drafts, review then publish`);
+  };
+  const startBlank = () => { setWeeks((Wk) => ({ ...Wk, [wk]: applyLeave(emptyWeek(), wk) })); setPub((x) => ({ ...x, [wk]: 'draft' })); setDirty((d) => ({ ...d, [wk]: 0 })); toast(`Blank roster for ${weekLabel(wk)} · click a day to add shifts`); };
   const publish = () => { setPubOpen(false); setPub((x) => ({ ...x, [wk]: 'published' })); setDirty((d) => ({ ...d, [wk]: 0 })); toast(pub[wk] === 'draft' ? `${weekLabel(wk)} published · workers notified in the app` : `Changes published · ${dirty[wk]} affected workers notified`); };
   const assign = (x) => { setCell(x.g, x.r, cover.ci, coverCell(x, cover.site, cover.sh, cover.absent)); toast(`${x.w.name} covers ${W(cover.absent).name.split(' ')[0]} on ${days[cover.ci]} · push sent`); setCover(null); };
   const findCover = (absent, sid, ci, row) => { setDay(null); setCover({ absent, site: sid, ci, sh: usual(row)[0] }); };
@@ -111,7 +130,7 @@ export function Scheduling({ go }) {
   const openDay = (g, r, c) => { if (wk < 0) { toast('Past weeks are read-only. Timesheets has what was worked.'); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
     // Suggest a start: an hour after their last shift that day, otherwise their usual start.
     const st = last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : (usual(G(g).cells[r])[0] || [null, '07:00'])[1];
-    setDay({ g, r, c }); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
+    setDay({ g, r, c }); setRep([]); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
   const locsIn = (c, home) => (Array.isArray(c) ? [...new Set(c.map((x) => x[2] || home))] : []);
   const match = (w) => (!q || w.name.toLowerCase().includes(q.toLowerCase())) && (ven === 'all' || w.vendor === ven);
   const shown = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
@@ -140,6 +159,42 @@ export function Scheduling({ go }) {
       <button key={k} className={'cell one seg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{chip(x, k, sid)}</button>
     ))}</div>
   );
+  // Upload helpers: the template, reading a file, the error report, and the demo sample.
+  const fileWeek = (w) => weekLabel(w, true).replace(/\s+/g, '-').replace(/[–—]/g, '').replace(/-+/g, '-').toLowerCase();
+  const sourceFor = (w) => (has(w) ? weeks[w] : copyWeek(weeks[latestBefore(w)], null, shown.map((x) => x.id), w));
+  const saveXlsx = (aoa, name, extra) => {
+    const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = aoa[0].map((h, i) => ({ wch: i === 1 ? 22 : i === 2 ? 26 : i > 2 ? 16 : 10 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Roster');
+    if (extra) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(extra), 'How to fill');
+    try { XLSX.writeFile(wb, name); toast(`Downloaded ${name}`); } catch (e) { toast('Download blocked in this preview · it works in the real app'); }
+  };
+  const HOW = [['What to type in a day', 'Means'], ['07:00-18:00', 'One shift, 07:00 to 18:00'], ['7-6  or  7am to 6pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-18:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shift lengths allowed', SHIFT_TEMPLATES.map((x) => x.base + ' h').join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
+  const downloadTemplate = (w) => saveXlsx(templateRows(sourceFor(w), shown.map((x) => x.id), w), `roster-${fileWeek(w)}.xlsx`, HOW);
+  const readFile = (f, w) => {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const wb = /\.csv$/i.test(f.name) ? XLSX.read(r.result, { type: 'string' }) : XLSX.read(new Uint8Array(r.result), { type: 'array' });
+        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
+        setUp({ wk: w, step: 'report', file: f.name, aoa, map: null, sample: false });
+      } catch (e) { toast(`Couldn't open ${f.name}. Save it as .xlsx or .csv and try again.`); }
+    };
+    if (/\.csv$/i.test(f.name)) r.readAsText(f); else r.readAsArrayBuffer(f);
+  };
+  const downloadErrors = (u, errors) => {
+    const byRow = {}; errors.forEach((x) => { if (x.row) (byRow[x.row] = byRow[x.row] || []).push(`${x.col}: ${x.msg}`); });
+    const hi = findHeader(u.aoa);
+    const aoa = u.aoa.map((row, i) => (i === hi ? [...row, 'Problem'] : i > hi ? [...row, (byRow[i + 1] || []).join(' | ')] : row));
+    saveXlsx(aoa, u.file.replace(/(\.[a-z]+)?$/i, ' - to fix.xlsx'));
+  };
+  // The demo file: the week as a supervisor might send it, with a few typical mistakes (or without).
+  const sampleSheet = (w, withMistakes) => {
+    const aoa = templateRows(withMistakes ? badUpload(weeks[0]) : sourceFor(w), shown.map((x) => x.id), w);
+    aoa[0] = ['Emp No', 'Employee name', 'Store', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    if (withMistakes) { if (aoa[3]) aoa[3][5] = '9-12'; if (aoa[5]) aoa[5][7] = '7 till late'; aoa.push(['OP-9999', 'Sam New', aoa[1][2], '07:00-18:00', '07:00-18:00', 'OFF', '07:00-18:00', '07:00-18:00', '07:00-18:00', '07:00-18:00']); }
+    return aoa;
+  };
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
     const night = endOf(st, tplOf(t).base).nextDay;
@@ -148,7 +203,7 @@ export function Scheduling({ go }) {
   return (
     <>
       <ScreenHeader title="Roster" phase={1} spec="5.4" desc="The week broken down by location. Click a day to assign shifts; a worker can get more than one shift a day." actions={<>
-        <button className="btn ghost" onClick={() => setUp({ step: 'pick' })}><Icon name="upload" size={15} /> Upload roster</button>
+        <button className="btn ghost" onClick={() => setUp({ wk: Math.max(wk, wk === 0 ? 0 : 1), step: 'pick' })}><Icon name="upload" size={15} /> Upload roster</button>
         <button className="btn ghost" onClick={() => toast('Exported the roster for these locations (XLSX and PDF)')}>Export</button>
         <button className="btn ghost" onClick={() => go('settings')}>Shifts and rules</button>
       </>} />
@@ -164,18 +219,26 @@ export function Scheduling({ go }) {
       <div className="weekbar">
         <div className="wk-nav">
           <button className="btn ghost sm icon" disabled={wk <= -1} onClick={() => setWk(wk - 1)} aria-label="Previous week">‹</button>
-          <div className="wk-label"><b>{weekLabel(wk)}</b><span className="small muted">{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : 'Last week'}</span></div>
-          <button className="btn ghost sm icon" disabled={wk >= 1} onClick={() => setWk(wk + 1)} aria-label="Next week">›</button>
+          <div className="wk-label"><b>{weekLabel(wk)}</b><span className="small muted">{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : wk < 0 ? 'Last week' : `In ${wk} weeks`}</span></div>
+          <button className="btn ghost sm icon" disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week">›</button>
           {wk !== 0 && <button className="btn ghost sm" onClick={() => setWk(0)}>This week</button>}
-          {pub[wk] === 'draft' ? <Pill tone="warn">Draft · not visible to workers</Pill> : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : <Pill tone="good">Published</Pill>}
+          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? <Pill tone="warn">Draft · not visible to workers</Pill> : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : <Pill tone="good">Published</Pill>}
         </div>
         <div className="wk-actions">
-          {wk >= 1 && <button className="btn ghost sm" onClick={copyPrev}>Copy from {weekLabel(wk - 1, true)}</button>}
-          {wk >= 0 && <button className="btn sm" onClick={() => setPubOpen(true)}>Publish…</button>}
+          {wk >= 1 && !empty && <button className="btn ghost sm" onClick={() => openCopy(wk)}>Copy a week…</button>}
+          {wk >= 0 && !empty && <button className="btn sm" onClick={() => setPubOpen(true)}>Publish…</button>}
           {wk < 0 && <span className="small muted">Past weeks are read-only</span>}
         </div>
       </div>
-      {narrow ? <div className="dayview">
+      {empty ? <section className="card wk-empty">
+        <h3>No roster for {weekLabel(wk)} yet</h3>
+        <p className="small muted">Start from a week you've already planned, or upload a file. Either way it stays a draft until you publish.</p>
+        <div className="wk-starts">
+          <button className="wk-start main" onClick={() => openCopy(wk)}><Icon name="copy" size={20} /><b>Copy {weekLabel(latestBefore(wk), true)}</b><span className="small muted">Same shifts and weekly offs. Covers aren't copied; approved leave is filled in.</span></button>
+          <button className="wk-start" onClick={() => setUp({ wk, step: 'pick' })}><Icon name="upload" size={20} /><b>Upload a file</b><span className="small muted">Excel or CSV. Download the template, fill it in, upload it back.</span></button>
+          <button className="wk-start" onClick={startBlank}><Icon name="grid" size={20} /><b>Start blank</b><span className="small muted">Nobody rostered. Add shifts day by day.</span></button>
+        </div>
+      </section> : narrow ? <div className="dayview">
         <div className="dv-step">
           <button className="btn ghost sm icon" disabled={dIdx <= 0} onClick={() => setDIdx(dIdx - 1)} aria-label="Previous day">‹</button>
           <div className="dv-day"><b>{days[dIdx]}</b>{wk === 0 && dIdx === TODAY && <span className="today-tag">Today</span>}</div>
@@ -343,39 +406,112 @@ export function Scheduling({ go }) {
           </>;
         })()}
       </Drawer>
-      <Drawer open={!!up} onClose={() => setUp(null)} title="Upload a roster" sub={`For ${weekLabel(1)} · next week`}>
+      <Drawer open={!!cp} onClose={() => setCp(null)} title={cp && `Copy into ${weekLabel(cp.to)}`} sub="The copy is a draft until you publish">
+        {cp && (() => {
+          const targets = Array.from({ length: cp.n }, (_, i) => cp.to + i);
+          const src = weeks[cp.from];
+          const covers = src.filter((g) => g.float || cp.sites.includes(g.site)).flatMap((g) => g.cells.flat()).filter((c) => Array.isArray(c) && c.some((x) => x[3])).length;
+          const lv = targets.flatMap((t) => leaveIn(t, cp.sites).map((l) => ({ t, l })));
+          const replaced = targets.filter((t) => has(t));
+          const result = copyWeek(src, weeks[cp.to], cp.sites, cp.to);
+          const errs = offErrors(result.filter((g) => !g.float && cp.sites.includes(g.site)));
+          const people = result.filter((g) => !g.float && cp.sites.includes(g.site)).reduce((n, g) => n + g.people.length, 0);
+          const shifts = result.filter((g) => !g.float && cp.sites.includes(g.site)).flatMap((g) => g.cells.flat()).filter(Array.isArray).length;
+          return <>
+            <div className="form-grid">
+              <Field label="Copy from"><select id="cp-from" className="input" value={cp.from} onChange={(e) => setCp({ ...cp, from: +e.target.value })}>
+                {Array.from({ length: MAXWK + 2 }, (_, i) => i - 1).filter((k) => has(k) && k !== cp.to).map((k) => <option key={k} value={k}>{weekLabel(k)}{k === 0 ? ' · this week' : k === -1 ? ' · last week' : ''}</option>)}
+              </select></Field>
+              <Field label="Repeat for"><select id="cp-n" className="input" value={cp.n} onChange={(e) => setCp({ ...cp, n: +e.target.value })}>
+                {Array.from({ length: MAXWK - cp.to + 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? `Just ${weekLabel(cp.to, true)}` : `${n} weeks, to ${weekLabel(cp.to + n - 1, true)}`}</option>)}
+              </select></Field>
+            </div>
+            <Field label="Locations">
+              <div className="cp-sites">{shown.map((x) => <label key={x.id} className="cp-site"><input type="checkbox" checked={cp.sites.includes(x.id)} onChange={(e) => setCp({ ...cp, sites: e.target.checked ? [...cp.sites, x.id] : cp.sites.filter((y) => y !== x.id) })} />{x.name}</label>)}</div>
+            </Field>
+            <div className="pub-stats">
+              <div><span className="stat-value">{people}</span><span className="small muted">workers</span></div>
+              <div><span className="stat-value">{shifts}</span><span className="small muted">shifts a week</span></div>
+              <div><span className="stat-value">{targets.length}</span><span className="small muted">{targets.length === 1 ? 'week' : 'weeks'}</span></div>
+            </div>
+            <h3 className="pub-h">What happens</h3>
+            <div className="row-line"><Pill tone="good">Copied</Pill><span className="small">Every shift and weekly off, on the same days and times.</span></div>
+            {covers > 0 && <div className="row-line"><Pill>Left out</Pill><span className="small">{covers} {covers === 1 ? 'cover' : 'covers'} from {weekLabel(cp.from, true)}. Covers were for that week's absences.</span></div>}
+            {lv.length > 0 && <div className="row-line"><Pill tone="info">Leave</Pill><span className="small">Approved leave filled in: {lv.map(({ t, l }) => `${WORKERS.find((w) => w.id === l.worker).name} (${weekLabel(t, true)})`).join(', ')}.</span></div>}
+            {replaced.length > 0 && <div className="row-line"><Pill tone="warn">Replaces</Pill><span className="small">{replaced.map((t) => `${weekLabel(t, true)} (${pub[t] === 'published' ? 'published, workers are told when you publish again' : 'draft'})`).join(', ')}, for these locations.</span></div>}
+            {errs.length > 0 && <div className="row-line"><Pill tone="crit">Weekly off</Pill><span className="small">{errs.length} {errs.length === 1 ? 'worker has' : 'workers have'} no weekly off in the copy. Fix before publishing: {errs.map((x) => W(x.wid).name).join(', ')}.</span></div>}
+            <div className="drawer-actions">
+              <button className="btn ghost" onClick={() => setCp(null)}>Cancel</button>
+              <span className="grow" />
+              <button className="btn" disabled={!cp.sites.length} onClick={doCopy}>{cp.n === 1 ? `Copy into ${weekLabel(cp.to, true)}` : `Copy into ${cp.n} weeks`}</button>
+            </div>
+          </>;
+        })()}
+      </Drawer>
+      <Drawer open={!!up} onClose={() => setUp(null)} title="Upload a roster" sub={up && `${weekLabel(up.wk)} · ${shown.length === SITES.length ? 'all locations' : shown.map((x) => x.name).join(', ')}`}>
         {up && up.step === 'pick' && <>
-          <ol className="up-steps small">
-            <li>Download the template: one row per worker, one column per day. Put a start time and shift length, <span className="mono">OFF</span>, or <span className="mono">LEAVE</span> in each day.</li>
-            <li>Upload it back. Every row is checked before anything is imported.</li>
+          <Field label="Week"><select id="up-wk" className="input" value={up.wk} onChange={(e) => setUp({ ...up, wk: +e.target.value })}>
+            {Array.from({ length: MAXWK + 1 }, (_, k) => k).map((k) => <option key={k} value={k}>{weekLabel(k)}{k === 0 ? ' · this week' : k === 1 ? ' · next week' : ''}{!has(k) ? ' · no roster yet' : pub[k] === 'draft' ? ' · draft' : ' · published'}</option>)}
+          </select></Field>
+          <ol className="up-steps">
+            <li><b>Download the template.</b> <span className="muted">It lists your workers and is already filled in with {has(up.wk) ? 'this week' : weekLabel(latestBefore(up.wk), true)}, so you only change what's different.</span>
+              <div><button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} /> roster-{fileWeek(up.wk)}.xlsx</button></div></li>
+            <li><b>Fill in each day.</b> <span className="muted">Any of these work:</span>
+              <div className="up-fmt"><span className="mono">07:00-18:00</span><span className="mono">7-6</span><span className="mono">7am to 6pm</span><span className="mono">OFF</span><span className="mono">LEAVE</span><span className="mono">07:00-11:00 + 17:00-21:00</span><span className="mono">07:00-18:00 @ Barsha Heights</span></div></li>
+            <li><b>Upload it back.</b> <span className="muted">Columns are matched by name, so your own sheet works too.</span></li>
           </ol>
-          <div className="up-rule"><Icon name="alert" size={14} /><span className="small">{fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} ${OFF_RULES.days.length === 1 ? 'is' : 'are'} off for everyone. A file with any shift on ${OFF_RULES.days.length === 1 ? 'that day' : 'those days'} is rejected as a whole.` : `Every worker needs at least ${OFF_RULES.perWeek} weekly off. A file where anyone works all seven days is rejected as a whole.`}</span></div>
-          <div className="drawer-actions">
-            <button className="btn ghost" onClick={() => toast('Template downloaded (XLSX) · pre-filled with this week')}>Download template</button>
-            <span className="grow" />
-            <button className="btn" onClick={() => setUp({ step: 'report', file: 'roster-12-18-oct.xlsx', data: badUpload(weeks[0]) })}>Choose file…</button>
-          </div>
+          <label className={'up-drop' + (up.over ? ' over' : '')} onDragOver={(e) => { e.preventDefault(); if (!up.over) setUp({ ...up, over: true }); }} onDragLeave={() => setUp({ ...up, over: false })} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f, up.wk); }}>
+            <input id="up-file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files[0]; if (f) readFile(f, up.wk); e.target.value = ''; }} />
+            <Icon name="upload" size={22} /><b>Drop the file here, or choose it</b><span className="small muted">Excel (.xlsx, .xls) or CSV</span>
+          </label>
+          <div className="up-rule"><Icon name="alert" size={14} /><span className="small">{fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} ${OFF_RULES.days.length === 1 ? 'is' : 'are'} off for everyone. A file with any shift on ${OFF_RULES.days.length === 1 ? 'that day' : 'those days'} is rejected as a whole.` : `Every worker needs at least ${OFF_RULES.perWeek} weekly off. If any row has a problem, nothing is imported and you get a list of exactly what to fix.`}</span></div>
+          <div className="small muted">No file to hand? <button className="linkbtn" onClick={() => setUp({ ...up, step: 'report', file: `roster-${fileWeek(up.wk)} (sample).xlsx`, aoa: sampleSheet(up.wk, true), map: null, sample: true })}>Try a sample with a few mistakes</button></div>
         </>}
         {up && up.step === 'report' && (() => {
-          const errs = offErrors(up.data); const warns = offClashes(up.data); const rows = up.data.reduce((a, g) => a + g.people.length, 0);
+          const sites = shown.map((x) => x.id);
+          const res = parseSheet(up.aoa, { wk: up.wk, sites, map: up.map, target: has(up.wk) });
+          const headers = res.header;
+          const idCol = res.map.id;
+          const rowOf = (wid) => { const w = W(wid); for (let i = res.hi + 1; i < up.aoa.length; i++) if (idCol >= 0 && String(up.aoa[i][idCol] ?? '').trim().toLowerCase() === w.code.toLowerCase()) return i + 1; return null; };
+          const merged = res.groups ? mergeInto(weeks[up.wk], res.groups, sites, res.seen) : null;
+          const scoped = merged ? merged.filter((g) => !g.float && sites.includes(g.site)) : [];
+          const offE = merged ? offErrors(scoped).map((x) => ({ row: rowOf(x.wid), col: 'Whole week', msg: `${W(x.wid).name}: ${errText(x)}.` })) : [];
+          const errors = [...res.errors, ...offE].sort((a, b) => (a.row || 0) - (b.row || 0));
+          const warns = [...res.warnings.map((x) => (x.row ? `Row ${x.row}: ${x.msg}` : x.msg)), ...(merged ? offClashes(scoped).map((x) => `${siteOf(x.site).name}, ${weekDays(up.wk)[x.ci]}: ${x.n} people off on the same day (limit ${OFF_RULES.sameDay}).`) : [])];
+          const shifts = scoped.flatMap((g) => g.cells.flat()).filter(Array.isArray).reduce((n, c) => n + c.length, 0);
+          const hours = scoped.flatMap((g) => g.cells.flat()).reduce((n, c) => n + shiftHours(c), 0);
+          const FIELDS = [['id', 'Staff ID'], ['name', 'Name'], ['site', 'Location'], ...['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => ['d' + i, d])];
+          const getM = (k) => (k[0] === 'd' ? res.map.days[+k.slice(1)] : res.map[k]);
+          const setM = (k, v) => { const m = { ...res.map, days: [...res.map.days] }; if (k[0] === 'd') m.days[+k.slice(1)] = v; else m[k] = v; setUp({ ...up, map: m }); };
           return <>
-            <div className="up-file"><Icon name="upload" size={15} /><b>{up.file}</b><span className="small muted">{rows} rows checked</span></div>
-            {errs.length ? <div className="up-block">
-              <b>Not imported</b>
-              <div className="small">{errs.length === 1 ? '1 row breaks' : `${errs.length} rows break`} the weekly off rule. Fix {errs.length === 1 ? 'it' : 'them'} in the file and upload again; nothing was changed.</div>
-              {errs.slice(0, 6).map((x) => <div key={x.wid} className="row-line"><Pill tone="crit">{x.closed.length ? 'Works on the off day' : 'No weekly off'}</Pill><span className="small"><b>{W(x.wid).name}</b> ({W(x.wid).code}), {x.g.float ? 'Floaters' : siteOf(x.g.site).name}: {errText(x)}</span></div>)}
-              {errs.length > 6 && <div className="small muted">and {errs.length - 6} more in the error report</div>}
-            </div> : <div className="up-ok"><b>Ready to import</b><div className="small">All {rows} rows keep the weekly off{fixedMode ? ` on ${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')}` : ''}.</div></div>}
-            {warns.length > 0 && <>
+            <div className="up-file"><Icon name="upload" size={15} /><b>{up.file}</b><span className="small muted">{res.rows} rows read</span></div>
+            <details className="up-map" open={res.missing.length > 0}>
+              <summary className="small">{res.missing.length ? <span className="neg">Couldn't find {res.missing.join(', ')}. Pick the right columns:</span> : <>Columns matched: {FIELDS.filter(([k]) => getM(k) >= 0).map(([k, l]) => l).join(', ')}. <span className="muted">Change</span></>}</summary>
+              <div className="up-map-grid">{FIELDS.map(([k, l]) => (
+                <label key={k} className="small"><span>{l}</span><select className="input sm" value={getM(k)} onChange={(e) => setM(k, +e.target.value)}><option value={-1}>Not in the file</option>{headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}</select></label>
+              ))}</div>
+            </details>
+            {res.missing.length > 0 ? null : errors.length ? <div className="up-block">
+              <b>Nothing imported yet: {errors.length} {errors.length === 1 ? 'thing' : 'things'} to fix</b>
+              <div className="small">Fix these in your file and upload it again. The error report is your file with a Problem column added.</div>
+              <table className="up-errs"><thead><tr><th>Row</th><th>Column</th><th>Problem</th></tr></thead><tbody>
+                {errors.slice(0, 8).map((x, i) => <tr key={i}><td className="mono">{x.row ?? '–'}</td><td>{x.col}</td><td>{x.msg}</td></tr>)}
+              </tbody></table>
+              {errors.length > 8 && <div className="small muted">and {errors.length - 8} more in the error report</div>}
+              <div><button className="btn ghost sm" onClick={() => downloadErrors(up, errors)}><Icon name="download" size={14} /> Error report</button></div>
+            </div> : <div className="up-ok"><b>Ready to import</b><div className="small">{res.seen.size} {res.seen.size === 1 ? 'worker' : 'workers'} from the file. The week will have {shifts} shifts, {hours} base hours across your locations.{has(up.wk) ? ` Updates ${pub[up.wk] === 'published' ? 'the published roster; workers are told when you publish' : 'the draft'}.` : ''}</div></div>}
+            {warns.length > 0 && res.missing.length === 0 && <>
               <h3 className="pub-h">Worth a look</h3>
-              {warns.map((x) => <div key={x.site + x.ci} className="row-line"><Pill tone="warn">{x.n} off</Pill><span className="small">{siteOf(x.site).name}, {weekDays(1)[x.ci]}: more than {OFF_RULES.sameDay} off on the same day</span></div>)}
-              <div className="small muted">Warnings don't stop the import.</div>
+              {warns.map((x, i) => <div key={i} className="row-line"><Pill tone="warn">Check</Pill><span className="small">{x}</span></div>)}
+              <div className="small muted">These don't stop the import.</div>
             </>}
             <div className="drawer-actions">
-              <button className="btn ghost" onClick={() => setUp({ step: 'pick' })}>Back</button>
+              <button className="btn ghost" onClick={() => setUp({ wk: up.wk, step: 'pick' })}>Back</button>
               <span className="grow" />
-              {errs.length ? <button className="btn" onClick={() => setUp({ step: 'report', file: 'roster-12-18-oct (fixed).xlsx', data: fixedOff(shiftWeek(weeks[0], 1, false)) })}>Upload corrected file…</button>
-                : <button className="btn" onClick={() => { setWeeks((Wk) => ({ ...Wk, 1: up.data })); setPub((x) => ({ ...x, 1: 'draft' })); setDirty((d) => ({ ...d, 1: 0 })); setWk(1); setUp(null); toast(`Imported ${rows} rows into ${weekLabel(1)} as a draft · review, then publish`); }}>Import as draft</button>}
+              {errors.length || res.missing.length ? (up.sample
+                ? <button className="btn" onClick={() => setUp({ ...up, file: `roster-${fileWeek(up.wk)} (fixed).xlsx`, aoa: sampleSheet(up.wk, false), map: null, sample: false })}>Upload the fixed file</button>
+                : <label className="btn">Upload the fixed file<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e) => { const f = e.target.files[0]; if (f) readFile(f, up.wk); e.target.value = ''; }} /></label>)
+                : <button className="btn" onClick={() => { const t = up.wk; setWeeks((Wk) => ({ ...Wk, [t]: merged })); setPub((x) => ({ ...x, [t]: x[t] === 'published' ? 'published' : 'draft' })); setDirty((d) => ({ ...d, [t]: (d[t] || 0) + 1 })); setWk(t); setUp(null); toast(`Imported ${shifts} shifts into ${weekLabel(t)} · review, then publish`); }}>Import as draft</button>}
             </div>
           </>;
         })()}
@@ -403,6 +539,19 @@ export function Scheduling({ go }) {
               <button className="btn sm ghost" onClick={() => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : 'Shift removed'); }}>Remove</button>
             </div>
           ))}
+          {list.length > 0 && !list.some((x) => x[3]) && (() => {
+            const row = G(day.g).cells[day.r];
+            const can = (d) => d !== day.c && d >= (nowIdx < 0 ? 0 : nowIdx) && row[d] !== 'L' && !(fixedMode && OFF_RULES.days.includes(d));
+            const same = (d) => JSON.stringify(row[d]) === JSON.stringify(cur);
+            return (
+              <section className="repeat">
+                <div className="small"><b>Same shifts on other days</b> <span className="muted">Pick days, then apply. Leave and past days are skipped.</span></div>
+                <div className="rep-days">{days.map((d, i) => <button key={i} className={'wk-day' + (rep.includes(i) ? ' on' : '') + (same(i) && i !== day.c ? ' same' : '')} disabled={!can(i)} aria-pressed={rep.includes(i)} title={row[i] === 'L' ? 'On leave' : i === day.c ? 'This day' : same(i) ? 'Already the same' : d} onClick={() => setRep(rep.includes(i) ? rep.filter((x) => x !== i) : [...rep, i])}>{d.slice(0, 2)}</button>)}
+                  <button className="linkbtn small" onClick={() => setRep(days.map((_, i) => i).filter((i) => can(i) && row[i] !== 'O' && !same(i)))}>All working days</button></div>
+                {rep.length > 0 && <button className="btn sm" onClick={() => { setCells(day.g, day.r, rep, cur); toast(`Copied to ${rep.length} ${rep.length === 1 ? 'day' : 'days'}${rep.some((i) => row[i] === 'O') ? ' · that includes a weekly off' : ''}`); setRep([]); }}>Apply to {rep.length} {rep.length === 1 ? 'day' : 'days'}</button>}
+              </section>
+            );
+          })()}
           {cur !== 'L' && <section className="addshift">
             <h3>{list.length ? 'Add another shift' : 'Add a shift'}</h3>
             <div className="form-grid">

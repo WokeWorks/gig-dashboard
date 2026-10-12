@@ -26,6 +26,7 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - **Cover engine** (`coverCands`, `COVER_RULES` in `src/lib/cover.jsx`): floaters first, then people on a day off; same vendor first, then nearest.
 - **Weekly offs** (`OFF_RULES` in `src/lib/offs.js`): set once for the organisation, minimum 1. Mode `'roster'` staggers offs week by week (warning when too many are off at one location on one day); mode `'fixed'` gives everyone the same day(s), e.g. Sunday. Never set per worker. A roster that breaks the rule is rejected on upload and can't be published (`offErrors`).
 - **Attendance rules** are per access level (Employee, Floater, Manager), except weekly offs and overtime, which are organisation-wide.
+- **Roster in and out** (`src/lib/rosterio.js`): copying a week carries shifts and weekly offs only; covers are dropped, leave reverts to the usual shift, then approved leave for the target week is applied. Uploads accept .xlsx/.xls/.csv via SheetJS (`xlsx`); columns are matched by header name, cells accept `07:00-18:00`, `7-6`, `7am to 6pm`, `07:00 11h`, `OFF`, `LEAVE`, `A + B`, `… @ Location`. Any error rejects the whole file and is reported by spreadsheet row and column. Workers missing from the file keep their existing week. Rosters can be planned up to `MAXWK` weeks ahead.
 - **Leave types** have days a year, pay, carry over, per-request limit and certificate rule.
 
 ## Gotchas
