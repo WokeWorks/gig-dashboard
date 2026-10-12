@@ -29,7 +29,7 @@ npm run check        # build, then click through every screen headless and fail 
 
 `npm run check` uses Playwright's Chromium. If Playwright can't find a browser, either run `npx playwright install chromium` or point it at one: `CHROMIUM_PATH=/path/to/chromium npm run check`.
 
-React loads from cdnjs and the Liveboard map loads live basemap tiles from CARTO, so both need an internet connection. Everything else is inlined into the HTML. The tile provider is set in `src/lib/geo.js` (`MAP_TILES`); CARTO's free tier suits development, so switch to a paid provider before production.
+React loads from cdnjs and the Liveboard map loads live basemap tiles from CARTO, so both need an internet connection. Everything else is inlined into the HTML. CARTO needs a key: get one free at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/), copy `.env.example` to `.env` and set `MAP_KEY`, then rebuild. Without it the map shows an "API key required" watermark. The free tier covers 1M tile requests a month for commercial use; the tile URLs live in `MAP_TILES` in `src/lib/geo.js`.
 
 ## Layout
 
