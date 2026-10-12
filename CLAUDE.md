@@ -31,6 +31,6 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 
 ## Gotchas
 
-- The Liveboard map is Leaflet with animations off; keep them off or a pan finishing after navigation throws.
+- The Liveboard map is Leaflet with live CARTO tiles (`MAP_TILES` in `src/lib/geo.js`, light and dark styles follow the theme). Keep its animations off, or a pan finishing after navigation throws.
 - The roster's sticky headers sit under drawers via `.overlay { z-index: 200 }`.
 - Settings mutate shared rule objects (`OFF_RULES`, `DESIG_ACCESS`) so other screens pick them up on their next render; there is no global store.

@@ -1,5 +1,4 @@
 node_modules/
 dist/
 *.png
-!map/tiles/**/*.png
 .DS_Store

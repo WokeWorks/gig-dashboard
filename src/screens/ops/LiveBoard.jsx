@@ -3,7 +3,7 @@ import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
 import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
-import { GEO, LEFT } from '../../lib/geo.js';
+import { GEO, LEFT, MAP_TILES } from '../../lib/geo.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
 const { useState, useEffect, useRef } = React;
@@ -12,20 +12,22 @@ export function LiveMap({ data, pick, onPick }) {
   const el = React.useRef(null); const map = React.useRef(null); const layer = React.useRef(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    const m = L.map(el.current, { scrollWheelZoom: false, zoomControl: false, attributionControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false }).setView([25.09, 55.23], 12);
+    const m = L.map(el.current, { scrollWheelZoom: false, zoomControl: false, attributionControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, maxZoom: MAP_TILES.maxZoom }).setView([25.09, 55.23], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
-    // Tiles: OpenStreetMap images embedded in the page (window.OSM_TILES, added at build time) so the map works
-    // inside the sandboxed preview. Outside the cached area, or if none are embedded, fall back to the live servers.
-    const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-    const T = window.OSM_TILES || {};
-    const Cached = L.TileLayer.extend({ getTileUrl(c) { const k = `${c.z}/${c.x}/${c.y}`; return T[k] ? 'data:image/png;base64,' + T[k] : `https://tile.openstreetmap.org/${k}.png`; } });
+    // Scrolling the page shouldn't zoom the map; once someone clicks into it, the wheel zooms.
+    m.on('focus click', () => m.scrollWheelZoom.enable()); m.on('blur mouseout', () => m.scrollWheelZoom.disable());
+    // Live basemap tiles, light or dark to match the dashboard's theme.
+    const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
     let ok = 0, bad = 0;
-    if (Object.keys(T).length) { m.setMinZoom(12); m.setMaxZoom(14); m.setMaxBounds([[24.95, 55.05], [25.25, 55.42]]); m.options.maxBoundsViscosity = 1; }
-    new Cached('', { attribution }).on('tileload', () => { ok++; }).on('tileerror', () => { bad++; if (bad > 8 && ok === 0) setFailed(true); }).addTo(m);
+    const tiles = L.tileLayer(dark() ? MAP_TILES.dark : MAP_TILES.light, { subdomains: MAP_TILES.subdomains, maxZoom: MAP_TILES.maxZoom, attribution: MAP_TILES.attribution, detectRetina: true })
+      .on('tileload', () => { if (++ok === 1) setFailed(false); }).on('tileerror', () => { bad++; if (bad > 8 && ok === 0) setFailed(true); }).addTo(m);
+    const retheme = () => tiles.setUrl(dark() ? MAP_TILES.dark : MAP_TILES.light);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
+    const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     layer.current = L.layerGroup().addTo(m); map.current = m;
     let alive = true; const fit = () => { if (alive) try { m.invalidateSize(); } catch (e) { /* map already gone */ } };
     const ro = new ResizeObserver(fit); ro.observe(el.current); const tm = setTimeout(fit, 50);
-    return () => { alive = false; clearTimeout(tm); ro.disconnect(); try { m.stop(); m.off(); } catch (e) {} m.remove(); };
+    return () => { alive = false; clearTimeout(tm); ro.disconnect(); mo.disconnect(); mq.removeEventListener('change', retheme); try { m.stop(); m.off(); } catch (e) {} m.remove(); };
   }, []);
   useEffect(() => {
     const m = map.current; if (!m) return; layer.current.clearLayers();
@@ -40,7 +42,7 @@ export function LiveMap({ data, pick, onPick }) {
     if (pick) { const g = GEO[pick]; if (g) m.panTo([g[1], g[0]], { animate: false }); }
     else if (pts.length) m.fitBounds(pts, { padding: [36, 36], maxZoom: 13, animate: false });
   }, [data, pick]);
-  return <div className="lm-leaf" ref={el}>{failed && <div className="lm-fail small">Map tiles could not load here.</div>}</div>;
+  return <div className="lm-leaf" ref={el}>{failed && <div className="lm-fail small">The map couldn't load. Check the internet connection.</div>}</div>;
 }
 
 export function LiveBoard({ go }) {

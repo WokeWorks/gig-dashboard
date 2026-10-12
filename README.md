@@ -29,7 +29,7 @@ npm run check        # build, then click through every screen headless and fail 
 
 `npm run check` uses Playwright's Chromium. If Playwright can't find a browser, either run `npx playwright install chromium` or point it at one: `CHROMIUM_PATH=/path/to/chromium npm run check`.
 
-React loads from cdnjs at runtime. Everything else, including the Dubai map tiles in `map/tiles`, is inlined into the HTML, so the file works offline once React is cached.
+React loads from cdnjs and the Liveboard map loads live basemap tiles from CARTO, so both need an internet connection. Everything else is inlined into the HTML. The tile provider is set in `src/lib/geo.js` (`MAP_TILES`); CARTO's free tier suits development, so switch to a paid provider before production.
 
 ## Layout
 
@@ -53,11 +53,10 @@ src/
     leave.js       leave types and UAE public holidays
     geo.js         site coordinates and distances
     dates.js       day names, week labels, time maths
-map/tiles/         cached OpenStreetMap tiles for Dubai, zoom 10 to 14
 scripts/smoke.mjs  headless click-through test
 build.mjs          esbuild bundle into one HTML file
 ```
 
 ## Map data
 
-Map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Attribution is shown on the map.
+Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, basemap © [CARTO](https://carto.com/attributions). Attribution is shown on the map.

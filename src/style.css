@@ -965,8 +965,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lp-lab b { font: 700 12.5px var(--body); } .lp-lab small { font: 500 11px var(--body); color: #5b5351; }
 .lp-wrap.left .lp { flex-direction: row-reverse; transform: translateX(calc(-100% + 26px)); }
 .leaflet-container { font: inherit; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lm-leaf .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); } }
-:root[data-theme="dark"] .lm-leaf .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
 .lm-list { position: static; max-height: none; }
 .lm-row-head { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 14px; }
 .lm-state { white-space: nowrap; } .warnt { color: var(--warn); }
