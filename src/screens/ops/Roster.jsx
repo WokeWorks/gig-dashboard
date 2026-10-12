@@ -172,7 +172,7 @@ export function Scheduling({ go }) {
   // Two or more shifts in a day: the cell splits into side-by-side segments, one per shift, same height as a single shift.
   const split = (list, sid, wid, ci, onOpen, label) => (
     <div className="cell-split">{[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x, k) => (
-      <button key={k} className={'cell one seg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{chip(x, k, sid)}</button>
+      <button key={k} className={'cell one cseg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{chip(x, k, sid)}</button>
     ))}</div>
   );
   // Upload helpers: the template, reading a file, the error report, and the demo sample.

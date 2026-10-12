@@ -617,7 +617,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pub-h { font-size: 13px; margin: 18px 0 6px; }
 /* equal day columns */
 .roster { table-layout: fixed; }
-.roster th:first-child, .roster td:first-child { width: 190px; }
+.roster th:first-child, .roster td:first-child { width: 220px; }
 .roster .rg-head td { width: auto; }
 .roster td > .cell { width: 100%; min-width: 0; }
 .roster th.today { vertical-align: bottom; }
@@ -630,9 +630,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sc-moon { position: absolute; top: 0; right: 0; display: inline-flex; color: var(--info); }
 .sc-moon.filled svg path { fill: currentColor; }
 .cell-split { display: flex; gap: 3px; min-height: 62px; }
-.cell-split > .cell.seg { flex: 1 1 0; min-width: 0; min-height: 62px; padding: 6px 5px; justify-content: center; }
-.cell.seg .sc-time { font-size: 11.5px; }
-.cell.seg .sc-moon { top: -2px; right: -1px; }
+.cell-split > .cell.cseg { flex: 1 1 0; min-width: 0; min-height: 62px; padding: 6px 5px; justify-content: center; }
+.cell.cseg .sc-time { font-size: 11.5px; }
+.cell.cseg .sc-moon { top: -2px; right: -1px; }
 
 /* roster: pinned names and headers */
 .roster-wrap { max-height: calc(100vh - 140px); overflow: auto; }
