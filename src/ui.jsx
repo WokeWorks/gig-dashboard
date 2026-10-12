@@ -203,3 +203,15 @@ export function Icon({ name, size = 20, stroke = 1.9, className = '' }) {
     </svg>
   );
 }
+
+// Text that doesn't fit is clipped, not ellipsed. Hovering the host (see .mq-host in style.css)
+// slides it left at reading speed to show the rest, then it slides back.
+export function Marquee({ children, className = '' }) {
+  const box = React.useRef(null), inner = React.useRef(null);
+  useEffect(() => {
+    const b = box.current, i = inner.current; if (!b || !i) return;
+    const set = () => { const d = Math.max(0, Math.ceil(i.offsetWidth - b.clientWidth)); b.style.setProperty('--mq-x', -d + 'px'); b.style.setProperty('--mq-t', Math.max(0.4, d / 45).toFixed(2) + 's'); b.classList.toggle('mq-over', d > 0); };
+    set(); const ro = new ResizeObserver(set); ro.observe(b); ro.observe(i); return () => ro.disconnect();
+  }, []);
+  return <span ref={box} className={'mq ' + className}><span ref={inner} className="mq-in">{children}</span></span>;
+}

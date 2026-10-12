@@ -1,9 +1,9 @@
 import { MANAGERS, SITES, VENDORS, WORKERS, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, TRAVEL, tplOf, tplLabel, spanOf, MAX_ON_SITE, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon } from '../../ui.jsx';
+import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon, Marquee } from '../../ui.jsx';
 import { isFloat, coverOf, coverCell, undoCell, CoverDrawer } from '../../lib/cover.jsx';
 import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/dates.js';
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
-import { shiftHours, shiftBrk, UNACK, usual, shiftWeek } from '../../lib/roster.js';
+import { shiftHours, shiftBrk, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
 import { liveOf } from '../../lib/live.js';
 import * as XLSX from 'xlsx';
@@ -165,9 +165,11 @@ export function Scheduling({ go }) {
   };
   // Attendance for days already gone: clocked in (green) or missed (red).
   const missed = (sid, wid, ci) => (sid.charCodeAt(1) * 7 + parseInt(wid.slice(1), 10) * 3 + ci * 5 + (wk + 1) * 11) % 7 === 0;
-  const pastCls = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? ' past-miss' : ' past-ok') : '');
-  const pastTitle = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? 'Missed: no clock-in' : 'Clocked in') : undefined);
-  const segCls = (sid, wid, ci, k) => (ci < nowIdx ? (missed(sid, wid, ci + k * 3) ? ' past-miss' : ' past-ok') : '');
+  // Today, once they've clocked in: a dotted green border (the day isn't over yet).
+  const isTodayIn = (wid, ci) => wk === 0 && ci === TODAY && clockedIn(wid);
+  const pastCls = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? ' past-miss' : ' past-ok') : here.length && isTodayIn(wid, ci) ? ' today-in' : '');
+  const pastTitle = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? 'Missed: no clock-in' : 'Clocked in') : here.length && isTodayIn(wid, ci) ? 'Clocked in today' : undefined);
+  const segCls = (sid, wid, ci, k) => (ci < nowIdx ? (missed(sid, wid, ci + k * 3) ? ' past-miss' : ' past-ok') : isTodayIn(wid, ci) && k === 0 ? ' today-in' : '');
   const segTitle = (sid, wid, ci, k) => (ci < nowIdx ? (missed(sid, wid, ci + k * 3) ? 'Missed: no clock-in' : 'Clocked in') : undefined);
   // Two or more shifts in a day: the cell splits into side-by-side segments, one per shift, same height as a single shift.
   const split = (list, sid, wid, ci, onOpen, label) => (
@@ -337,7 +339,7 @@ export function Scheduling({ go }) {
                 const elsewhere = Array.isArray(x.c) && !here.length;
                 return (
                   <button key={x.w.id + (x.visiting ? 'v' : '')} className="dv-row" onClick={() => openDay(x.g, x.r, dIdx)}>
-                    <span className="dv-who"><span className="namerow"><b>{x.w.name}</b>{pub[wk] === 'published' && wk >= 0 && UNACK.includes(x.w.id) && <span className="unack"><Icon name="alert" size={12} /></span>}</span><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.w.role}</span></span>
+                    <span className="dv-who"><span className="namerow"><b>{x.w.name}</b></span><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.w.role}</span></span>
                     <span className="dv-what">
                       {here.map((y, k) => <span key={k} className={'dv-shift' + segCls(s.id, x.w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span>{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).nextDay && <span className="sc-moon filled"><Icon name="moon" size={11} /></span>}</span>)}
                       {x.c === 'O' && <span className="dv-tag">Weekly off</span>}
@@ -368,7 +370,7 @@ export function Scheduling({ go }) {
       <section className="card flush roster-card">
         <div className="table-wrap roster-wrap">
           <table className="roster">
-            <thead><tr><th>Worker</th>{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
+            <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
             {shown.map((s, si) => {
               const g = G(s.id);
               const rows = g.people.map((id, r) => ({ w: W(id), r })).filter((x) => match(x.w));
@@ -380,8 +382,8 @@ export function Scheduling({ go }) {
               return (
                 <tbody key={s.id} className="rgroup">
                   <tr className="rg-head">
-                    <td className="rg-name" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
-                      <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b>{s.name}</b><span className="muted small">{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</span>
+                    <td className="rg-name mq-host" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
+                      <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b><Marquee>{s.name}</Marquee></b><span className="muted small"><Marquee>{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</Marquee></span>
                     </button>
                     <span className="rg-acts">
                       {wk >= 0 && wk < MAXWK && <button className="act" title={`Copy ${s.name}'s week forward`} aria-label={`Copy ${s.name}'s week forward`} onClick={() => openCopy(wk + 1, { from: wk, sites: [s.id], stay: true })}><Icon name="copy" size={14} /></button>}
@@ -395,7 +397,7 @@ export function Scheduling({ go }) {
                   </tr>
                   {!isCol && rows.map(({ w, r }) => (
                     <tr key={w.id}>
-                      <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button>{pub[wk] === 'published' && wk >= 0 && UNACK.includes(w.id) && <span className="unack" title="Hasn't acknowledged this week's roster in the app" aria-label="Roster not acknowledged"><Icon name="alert" size={13} /></span>}{rowActs(s.id, r, w)}</div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</div></td>
+                      <td className="mq-host"><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs(s.id, r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</Marquee></div></td>
                       {g.cells[r].map((c, ci) => {
                         const here = Array.isArray(c) ? c.filter((x) => !x[2] || x[2] === s.id) : [];
                         const away = Array.isArray(c) && here.length === 0;
@@ -417,7 +419,7 @@ export function Scheduling({ go }) {
                   ))}
                   {!isCol && vis.map((v) => (
                     <tr key={'v' + v.w.id} className="visitor">
-                      <td><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}>{v.w.name}</button><div className="small muted"><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.w.role}</div></td>
+                      <td className="mq-host"><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.w.role}</Marquee></div></td>
                       {v.days.map((d, ci) => (
                         <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" />}</td>
                       ))}
@@ -429,14 +431,14 @@ export function Scheduling({ go }) {
             {poolRows.length > 0 && (() => { const isCol = collapsed.pool && !q && ven === 'all'; const zi = shown.length; return (
               <tbody className="rgroup pool">
                 <tr className="rg-head">
-                  <td className="rg-name" style={{ zIndex: 11 + zi * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, pool: !collapsed.pool })} aria-expanded={!isCol}>
-                    <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b>Floaters</b>{isCol && <span className="muted small">{poolRows.length} {poolRows.length === 1 ? 'employee' : 'employees'}</span>}
+                  <td className="rg-name mq-host" style={{ zIndex: 11 + zi * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, pool: !collapsed.pool })} aria-expanded={!isCol}>
+                    <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b><Marquee>Floaters</Marquee></b>{isCol && <span className="muted small"><Marquee>{poolRows.length} {poolRows.length === 1 ? 'employee' : 'employees'}</Marquee></span>}
                   </button></td>
                   {days.map((d, ci) => { const offs = poolRows.filter(({ r }) => PG.cells[r][ci] === 'O').length; return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + zi * 2 }}>{offs > 0 && <span className="rg-off">{offs} off</span>}</td>; })}
                 </tr>
                 {!isCol && poolRows.map(({ w, r }) => (
                   <tr key={w.id}>
-                    <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button>{rowActs('pool', r, w)}</div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</div></td>
+                    <td className="mq-host"><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs('pool', r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</Marquee></div></td>
                     {PG.cells[r].map((c, ci) => (
                       <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                         {Array.isArray(c) && c.length > 1 ? split(c, 'pool', w.id, ci, () => openDay('pool', r, ci), `${w.name} ${days[ci]}`) :
