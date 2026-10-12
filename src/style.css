@@ -1381,3 +1381,5 @@ label.btn { cursor: pointer; }
 .repeat { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
 .rep-days { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .rep-days .wk-day.same { border-style: dashed; }
+.lm-fit { font: 600 12px var(--body); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
+.lm-fit:hover { border-color: var(--accent); color: var(--accent); }

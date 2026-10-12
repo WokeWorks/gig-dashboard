@@ -11,8 +11,21 @@ const { useState, useEffect, useRef } = React;
 export function LiveMap({ data, pick, onPick }) {
   const el = React.useRef(null); const map = React.useRef(null); const layer = React.useRef(null);
   const [failed, setFailed] = useState(false);
+  const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
+  // Frame every store: room on the right for the labels (left for the few whose label sits on the left),
+  // quarter-step zoom so the fit is snug, and never closer than street level for a single store.
+  const fitAll = () => {
+    const m = map.current; if (!m || !pts.current.length || !el.current || !el.current.clientWidth) return;
+    // The filter bar and the count tiles sit on top of the map: keep stores out from under them.
+    const box = el.current.getBoundingClientRect();
+    // Each overlay pads whichever edge it sits on (on narrow screens the tiles move to the bottom).
+    let top = 0, bottom = 0;
+    el.current.parentElement.querySelectorAll('.lm-over').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top + r.height / 2 < box.top + box.height / 2) top = Math.max(top, r.bottom - box.top); else bottom = Math.max(bottom, box.bottom - r.top); });
+    m.fitBounds(pts.current, { paddingTopLeft: [70, Math.max(50, top + 40)], paddingBottomRight: [190, Math.max(50, bottom + 30)], maxZoom: 15, animate: false });
+    moved.current = false;
+  };
   useEffect(() => {
-    const m = L.map(el.current, { scrollWheelZoom: false, zoomControl: false, attributionControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, maxZoom: MAP_TILES.maxZoom }).setView([25.09, 55.23], 12);
+    const m = L.map(el.current, { zoomSnap: 0.25, zoomDelta: 0.5, scrollWheelZoom: false, zoomControl: false, attributionControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, maxZoom: MAP_TILES.maxZoom }).setView([25.09, 55.23], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(m);
     // Scrolling the page shouldn't zoom the map; once someone clicks into it, the wheel zooms.
     m.on('focus click', () => m.scrollWheelZoom.enable()); m.on('blur mouseout', () => m.scrollWheelZoom.disable());
@@ -25,22 +38,29 @@ export function LiveMap({ data, pick, onPick }) {
     const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
     const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     layer.current = L.layerGroup().addTo(m); map.current = m;
-    let alive = true; const fit = () => { if (alive) try { m.invalidateSize(); } catch (e) { /* map already gone */ } };
+    // Once someone drags or zooms, leave their view alone until they ask for "Show all".
+    m.on('dragstart', () => { moved.current = true; }); m.getContainer().addEventListener('wheel', () => { moved.current = true; }, { passive: true });
+    const All = L.Control.extend({ options: { position: 'bottomright' }, onAdd() { const b = L.DomUtil.create('button', 'lm-fit'); b.type = 'button'; b.textContent = 'Show all'; b.title = 'Fit every location in view'; L.DomEvent.disableClickPropagation(b); b.onclick = fitAll; return b; } });
+    new All().addTo(m);
+    let alive = true; const fit = () => { if (!alive) return; try { m.invalidateSize(); if (!moved.current) fitAll(); } catch (e) { /* map already gone */ } };
     const ro = new ResizeObserver(fit); ro.observe(el.current); const tm = setTimeout(fit, 50);
     return () => { alive = false; clearTimeout(tm); ro.disconnect(); mo.disconnect(); mq.removeEventListener('change', retheme); try { m.stop(); m.off(); } catch (e) {} m.remove(); };
   }, []);
   useEffect(() => {
     const m = map.current; if (!m) return; layer.current.clearLayers();
-    const pts = [];
+    const list = [];
     data.forEach((d) => {
-      const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; pts.push([lat, lng]);
+      const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; list.push([lat, lng]);
       const tone = d.bad ? 'crit' : d.late ? 'warn' : d.due.length ? 'good' : 'idle';
       const html = `<div class="lp ${tone}${pick === d.s.id ? ' on' : ''}"><span class="lp-dot">${d.due.length ? d.inn : '–'}</span><span class="lp-lab${tone === 'good' || tone === 'idle' ? ' quiet' : ''}"><b>${d.s.name.replace(/^(Spinneys|Carrefour) /, '')}</b><small>${d.due.length ? d.inn + '/' + d.due.length + ' in' : 'No one due'}${d.bad ? ' · ' + d.bad + ' no-show' : d.late ? ' · ' + d.late + ' late' : ''}</small></span></div>`;
       L.marker([lat, lng], { icon: L.divIcon({ className: 'lp-wrap' + (LEFT[d.s.id] ? ' left' : ''), html, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: d.bad ? 1000 : d.late ? 500 : 0, keyboard: true, title: d.s.name })
         .on('click', () => onPick(d.s.id)).addTo(layer.current);
     });
-    if (pick) { const g = GEO[pick]; if (g) m.panTo([g[1], g[0]], { animate: false }); }
-    else if (pts.length) m.fitBounds(pts, { padding: [36, 36], maxZoom: 13, animate: false });
+    pts.current = list;
+    // Refit only when the set of stores changes (e.g. another manager), not on every live update.
+    const key = data.map((d) => d.s.id).join(',');
+    if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
+    if (pick) { const g = GEO[pick]; if (g && !m.getBounds().pad(-0.15).contains([g[1], g[0]])) m.panTo([g[1], g[0]], { animate: false }); }
   }, [data, pick]);
   return <div className="lm-leaf" ref={el}>{failed && <div className="lm-fail small">The map couldn't load. Check the internet connection.</div>}</div>;
 }
