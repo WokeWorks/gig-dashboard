@@ -162,12 +162,19 @@ export function Scheduling({ go }) {
   // Upload helpers: the template, reading a file, the error report, and the demo sample.
   const fileWeek = (w) => weekLabel(w, true).replace(/\s+/g, '-').replace(/[–—]/g, '').replace(/-+/g, '-').toLowerCase();
   const sourceFor = (w) => (has(w) ? weeks[w] : copyWeek(weeks[latestBefore(w)], null, shown.map((x) => x.id), w));
-  const saveXlsx = (aoa, name, extra) => {
+  const saveXlsx = async (aoa, name, extra) => {
     const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = aoa[0].map((h, i) => ({ wch: i === 1 ? 22 : i === 2 ? 26 : i > 2 ? 16 : 10 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Roster');
     if (extra) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(extra), 'How to fill');
-    try { XLSX.writeFile(wb, name); toast(`Downloaded ${name}`); } catch (e) { toast('Download blocked in this preview · it works in the real app'); }
+    // Inside the published prototype the viewer grants downloads; opened as a plain file, the browser saves it.
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) {
+      try { await dl.save({ filename: name, data: XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) }); toast(`Saved ${name}`); }
+      catch (e) { if (e && e.code !== 'declined') toast(e && e.code === 'rate_limited' ? 'A save is already waiting for you' : 'Downloads aren\'t available here'); }
+      return;
+    }
+    try { XLSX.writeFile(wb, name); toast(`Downloaded ${name}`); } catch (e) { toast('Downloads aren\'t available here'); }
   };
   const HOW = [['What to type in a day', 'Means'], ['07:00-18:00', 'One shift, 07:00 to 18:00'], ['7-6  or  7am to 6pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-18:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shift lengths allowed', SHIFT_TEMPLATES.map((x) => x.base + ' h').join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
   const downloadTemplate = (w) => saveXlsx(templateRows(sourceFor(w), shown.map((x) => x.id), w), `roster-${fileWeek(w)}.xlsx`, HOW);
