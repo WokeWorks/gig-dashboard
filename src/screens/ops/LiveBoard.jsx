@@ -10,7 +10,7 @@ const { useState, useEffect, useRef } = React;
 export function LiveMap({ data, pick, onPick }) {
   const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
-  const pts = useRef([]); const moved = useRef(false); const fitting = useRef(false); const fitKey = useRef('');
+  const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
   const onPickRef = useRef(onPick); onPickRef.current = onPick;
   // Frame every store: room on the right for the labels, and clear of the filter bar and count tiles
   // that sit over the map (top on wide screens, bottom on narrow ones). Never closer than street level.
@@ -20,9 +20,8 @@ export function LiveMap({ data, pick, onPick }) {
     let top = 0, bottom = 0;
     el.current.parentElement.querySelectorAll('.lm-over').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top + r.height / 2 < box.top + box.height / 2) top = Math.max(top, r.bottom - box.top); else bottom = Math.max(bottom, box.bottom - r.top); });
     const b = new G.LatLngBounds(); pts.current.forEach(([lat, lng]) => b.extend({ lat, lng }));
-    fitting.current = true;
     m.fitBounds(b, { top: Math.max(50, top + 40), right: 190, bottom: Math.max(50, bottom + 30), left: 70 });
-    G.event.addListenerOnce(m, 'idle', () => { if (m.getZoom() > 15) m.setZoom(15); fitting.current = false; });
+    G.event.addListenerOnce(m, 'idle', () => { if (m.getZoom() > 15) m.setZoom(15); });
     moved.current = false;
   };
   useEffect(() => {
@@ -40,16 +39,20 @@ export function LiveMap({ data, pick, onPick }) {
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
       });
       map.current = m;
-      // Once someone drags or zooms, leave their view alone until they ask for "Show all".
-      m.addListener('dragstart', () => { moved.current = true; });
-      m.addListener('zoom_changed', () => { if (!fitting.current) moved.current = true; });
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lm-fit'; btn.textContent = 'Show all'; btn.title = 'Fit every location in view'; btn.onclick = fitAll;
+      // The map frames itself on first load, when the set of stores changes, and on "Show all". Anything the
+      // person does on the map (click, drag, wheel, touch, keys) hands it to them: no more automatic refits.
+      const box = el.current; const mine = () => { moved.current = true; };
+      const EVS = ['pointerdown', 'wheel', 'touchstart', 'keydown']; EVS.forEach((ev) => box.addEventListener(ev, mine, { passive: true, capture: true }));
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lm-fit'; btn.textContent = 'Show all'; btn.title = 'Fit every location in view'; btn.onclick = () => fitAll();
       m.controls[G.ControlPosition.RIGHT_BOTTOM].push(btn);
       const retheme = () => m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light });
       const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
       const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-      const ro = new ResizeObserver(() => { if (alive && !moved.current) fitAll(); }); ro.observe(el.current);
-      cleanup = () => { mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; G.event.clearInstanceListeners(m); };
+      // Refit on a real size change (window resized, panel reflowed) only while the map is still untouched;
+      // ignore the small jitters that layout changes cause.
+      let last = [box.clientWidth, box.clientHeight];
+      const ro = new ResizeObserver(() => { if (!alive) return; const now = [box.clientWidth, box.clientHeight]; if (Math.abs(now[0] - last[0]) > 40 || Math.abs(now[1] - last[1]) > 40) { last = now; if (!moved.current) fitAll(); } }); ro.observe(box);
+      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; G.event.clearInstanceListeners(m); };
       setState('ready');
     }).catch((e) => { if (alive) setState(e.message === 'missing_key' ? 'missing_key' : e.message === 'refused' ? 'refused' : 'offline'); });
     return () => { alive = false; window.removeEventListener('opspro-maps-refused', refused); cleanup(); map.current = null; };
