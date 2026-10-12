@@ -31,7 +31,8 @@ export const leaveIn = (wk, sites) => {
 // Copy one week onto another, for the chosen locations only. What carries over is the plan:
 // shifts and weekly offs. One-off things don't: covers are undone, leave turns back into the usual shift,
 // and floaters go back to available (keeping their offs). Approved leave in the target week is filled in after.
-export const copyWeek = (src, target, sites, wk) => {
+// With `workers`, only those people's rows are copied; everyone else keeps what the target week already has.
+export const copyWeek = (src, target, sites, wk, workers) => {
   const tgt = target || emptyWeek();
   const clean = (g) => g.cells.map((row) => row.map((c) => {
     if (c === 'L') return g.float ? 'A' : usual(row);
@@ -45,7 +46,9 @@ export const copyWeek = (src, target, sites, wk) => {
   const out = tgt.map((g) => {
     const s = src.find((x) => x.site === g.site);
     const inScope = g.float || sites.includes(g.site);
-    return inScope && s ? { ...g, cells: clean(s) } : g;
+    if (!inScope || !s) return g;
+    const fresh = clean(s);
+    return { ...g, cells: workers ? g.cells.map((row, r) => (workers.includes(g.people[r]) ? fresh[r] : row)) : fresh };
   });
   return applyLeave(out, wk);
 };

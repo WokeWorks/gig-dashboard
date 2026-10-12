@@ -5,9 +5,14 @@ import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/date
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
 import { shiftHours, shiftBrk, UNACK, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
+import { liveOf } from '../../lib/live.js';
 import * as XLSX from 'xlsx';
+import { toPng } from 'html-to-image';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
+
+// Has this worker clocked in today? Then today's shifts are locked, as in opspro-app.
+const clockedIn = (wid) => SITES.some((s) => liveOf(s.id).some((x) => x.w.id === wid && ['in', 'late', 'break'].includes(x.status)));
 
 export const MAXWK = 4; // how far ahead a roster can be planned, in weeks
 export const DAY0 = 5 * 60, DAYLEN = 22 * 60; // timeline window 05:00 → 03:00 next day
@@ -69,6 +74,11 @@ export function DayTimeline({ list, home }) {
 
 export function Scheduling({ go }) {
   const [mgr, setMgr] = useState('m1');
+  const [loc, setLoc] = useState('all');
+  const [clr, setClr] = useState(null); // clear days: { g, r, days }
+  const [shot, setShot] = useState(null); // share as picture: { kind: 'worker' | 'loc', sid, r }
+  const shotRef = useRef(null);
+  const [ed, setEd] = useState(null); // editing one shift in the day drawer: { key, t, st, site }
   const [ven, setVen] = useState('all');
   const [q, setQ] = useState('');
   const [collapsed, setCollapsed] = useState({});
@@ -101,19 +111,23 @@ export function Scheduling({ go }) {
   const setCell = (g, r, c, v) => setCells(g, r, [c], v);
   // Latest week that has a roster, before `w`: the natural thing to copy from.
   const latestBefore = (w) => { for (let k = w - 1; k >= -1; k--) if (has(k)) return k; return 0; };
-  const openCopy = (to) => setCp({ from: latestBefore(to), to, n: 1, sites: shown.map((x) => x.id) });
+  // opts: from (default the latest planned week before), sites, workers (just these people), stay (keep looking at this week)
+  const openCopy = (to, o = {}) => setCp({ from: o.from ?? latestBefore(to), to, n: 1, sites: o.sites || shown.map((x) => x.id), workers: o.workers, stay: o.stay });
   const doCopy = () => {
     const targets = Array.from({ length: cp.n }, (_, i) => cp.to + i).filter((t) => t <= MAXWK);
-    setWeeks((Wk) => { const next = { ...Wk }; targets.forEach((t) => { next[t] = copyWeek(Wk[cp.from], Wk[t], cp.sites, t); }); return next; });
+    setWeeks((Wk) => { const next = { ...Wk }; targets.forEach((t) => { next[t] = copyWeek(Wk[cp.from], Wk[t], cp.sites, t, cp.workers); }); return next; });
     setPub((x) => { const n = { ...x }; targets.forEach((t) => { if (n[t] !== 'published') n[t] = 'draft'; }); return n; });
     setDirty((d) => { const n = { ...d }; targets.forEach((t) => { n[t] = (n[t] || 0) + 1; }); return n; });
-    setWk(cp.to); setCp(null);
-    toast(`Copied ${weekLabel(cp.from)} into ${targets.length === 1 ? weekLabel(cp.to) : `${targets.length} weeks, ${weekLabel(cp.to, true)} onwards`} · drafts, review then publish`);
+    if (!cp.stay) setWk(cp.to); setCp(null);
+    toast(`Copied ${cp.workers ? `${W(cp.workers[0]).name}'s ` : cp.stay ? `${siteOf(cp.sites[0]).name}'s ` : ''}${weekLabel(cp.from)} into ${targets.length === 1 ? weekLabel(cp.to) : `${targets.length} weeks, ${weekLabel(cp.to, true)} onwards`} · drafts, review then publish`);
   };
   const startBlank = () => { setWeeks((Wk) => ({ ...Wk, [wk]: applyLeave(emptyWeek(), wk) })); setPub((x) => ({ ...x, [wk]: 'draft' })); setDirty((d) => ({ ...d, [wk]: 0 })); toast(`Blank roster for ${weekLabel(wk)} · click a day to add shifts`); };
   const publish = () => { setPubOpen(false); setPub((x) => ({ ...x, [wk]: 'published' })); setDirty((d) => ({ ...d, [wk]: 0 })); toast(pub[wk] === 'draft' ? `${weekLabel(wk)} published · workers notified in the app` : `Changes published · ${dirty[wk]} affected workers notified`); };
   const assign = (x) => { setCell(x.g, x.r, cover.ci, coverCell(x, cover.site, cover.sh, cover.absent)); toast(`${x.w.name} covers ${W(cover.absent).name.split(' ')[0]} on ${days[cover.ci]} · push sent`); setCover(null); };
-  const findCover = (absent, sid, ci, row) => { setDay(null); setCover({ absent, site: sid, ci, sh: usual(row)[0] }); };
+  // sh: the shift to cover (the usual shift for a day on leave, or one that's rostered).
+  const findCover = (absent, sid, ci, sh, why) => { setDay(null); setCover({ absent, site: sid, ci, sh, why }); };
+  // Who is covering this particular shift of theirs, if anyone.
+  const coverFor = (wid, ci, x) => { for (const g of groups) for (let r = 0; r < g.people.length; r++) { const c = g.cells[r][ci]; if (Array.isArray(c)) { const sh = c.find((y) => y[3] === wid && y[1] === x[1] && y[0] === x[0]); if (sh) return { w: W(g.people[r]), g: g.site, r, sh }; } } return null; };
   const covBy = (wid, ci) => coverOf(groups, wid, ci);
   const first = (n) => n.split(' ')[0];
   const site = day ? day.g : 's3';
@@ -126,13 +140,16 @@ export function Scheduling({ go }) {
   const isPool = day && day.g === 'pool';
   const checks = [...(cur === 'O' ? [['warn', 'Weekly off', `${dayWorker.name.split(' ')[0]}'s weekly off: this counts as rest-day work, paid at the overtime rate`]] : []), ...dayChecks(preview, site)];
   const fmtShift = ([t, st]) => { const T = tplOf(t); const e = endOf(st, T.base + (T.brk || 0)); return `${st} – ${e.time}${e.nextDay ? ' (overnight)' : ''}`; };
-  const openDay = (g, r, c) => { if (wk < 0) { toast('Past weeks are read-only. Timesheets has what was worked.'); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
+  const openDay = (g, r, c) => { if (wk < 0) { toast('Past weeks are read-only. Timesheets has what was worked.'); return; }
+    if (c < nowIdx) { toast(`${FULL_DAYS[c]} has passed, so it can't be changed · Timesheets has what was worked`); return; }
+    if (wk === 0 && c === TODAY && Array.isArray(G(g).cells[r][c]) && clockedIn(G(g).people[r])) { toast(`${first(W(G(g).people[r]).name)} has clocked in today, so today is locked · use Timesheets for corrections`); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
     // Suggest a start: an hour after their last shift that day, otherwise their usual start.
     const st = last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : (usual(G(g).cells[r])[0] || [null, '07:00'])[1];
-    setDay({ g, r, c }); setRep([]); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
+    setDay({ g, r, c }); setRep([]); setEd(null); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
   const locsIn = (c, home) => (Array.isArray(c) ? [...new Set(c.map((x) => x[2] || home))] : []);
   const match = (w) => (!q || w.name.toLowerCase().includes(q.toLowerCase())) && (ven === 'all' || w.vendor === ven);
-  const shown = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
+  const mine = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
+  const shown = mine.filter((s) => loc === 'all' || s.id === loc);
   // The floaters band: floaters in this manager's pool, plus anyone from the pool covering at these locations this week.
   const PG = groups.find((g) => g.float);
   const poolRows = PG ? PG.people.map((id, r) => ({ w: W(id), r })).filter(({ w }) => match(w) && isFloat(w)) : [];
@@ -175,6 +192,43 @@ export function Scheduling({ go }) {
     }
     try { XLSX.writeFile(wb, name); toast(`Downloaded ${name}`); } catch (e) { toast('Downloads aren\'t available here'); }
   };
+  // Share a week as a picture (for a WhatsApp group, say). The card is drawn off screen, then saved as a PNG.
+  const savePng = async (url, name) => {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) {
+      const bin = atob(url.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      try { await dl.save({ filename: name, data: bytes.buffer }); toast(`Saved ${name}`); }
+      catch (e) { if (e && e.code !== 'declined') toast('Downloads aren\'t available here'); }
+      return;
+    }
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast(`Downloaded ${name}`);
+  };
+  useEffect(() => {
+    if (!shot) return;
+    let gone = false;
+    const id = requestAnimationFrame(async () => {
+      const node = shotRef.current; if (!node || gone) return;
+      const bg = getComputedStyle(document.body).backgroundColor;
+      const name = `roster-${(shot.kind === 'worker' ? W(G(shot.sid).people[shot.r]).name : siteOf(shot.sid).name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${fileWeek(wk)}.png`;
+      let url = null;
+      try { url = await toPng(node, { pixelRatio: 2, backgroundColor: bg }); }
+      catch (e) { try { url = await toPng(node, { pixelRatio: 2, backgroundColor: bg, skipFonts: true }); } catch (e2) { toast('Couldn\'t make the picture here'); } }
+      if (!gone) setShot(null);
+      if (url) savePng(url, name);
+    });
+    return () => { gone = true; cancelAnimationFrame(id); };
+  }, [shot]);
+  const shotText = (c, home) => {
+    if (c === 'O') return ['Weekly off']; if (c === 'L') return ['Annual leave']; if (c === 'A') return ['Available']; if (!Array.isArray(c)) return ['–'];
+    return [...c].sort((a, b) => toMin(a[1]) - toMin(b[1])).map(([t, st, s2, cov]) => `${st}–${endOf(st, spanOf(tplOf(t))).time}${s2 && s2 !== home ? ` @ ${siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}` : ''}${cov ? ` (for ${first(W(cov).name)})` : ''}`);
+  };
+  const shotRows = () => {
+    if (!shot) return [];
+    const g = G(shot.sid);
+    if (shot.kind === 'worker') return [{ w: W(g.people[shot.r]), cells: g.cells[shot.r], home: shot.sid }];
+    return [...g.people.map((id, r) => ({ w: W(id), cells: g.cells[r], home: shot.sid })).filter((x) => match(x.w)),
+      ...visitorsOf(shot.sid).filter((v) => match(v.w)).map((v) => ({ w: v.w, cells: v.days.map((d) => (d.length ? d : 'X')), home: shot.sid, visiting: true }))];
+  };
   const HOW = [['What to type in a day', 'Means'], ['07:00-19:00', 'One shift, 07:00 to 19:00 on site (11 h worked + 1 h break)'], ['7-7  or  7am to 7pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours worked'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-19:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shifts allowed', SHIFT_TEMPLATES.map((x) => `${x.base}${x.brk ? '+' + x.brk : ''} (${x.base + (x.brk || 0)} h on site)`).join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
   const downloadTemplate = (w) => saveXlsx(templateRows(sourceFor(w), shown.map((x) => x.id), w), `roster-${fileWeek(w)}.xlsx`, HOW);
   const readFile = (f, w) => {
@@ -201,6 +255,14 @@ export function Scheduling({ go }) {
     if (withMistakes) { if (aoa[3]) aoa[3][5] = '9-12'; if (aoa[5]) aoa[5][7] = '7 till late'; aoa.push(['OP-9999', 'Sam New', aoa[1][2], '07:00-18:00', '07:00-18:00', 'OFF', '07:00-18:00', '07:00-18:00', '07:00-18:00', '07:00-18:00']); }
     return aoa;
   };
+  // Per-worker actions, shown when the row is hovered: copy their week forward, clear days, save as a picture.
+  const rowActs = (sid, r, w) => (
+    <span className="row-acts">
+      {wk >= 0 && wk < MAXWK && <button className="act" title="Copy this week forward" aria-label={`Copy ${w.name}'s week forward`} onClick={() => openCopy(wk + 1, { from: wk, sites: sid === 'pool' ? [] : [sid], workers: [w.id], stay: true })}><Icon name="copy" size={13} /></button>}
+      {wk >= 0 && <button className="act" title="Clear days" aria-label={`Clear days for ${w.name}`} onClick={() => setClr({ g: sid, r, days: [] })}><Icon name="trash" size={13} /></button>}
+      <button className="act" title="Save the week as a picture" aria-label={`Save ${w.name}'s week as a picture`} onClick={() => setShot({ kind: 'worker', sid, r })}><Icon name="camera" size={13} /></button>
+    </span>
+  );
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
     const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay;
@@ -214,8 +276,11 @@ export function Scheduling({ go }) {
         <button className="btn ghost" onClick={() => go('settings')}>Shifts and rules</button>
       </>} />
       <div className="toolbar">
-        <select id="sch-mgr" className="input" value={mgr} onChange={(e) => setMgr(e.target.value)} aria-label="Manager">
+        <select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
           <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.sites.length} locations</option>)}
+        </select>
+        <select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
+          <option value="all">All locations</option>{mine.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <select id="sch-ven" className="input" value={ven} onChange={(e) => setVen(e.target.value)} aria-label="Vendor">
           <option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
@@ -310,7 +375,11 @@ export function Scheduling({ go }) {
                   <tr className="rg-head">
                     <td className="rg-name" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
                       <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b>{s.name}</b><span className="muted small">{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</span>
-                    </button></td>
+                    </button>
+                    <span className="rg-acts">
+                      {wk >= 0 && wk < MAXWK && <button className="act" title={`Copy ${s.name}'s week forward`} aria-label={`Copy ${s.name}'s week forward`} onClick={() => openCopy(wk + 1, { from: wk, sites: [s.id], stay: true })}><Icon name="copy" size={14} /></button>}
+                      <button className="act" title={`Save ${s.name}'s week as a picture`} aria-label={`Save ${s.name}'s week as a picture`} onClick={() => setShot({ kind: 'loc', sid: s.id })}><Icon name="camera" size={14} /></button>
+                    </span></td>
                     {days.map((d, ci) => { const offs = g.people.filter((id, r) => g.cells[r][ci] === 'O').length; const over = !fixedMode && offs > OFF_RULES.sameDay; if (fixedMode && OFF_RULES.days.includes(ci)) return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}><span className="rg-off">Everyone off</span></td>; return (
                       <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}>
                         {offs > 0 && <span className={'rg-off' + (over ? ' over' : '')} title={over ? `${offs} people off on the same day here; the limit is ${OFF_RULES.sameDay}` : `${offs} on weekly off`}>{over && <Icon name="alert" size={11} />}{offs} off</span>}
@@ -319,7 +388,7 @@ export function Scheduling({ go }) {
                   </tr>
                   {!isCol && rows.map(({ w, r }) => (
                     <tr key={w.id}>
-                      <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button>{pub[wk] === 'published' && wk >= 0 && UNACK.includes(w.id) && <span className="unack" title="Hasn't acknowledged this week's roster in the app" aria-label="Roster not acknowledged"><Icon name="alert" size={13} /></span>}</div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</div></td>
+                      <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button>{pub[wk] === 'published' && wk >= 0 && UNACK.includes(w.id) && <span className="unack" title="Hasn't acknowledged this week's roster in the app" aria-label="Roster not acknowledged"><Icon name="alert" size={13} /></span>}{rowActs(s.id, r, w)}</div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</div></td>
                       {g.cells[r].map((c, ci) => {
                         const here = Array.isArray(c) ? c.filter((x) => !x[2] || x[2] === s.id) : [];
                         const away = Array.isArray(c) && here.length === 0;
@@ -332,6 +401,7 @@ export function Scheduling({ go }) {
                               {c === 'X' && <span className="cell-main">Not rostered</span>}
                               {away && <span className="cell-sub">Elsewhere</span>}
                               {here.length > 0 && here.map((x, k) => chip(x, k, s.id))}
+                              {here.length > 0 && ci >= nowIdx && (() => { const cv = coverFor(w.id, ci, here[0]); return cv ? <span className="cell-sub cov">Covered by {first(cv.w.name)}</span> : null; })()}
                             </button>}
                           </td>
                         );
@@ -359,7 +429,7 @@ export function Scheduling({ go }) {
                 </tr>
                 {!isCol && poolRows.map(({ w, r }) => (
                   <tr key={w.id}>
-                    <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button></div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</div></td>
+                    <td><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}>{w.name}</button>{rowActs('pool', r, w)}</div><div className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</div></td>
                     {PG.cells[r].map((c, ci) => (
                       <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                         {Array.isArray(c) && c.length > 1 ? split(c, 'pool', w.id, ci, () => openDay('pool', r, ci), `${w.name} ${days[ci]}`) :
@@ -412,17 +482,21 @@ export function Scheduling({ go }) {
           </>;
         })()}
       </Drawer>
-      <Drawer open={!!cp} onClose={() => setCp(null)} title={cp && `Copy into ${weekLabel(cp.to)}`} sub="The copy is a draft until you publish">
+      <Drawer open={!!cp} onClose={() => setCp(null)} title={cp && (cp.workers ? `Copy ${W(cp.workers[0]).name}'s week` : cp.stay ? `Copy ${siteOf(cp.sites[0]).name}'s week` : `Copy into ${weekLabel(cp.to)}`)} sub={cp && (cp.workers ? `Only their row is copied · drafts until you publish` : 'The copy is a draft until you publish')}>
         {cp && (() => {
           const targets = Array.from({ length: cp.n }, (_, i) => cp.to + i);
           const src = weeks[cp.from];
-          const covers = src.filter((g) => g.float || cp.sites.includes(g.site)).flatMap((g) => g.cells.flat()).filter((c) => Array.isArray(c) && c.some((x) => x[3])).length;
-          const lv = targets.flatMap((t) => leaveIn(t, cp.sites).map((l) => ({ t, l })));
+          // Rows in scope: the chosen worker anywhere, or everyone at the chosen locations.
+          const inGroup = (g) => (cp.workers ? true : !g.float && cp.sites.includes(g.site));
+          const rowsOf = (g) => g.cells.filter((_, r) => !cp.workers || cp.workers.includes(g.people[r]));
+          const covers = src.filter((g) => cp.workers || g.float || cp.sites.includes(g.site)).flatMap((g) => rowsOf(g).flat()).filter((c) => Array.isArray(c) && c.some((x) => x[3])).length;
+          const lv = targets.flatMap((t) => leaveIn(t, cp.workers ? null : cp.sites).filter((l) => !cp.workers || cp.workers.includes(l.worker)).map((l) => ({ t, l })));
           const replaced = targets.filter((t) => has(t));
-          const result = copyWeek(src, weeks[cp.to], cp.sites, cp.to);
-          const errs = offErrors(result.filter((g) => !g.float && cp.sites.includes(g.site)));
-          const people = result.filter((g) => !g.float && cp.sites.includes(g.site)).reduce((n, g) => n + g.people.length, 0);
-          const shifts = result.filter((g) => !g.float && cp.sites.includes(g.site)).flatMap((g) => g.cells.flat()).filter(Array.isArray).length;
+          const fresh = targets.filter((t) => t <= MAXWK && !has(t));
+          const result = copyWeek(src, weeks[cp.to], cp.sites, cp.to, cp.workers);
+          const errs = offErrors(result.filter(inGroup)).filter((x) => !cp.workers || cp.workers.includes(x.wid));
+          const people = result.filter(inGroup).reduce((n, g) => n + rowsOf(g).length, 0);
+          const shifts = result.filter(inGroup).flatMap((g) => rowsOf(g).flat()).filter(Array.isArray).length;
           return <>
             <div className="form-grid">
               <Field label="Copy from"><select id="cp-from" className="input" value={cp.from} onChange={(e) => setCp({ ...cp, from: +e.target.value })}>
@@ -432,11 +506,11 @@ export function Scheduling({ go }) {
                 {Array.from({ length: MAXWK - cp.to + 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? `Just ${weekLabel(cp.to, true)}` : `${n} weeks, to ${weekLabel(cp.to + n - 1, true)}`}</option>)}
               </select></Field>
             </div>
-            <Field label="Locations">
+            {!cp.workers && <Field label="Locations">
               <div className="cp-sites">{shown.map((x) => <label key={x.id} className="cp-site"><input type="checkbox" checked={cp.sites.includes(x.id)} onChange={(e) => setCp({ ...cp, sites: e.target.checked ? [...cp.sites, x.id] : cp.sites.filter((y) => y !== x.id) })} />{x.name}</label>)}</div>
-            </Field>
+            </Field>}
             <div className="pub-stats">
-              <div><span className="stat-value">{people}</span><span className="small muted">workers</span></div>
+              <div><span className="stat-value">{people}</span><span className="small muted">{people === 1 ? 'worker' : 'workers'}</span></div>
               <div><span className="stat-value">{shifts}</span><span className="small muted">shifts a week</span></div>
               <div><span className="stat-value">{targets.length}</span><span className="small muted">{targets.length === 1 ? 'week' : 'weeks'}</span></div>
             </div>
@@ -444,12 +518,13 @@ export function Scheduling({ go }) {
             <div className="row-line"><Pill tone="good">Copied</Pill><span className="small">Every shift and weekly off, on the same days and times.</span></div>
             {covers > 0 && <div className="row-line"><Pill>Left out</Pill><span className="small">{covers} {covers === 1 ? 'cover' : 'covers'} from {weekLabel(cp.from, true)}. Covers were for that week's absences.</span></div>}
             {lv.length > 0 && <div className="row-line"><Pill tone="info">Leave</Pill><span className="small">Approved leave filled in: {lv.map(({ t, l }) => `${WORKERS.find((w) => w.id === l.worker).name} (${weekLabel(t, true)})`).join(', ')}.</span></div>}
-            {replaced.length > 0 && <div className="row-line"><Pill tone="warn">Replaces</Pill><span className="small">{replaced.map((t) => `${weekLabel(t, true)} (${pub[t] === 'published' ? 'published, workers are told when you publish again' : 'draft'})`).join(', ')}, for these locations.</span></div>}
+            {replaced.length > 0 && <div className="row-line"><Pill tone="warn">Replaces</Pill><span className="small">{replaced.map((t) => `${weekLabel(t, true)} (${pub[t] === 'published' ? 'published, workers are told when you publish again' : 'draft'})`).join(', ')}, {cp.workers ? `${first(W(cp.workers[0]).name)}'s row only` : 'for these locations'}.</span></div>}
+            {cp.workers && fresh.length > 0 && <div className="row-line"><Pill tone="info">New week</Pill><span className="small">{fresh.map((t) => weekLabel(t, true)).join(', ')} {fresh.length === 1 ? 'has' : 'have'} no roster yet, so {fresh.length === 1 ? 'it starts' : 'they start'} with just {first(W(cp.workers[0]).name)}. Everyone else shows as not rostered until you copy or upload them.</span></div>}
             {errs.length > 0 && <div className="row-line"><Pill tone="crit">Weekly off</Pill><span className="small">{errs.length} {errs.length === 1 ? 'worker has' : 'workers have'} no weekly off in the copy. Fix before publishing: {errs.map((x) => W(x.wid).name).join(', ')}.</span></div>}
             <div className="drawer-actions">
               <button className="btn ghost" onClick={() => setCp(null)}>Cancel</button>
               <span className="grow" />
-              <button className="btn" disabled={!cp.sites.length} onClick={doCopy}>{cp.n === 1 ? `Copy into ${weekLabel(cp.to, true)}` : `Copy into ${cp.n} weeks`}</button>
+              <button className="btn" disabled={!cp.sites.length && !cp.workers} onClick={doCopy}>{cp.n === 1 ? `Copy into ${weekLabel(cp.to, true)}` : `Copy into ${cp.n} weeks`}</button>
             </div>
           </>;
         })()}
@@ -532,19 +607,59 @@ export function Scheduling({ go }) {
                 {day.c >= nowIdx && <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>}
               </> : <>
                 <div><b>{day.c >= nowIdx ? 'Not covered yet' : 'Was not covered'}</b><div className="small muted">Usual shift {sh0[1]} to {endOf(sh0[1], tplOf(sh0[0]).base + (tplOf(sh0[0]).brk || 0)).time} · {tplLabel(tplOf(sh0[0]))}</div></div>
-                {day.c >= nowIdx && <button className="btn sm" onClick={() => findCover(dayWorker.id, day.g, day.c, G(day.g).cells[day.r])}>Find cover</button>}
+                {day.c >= nowIdx && <button className="btn sm" onClick={() => findCover(dayWorker.id, day.g, day.c, sh0, 'Annual leave')}>Find cover</button>}
               </>}
             </section>
           ); })()}
+          {(() => {
+            const prevG = has(wk - 1) && weeks[wk - 1].find((g) => g.site === day.g);
+            const raw = prevG && prevG.cells[day.r] && prevG.cells[day.r][day.c];
+            const prev = Array.isArray(raw) ? (raw.filter((y) => !y[3]).length ? raw.filter((y) => !y[3]) : null) : raw === 'O' || raw === 'X' || raw === 'A' ? raw : null;
+            const showPrev = prev && cur !== 'L' && JSON.stringify(prev) !== JSON.stringify(cur);
+            const covering = list.some((y) => y[3]) || list.some((y) => coverFor(dayWorker.id, day.c, y));
+            const canOff = cur !== 'O' && cur !== 'L' && !covering;
+            if (!showPrev && !canOff) return null;
+            return (
+              <div className="day-quick">
+                {showPrev && <button className="btn sm ghost" onClick={() => { setCell(day.g, day.r, day.c, prev); toast(`Same as last ${days[day.c].split(' ')[0]}`); }}><Icon name="copy" size={13} /> Same as last week: {shotText(prev, site).join(', ')}</button>}
+                {canOff && <button className="btn sm ghost" onClick={() => { setCell(day.g, day.r, day.c, 'O'); toast(`${days[day.c]} is now ${first(dayWorker.name)}'s weekly off`); }}>Make this a weekly off</button>}
+              </div>
+            );
+          })()}
           {list.length > 0 && <DayTimeline list={list} home={site} />}
           {list.length === 0 && cur !== 'L' && <p className="muted">{isPool ? 'Available. Assign a cover from the absent worker\'s day, or add a shift below.' : 'Nothing planned. Add one or more shifts below.'}</p>}
-          {[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x) => (
-            <div key={x.join()} className="dayshift">
-              <span className={'locbar' + (x[2] && x[2] !== site ? ' away' : '')} />
-              <div><b className="mono">{fmtShift(x)}</b><div className="small muted">{siteOf(x[2] || site).name} · {tplLabel(tplOf(x[0]))}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div></div>
-              <button className="btn sm ghost" onClick={() => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : 'Shift removed'); }}>Remove</button>
-            </div>
-          ))}
+          {[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x) => {
+            const key = x.join(); const cv = !x[3] && coverFor(dayWorker.id, day.c, x);
+            const editing = ed && ed.key === key;
+            const swapped = editing && list.map((y) => (y === x ? mk(ed.t, ed.st, ed.site) : y));
+            const eChecks = editing ? dayChecks(swapped.map(norm), site) : [];
+            const removeShift = () => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); if (cv) setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : cv ? `Shift removed · ${first(cv.w.name)}'s cover cancelled` : 'Shift removed'); };
+            return (
+              <div key={key} className="dayshift-wrap">
+                <div className="dayshift">
+                  <span className={'locbar' + (x[2] && x[2] !== site ? ' away' : '')} />
+                  <div><b className="mono">{fmtShift(x)}</b><div className="small muted">{siteOf(x[2] || site).name} · {tplLabel(tplOf(x[0]))}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div>
+                    {cv && <div className="small cov-line">Covered by <b>{cv.w.name}</b> <span className="muted">· {isFloat(cv.w) ? 'Floater' : siteOf(cv.g).name}</span></div>}</div>
+                  <div className="ds-acts">
+                    {!x[3] && !editing && <button className="btn sm ghost" onClick={() => setEd({ key, t: x[0], st: x[1], site: x[2] || (isPool ? (shown[0] || SITES[0]).id : site) })}>Edit</button>}
+                    {!x[3] && !cv && <button className="btn sm ghost" onClick={() => findCover(dayWorker.id, x[2] || day.g, day.c, x, 'Can\'t make this shift')}>Find cover</button>}
+                    {cv && <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>}
+                    <button className="btn sm ghost danger" onClick={removeShift}>Remove</button>
+                  </div>
+                </div>
+                {editing && <div className="ds-edit">
+                  <div className="form-grid">
+                    <Field label="Shift"><select id="ed-t" className="input" value={ed.t} onChange={(e) => setEd({ ...ed, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>
+                    <Field label="Starts" hint={`Ends ${endOf(ed.st, spanOf(tplOf(ed.t))).time}${endOf(ed.st, spanOf(tplOf(ed.t))).nextDay ? ', after midnight' : ''}`}><input id="ed-st" type="time" className="input mono" value={ed.st} onChange={(e) => setEd({ ...ed, st: e.target.value || ed.st })} /></Field>
+                    <Field label="Location"><select id="ed-site" className="input" value={ed.site} onChange={(e) => setEd({ ...ed, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (their location)' : ''}</option>)}</select></Field>
+                  </div>
+                  {eChecks.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>)}
+                  {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
+                  <div className="ds-edit-acts"><button className="btn ghost sm" onClick={() => setEd(null)}>Cancel</button><button className="btn sm" disabled={eChecks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, swapped.map(norm)); setEd(null); toast('Shift updated'); }}>Save</button></div>
+                </div>}
+              </div>
+            );
+          })}
           {list.length > 0 && !list.some((x) => x[3]) && (() => {
             const row = G(day.g).cells[day.r];
             const can = (d) => d !== day.c && d >= (nowIdx < 0 ? 0 : nowIdx) && row[d] !== 'L' && !(fixedMode && OFF_RULES.days.includes(d));
@@ -572,8 +687,37 @@ export function Scheduling({ go }) {
           <Note>Each shift has its own clock-in and clock-out at its own location, and attendance is judged per shift. A shift at another location also appears under that location's roster.</Note>
         </>}
       </Drawer>
+      <Drawer open={!!clr} onClose={() => setClr(null)} title={clr && `Clear days · ${W(G(clr.g).people[clr.r]).name}`} sub={weekLabel(wk)}>
+        {clr && (() => {
+          const row = G(clr.g).cells[clr.r]; const blank = clr.g === 'pool' ? 'A' : 'X';
+          const can = (i) => i >= (nowIdx < 0 ? 0 : nowIdx) && row[i] !== 'L' && row[i] !== blank && !(wk === 0 && i === TODAY && Array.isArray(row[i]) && clockedIn(G(clr.g).people[clr.r]));
+          const covering = clr.days.filter((i) => Array.isArray(row[i]) && row[i].some((y) => y[3]));
+          // People covering this worker on the picked days: their cover goes when the shift goes.
+          const covered = clr.days.flatMap((i) => (Array.isArray(row[i]) ? row[i].filter((y) => !y[3]).map((y) => ({ i, cv: coverFor(G(clr.g).people[clr.r], i, y) })).filter((x) => x.cv) : []));
+          return <>
+            <div className="small muted">Picked days become {blank === 'A' ? 'available' : 'not rostered'}. Past days, leave and days already clocked in can't be cleared.</div>
+            <div className="rep-days">{days.map((d, i) => <button key={i} className={'wk-day' + (clr.days.includes(i) ? ' on' : '')} disabled={!can(i)} aria-pressed={clr.days.includes(i)} title={row[i] === 'L' ? 'On leave' : !can(i) ? 'Can\'t clear' : d} onClick={() => setClr({ ...clr, days: clr.days.includes(i) ? clr.days.filter((x) => x !== i) : [...clr.days, i] })}>{d.slice(0, 2)}</button>)}
+              <button className="linkbtn small" onClick={() => setClr({ ...clr, days: days.map((_, i) => i).filter((i) => can(i) && row[i] !== 'O') })}>All working days</button></div>
+            {clr.days.length > 0 && <div className="small">{[...clr.days].sort().map((i) => `${days[i]}: ${shotText(row[i], clr.g).join(', ')}`).join(' · ')}</div>}
+            {clr.days.some((i) => row[i] === 'O') && <div className="row-line"><Pill tone="warn">Weekly off</Pill><span className="small">Clearing a weekly off can leave the week without one; it can't be published until there is one again.</span></div>}
+            {covered.length > 0 && <div className="row-line"><Pill tone="info">Cover</Pill><span className="small">{covered.map(({ i, cv }) => `${first(cv.w.name)}'s cover on ${days[i]}`).join(', ')} is cancelled too.</span></div>}
+            {covering.length > 0 && <div className="row-line"><Pill tone="warn">Cover</Pill><span className="small">They're covering someone on {covering.map((i) => days[i]).join(', ')}. That person's day becomes uncovered again.</span></div>}
+            <div className="drawer-actions">
+              <button className="btn ghost" onClick={() => setClr(null)}>Cancel</button>
+              <span className="grow" />
+              <button className="btn ghost danger" disabled={!clr.days.length} onClick={() => { setCells(clr.g, clr.r, clr.days, blank); covered.forEach(({ i, cv }) => setCell(cv.g, cv.r, i, undoCell(G(cv.g).cells[cv.r][i], G(clr.g).people[clr.r]))); toast(`Cleared ${clr.days.length} ${clr.days.length === 1 ? 'day' : 'days'} for ${first(W(G(clr.g).people[clr.r]).name)}`); setClr(null); }}>{clr.days.length ? `Clear ${clr.days.length} ${clr.days.length === 1 ? 'day' : 'days'}` : 'Pick days'}</button>
+            </div>
+          </>;
+        })()}
+      </Drawer>
+      {shot && <div className="shot-wrap" aria-hidden="true"><div className="shot" ref={shotRef}>
+        <div className="shot-head"><b>{shot.kind === 'worker' ? W(G(shot.sid).people[shot.r]).name : siteOf(shot.sid).name}</b><span>{weekLabel(wk)}{shot.kind === 'worker' ? ` · ${shot.sid === 'pool' ? 'Floater' : siteOf(shot.sid).name}` : ''}</span></div>
+        <table className="shot-t"><thead><tr>{shot.kind === 'loc' && <th>Worker</th>}{days.map((d) => <th key={d}>{d}</th>)}</tr></thead>
+          <tbody>{shotRows().map((x) => <tr key={x.w.id + (x.visiting ? 'v' : '')}>{shot.kind === 'loc' && <td className="shot-who"><b>{x.w.name}</b><span>{x.visiting ? 'From another location' : x.w.role}</span></td>}{x.cells.map((c, i) => <td key={i} className={c === 'O' || c === 'L' ? 'shot-off' : ''}>{shotText(c, x.home).map((t, k) => <div key={k}>{t}</div>)}</td>)}</tr>)}</tbody></table>
+        <div className="shot-foot">OpsPro · {pub[wk] === 'published' ? 'published roster' : 'draft, not yet published'}</div>
+      </div></div>}
       <CoverDrawer open={!!cover} onClose={() => setCover(null)} onAssign={assign}
-        ctx={cover && { site: cover.site, ci: cover.ci, absent: cover.absent, sh: cover.sh, dayLabel: days[cover.ci], groups, why: 'Annual leave' }} />
+        ctx={cover && { site: cover.site, ci: cover.ci, absent: cover.absent, sh: cover.sh, dayLabel: days[cover.ci], groups, why: cover.why || 'Absent' }} />
     </>
   );
 }

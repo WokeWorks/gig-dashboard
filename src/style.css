@@ -1382,3 +1382,38 @@ label.btn { cursor: pointer; }
 .rep-days .wk-day.same { border-style: dashed; }
 .lm-fit { margin: 0 10px 8px 0; font: 600 12px var(--body); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
 .lm-fit:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Roster: per-row and per-location actions (copy forward, clear days, save as picture) */
+.act { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; padding: 0; }
+.act:hover, .act:focus-visible { color: var(--fg); background: var(--surface-2); border-color: var(--line); }
+.row-acts { display: inline-flex; gap: 1px; margin-left: auto; opacity: 0; transition: opacity .12s; }
+.roster tr:hover .row-acts, .row-acts:focus-within { opacity: 1; }
+@media (hover: none) { .row-acts { opacity: 1; } }
+.roster td .namerow { min-width: 0; }
+.rg-acts { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 1px; background: var(--surface-2); opacity: 0; transition: opacity .12s; }
+.roster tr.rg-head:hover .rg-acts, .rg-acts:focus-within { opacity: 1; }
+@media (hover: none) { .rg-acts { opacity: 1; } }
+
+/* Roster day drawer: per-shift actions and inline edit */
+.dayshift-wrap { border-bottom: 1px solid var(--line); }
+.dayshift-wrap > .dayshift { border-bottom: 0; }
+.ds-acts { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.ds-edit { padding: 4px 0 12px 18px; display: grid; gap: 8px; }
+.ds-edit-acts { display: flex; gap: 8px; justify-content: flex-end; }
+.cov-line { color: var(--good); margin-top: 2px; }
+.day-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.cell.one .cell-sub.cov { display: block; margin-top: 2px; }
+
+/* Off-screen card that becomes the shared PNG */
+.shot-wrap { position: fixed; left: -10000px; top: 0; pointer-events: none; }
+.shot { width: max-content; min-width: 640px; padding: 20px 22px; background: var(--surface); color: var(--fg); font-family: inherit; border-radius: 12px; }
+.shot-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.shot-head b { font-size: 18px; }
+.shot-head span { color: var(--muted); font-size: 13px; }
+.shot-t { border-collapse: collapse; font-size: 12.5px; }
+.shot-t th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.shot-t td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.shot-t td.shot-off { color: var(--muted); }
+.shot-who b { display: block; }
+.shot-who span { color: var(--muted); font-size: 11.5px; }
+.shot-foot { margin-top: 10px; color: var(--muted); font-size: 11px; }
