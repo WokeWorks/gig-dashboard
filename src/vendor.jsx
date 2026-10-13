@@ -240,7 +240,6 @@ export function VendorStatements({ client = 'all' }) {
 export function ClientPicker({ value, onChange }) {
   return (
     <div className="vc-pick">
-      <div className="small muted">Signed in as <b>GH FZE</b></div>
       <Select id="v-client" className="input" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Client">
         <option value="all">All clients</option>{VCLIENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </Select>
