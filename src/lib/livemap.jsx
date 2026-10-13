@@ -9,13 +9,83 @@ const POOL = new Map();
 const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
 const rethemeAll = () => POOL.forEach((e) => { if (!e.map) return; e.map.setOptions({ styles: isDark() ? MAP_STYLES.dark : MAP_STYLES.light }); if (e.retheme) e.retheme(); });
 let themeWatch = false;
+// A kept map waits off screen at the size it was shown, so it doesn't redraw when it comes back.
+let park = null;
+const parkMap = (div, host) => {
+  if (!park) { park = document.createElement('div'); park.setAttribute('aria-hidden', 'true'); park.style.cssText = 'position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;'; document.body.appendChild(park); }
+  const r = host && host.getBoundingClientRect(); if (r && r.width) { div.style.width = r.width + 'px'; div.style.height = r.height + 'px'; }
+  park.appendChild(div);
+};
 function pooledMap(slot, host, G, opts) {
   if (!themeWatch) { themeWatch = true; window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rethemeAll); new MutationObserver(rethemeAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); }
   let e = POOL.get(slot); const fresh = !e;
   if (!e) { const div = document.createElement('div'); div.className = 'gm-canvas'; e = { div, map: null, st: {} }; POOL.set(slot, e); }
-  host.appendChild(e.div);
+  e.div.style.width = ''; e.div.style.height = ''; host.appendChild(e.div);
   if (!e.map) e.map = new G.Map(e.div, { ...opts, styles: isDark() ? MAP_STYLES.dark : MAP_STYLES.light });
   return { e, fresh };
+}
+
+// Store pins are our own HTML (count, name, status), drawn together on one Google overlay so they can be laid out as a
+// set on every zoom: pins that would sit on top of each other merge into one (click it to zoom in), and labels are
+// placed in order of importance (selected, then no-shows), right or left of their pin, and left off when there is no
+// room (they still show on hover). Pins are reused between draws and only rewritten when what they show changes, so
+// selecting a store or zooming doesn't restart the others.
+const NEAR = 30; // px: closer than this and two pins merge
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let PinLayer = null;
+function makePinLayer(G, m) {
+  if (!PinLayer) PinLayer = class extends G.OverlayView {
+    onAdd() { this.box = document.createElement('div'); this.box.className = 'lp-layer'; this.els = new Map(); this.getPanes().overlayMouseTarget.appendChild(this.box); }
+    onRemove() { if (this.box) { this.box.remove(); this.box = null; } }
+    draw() {
+      const pr = this.getProjection(), D = this.data; if (!pr || !this.box || !D) return;
+      const map = this.mapRef;
+      const rank = (d) => (D.pick === d.id ? 1e6 : 0) + (d.bad ? 1e3 : 0) + (d.due || 0);
+      const at = D.points.map((d) => { const q = pr.fromLatLngToDivPixel(new G.LatLng(d.lat, d.lng)); return { d, x: q.x, y: q.y }; }).sort((x, y) => rank(y.d) - rank(x.d));
+      const groups = [];
+      at.forEach((a) => { const g = groups.find((k) => Math.hypot(k.x - a.x, k.y - a.y) < NEAR); if (g) g.ds.push(a.d); else groups.push({ x: a.x, y: a.y, ds: [a.d] }); });
+      const taken = groups.map((g) => [g.x - 15, g.y - 15, g.x + 15, g.y + 15]);
+      const free = (r) => !taken.some((t) => r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]);
+      const mg = {}; groups.forEach((g) => g.ds.forEach((d) => { mg[d.id] = g.ds.length > 1; }));
+      const seen = new Set();
+      groups.forEach((g) => {
+        const key = g.ds.map((d) => d.id).join('|'); seen.add(key);
+        const one = g.ds.length === 1 ? g.ds[0] : null;
+        const sum = (k) => g.ds.reduce((n, d) => n + (d[k] || 0), 0);
+        const due = sum('due'), inn = sum('inn'), bad = sum('bad');
+        const tone = bad ? 'crit' : due ? 'good' : 'idle';
+        const on = g.ds.some((d) => d.id === D.pick);
+        const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}`; // late isn't an alert
+        let el = this.els.get(key);
+        if (!el) {
+          el = document.createElement('div'); el.tabIndex = 0; el.setAttribute('role', 'button');
+          el.onclick = (e) => { e.stopPropagation(); el.act(); }; el.onkeydown = (e) => { if (e.key === 'Enter') el.act(); };
+          this.box.appendChild(el); this.els.set(key, el);
+        }
+        el.className = 'lp-wrap'; el.dataset.ids = key;
+        el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
+        el.setAttribute('aria-label', g.ds.map((d) => d.title || d.name).join(', ')); // no native tooltip: the label says it
+        const html = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}">${one ? '' : '<span class="lp-stack"></span>'}<span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : `${g.ds[0].name} + ${g.ds.length - 1} more`)}</b><small>${esc(sub)}</small></span></div>`;
+        if (el.html !== html) { el.innerHTML = html; el.html = html; }
+        el.act = () => {
+          if (one) { D.onPick(one.id); return; }
+          const b = new G.LatLngBounds(); g.ds.forEach((d) => b.extend({ lat: d.lat, lng: d.lng }));
+          D.onMerged(); map.fitBounds(b, { top: 120, right: 200, bottom: 80, left: 80 });
+        };
+        // Label: always tried for the selected pin and for no-shows; others show theirs on hover.
+        const lab = el.querySelector('.lp-lab'); lab.classList.remove('quiet');
+        const w = lab.offsetWidth, h = lab.offsetHeight;
+        const right = [g.x + 16, g.y - h / 2, g.x + 16 + w, g.y + h / 2], left = [g.x - 16 - w, g.y - h / 2, g.x - 16, g.y + h / 2];
+        const order = one && one.left ? [['left', left], ['right', right]] : [['right', right], ['left', left]];
+        const spot = (on || bad) && order.find(([, r]) => free(r));
+        if (spot) { taken.push(spot[1]); if (spot[0] === 'left') el.classList.add('left'); }
+        else { lab.classList.add('quiet'); if (free(left) && !free(right)) el.classList.add('left'); }
+      });
+      this.els.forEach((el, k) => { if (!seen.has(k)) { el.remove(); this.els.delete(k); } });
+      if (D.after) D.after(mg);
+    }
+  };
+  const l = new PinLayer(); l.mapRef = m; l.setMap(m); return l;
 }
 
 // The live map used on the Liveboard and the vendor overview: Google Maps with our own HTML pins.
@@ -26,9 +96,9 @@ function pooledMap(slot, host, G, opts) {
 // only highlighted, never panned to, and never rebuilds the pins.
 // slot: which kept map to use (one per screen that shows a live map).
 export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0, focus = null, slot = 'live' }) {
-  const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
+  const el = useRef(null); const map = useRef(null); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
-  const pts = useRef([]); const merged = useRef({}); const moved = useRef(false); const fitKey = useRef('');
+  const pts = useRef([]); const merged = useRef({}); const keptRef = useRef(null); const moved = useRef(false); const fitKey = useRef('');
   const onPickRef = useRef(onPick); onPickRef.current = onPick;
   const hoverRef = useRef(hover); hoverRef.current = hover;
   // Rebuild the pins only when what they show changes, not every time the parent re-renders with a new array.
@@ -59,7 +129,7 @@ export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0,
         clickableIcons: false, gestureHandling: 'cooperative', // the page scrolls; ctrl/two fingers zoom the map
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
       });
-      const m = kept.map;
+      const m = kept.map; keptRef.current = kept;
       // A kept map remembers whether it was framed for these stores and whether the person has moved it since.
       if (!fresh) { fitKey.current = kept.st.fitKey || ''; moved.current = !!kept.st.moved; }
       map.current = m;
@@ -71,65 +141,18 @@ export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0,
       // ignore the small jitters that layout changes cause.
       let last = [box.clientWidth, box.clientHeight];
       const ro = new ResizeObserver(() => { if (!alive) return; const now = [box.clientWidth, box.clientHeight]; if (Math.abs(now[0] - last[0]) > 40 || Math.abs(now[1] - last[1]) > 40) { last = now; if (!moved.current) fitAll(); } }); ro.observe(box);
-      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; kept.st.fitKey = fitKey.current; kept.st.moved = moved.current; kept.div.remove(); };
+      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); ro.disconnect(); kept.st.fitKey = fitKey.current; kept.st.moved = moved.current; parkMap(kept.div, box); };
       setState('ready');
     }).catch((e) => { if (alive) setState(e.message === 'missing_key' ? 'missing_key' : e.message === 'refused' ? 'refused' : 'offline'); });
     return () => { alive = false; window.removeEventListener('opspro-maps-refused', refused); cleanup(); map.current = null; };
   }, []);
   useEffect(() => {
-    const m = map.current, G = gm.current; if (!m || !G || state !== 'ready') return;
-    pins.current.forEach((p) => p.setMap(null)); pins.current = [];
-    // Store pins are our own HTML (count, name, status), drawn together on one Google overlay so they can be laid out
-    // as a set on every zoom: pins that would sit on top of each other merge into one (click it to zoom in), and labels
-    // are placed in order of importance (selected, then no-shows), right or left of their pin, and left off when there
-    // is no room for them (they still show on hover).
-    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const rank = (d) => (pick === d.id ? 1e6 : 0) + (d.bad ? 1e3 : 0) + (d.due || 0);
-    const NEAR = 30; // px: closer than this and two pins merge
-    class Layer extends G.OverlayView {
-      onAdd() { this.box = document.createElement('div'); this.box.className = 'lp-layer'; this.getPanes().overlayMouseTarget.appendChild(this.box); }
-      onRemove() { if (this.box) { this.box.remove(); this.box = null; } }
-      draw() {
-        const pr = this.getProjection(); if (!pr || !this.box) return;
-        const at = points.map((d) => { const q = pr.fromLatLngToDivPixel(new G.LatLng(d.lat, d.lng)); return { d, x: q.x, y: q.y }; }).sort((x, y) => rank(y.d) - rank(x.d));
-        const groups = [];
-        at.forEach((a) => { const g = groups.find((k) => Math.hypot(k.x - a.x, k.y - a.y) < NEAR); if (g) g.ds.push(a.d); else groups.push({ x: a.x, y: a.y, ds: [a.d] }); });
-        this.box.innerHTML = '';
-        const taken = groups.map((g) => [g.x - 15, g.y - 15, g.x + 15, g.y + 15]);
-        const free = (r) => !taken.some((t) => r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]);
-        merged.current = {}; groups.forEach((g) => g.ds.forEach((d) => { merged.current[d.id] = g.ds.length > 1; }));
-        groups.forEach((g) => {
-          const one = g.ds.length === 1 ? g.ds[0] : null;
-          const sum = (k) => g.ds.reduce((n, d) => n + (d[k] || 0), 0);
-          const due = sum('due'), inn = sum('inn'), bad = sum('bad');
-          const tone = bad ? 'crit' : due ? 'good' : 'idle';
-          const on = g.ds.some((d) => d.id === pick);
-          const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}`; // late isn't an alert: it stays in the list and drawer
-          const el = document.createElement('div');
-          el.className = 'lp-wrap'; el.dataset.ids = g.ds.map((d) => d.id).join('|'); el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
-          el.setAttribute('aria-label', g.ds.map((d) => d.title || d.name).join(', ')); // no native tooltip: the label says it el.tabIndex = 0; el.setAttribute('role', 'button');
-          el.innerHTML = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}">${one ? '' : '<span class="lp-stack"></span>'}<span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : `${g.ds[0].name} + ${g.ds.length - 1} more`)}</b><small>${esc(sub)}</small></span></div>`;
-          const act = () => {
-            if (one) { onPickRef.current(one.id); return; }
-            const b = new G.LatLngBounds(); g.ds.forEach((d) => b.extend({ lat: d.lat, lng: d.lng }));
-            moved.current = true; m.fitBounds(b, { top: 120, right: 200, bottom: 80, left: 80 });
-          };
-          el.onclick = (e) => { e.stopPropagation(); act(); }; el.onkeydown = (e) => { if (e.key === 'Enter') act(); };
-          this.box.appendChild(el);
-          // Label: always tried for the selected pin and for no-shows; others show theirs on hover.
-          const lab = el.querySelector('.lp-lab'); const w = lab.offsetWidth, h = lab.offsetHeight;
-          const right = [g.x + 16, g.y - h / 2, g.x + 16 + w, g.y + h / 2], left = [g.x - 16 - w, g.y - h / 2, g.x - 16, g.y + h / 2];
-          const order = one && one.left ? [['left', left], ['right', right]] : [['right', right], ['left', left]];
-          const spot = (on || bad) && order.find(([, r]) => free(r));
-          if (spot) { taken.push(spot[1]); if (spot[0] === 'left') el.classList.add('left'); }
-          else { lab.classList.add('quiet'); if (free(left) && !free(right)) el.classList.add('left'); }
-        });
-        lit();
-      }
-    }
-    const list = points.map((d) => [d.lat, d.lng]);
-    const layer = new Layer(); layer.setMap(m); pins.current.push(layer);
-    pts.current = list;
+    const m = map.current, G = gm.current, kept = keptRef.current; if (!m || !G || !kept || state !== 'ready') return;
+    // One pin layer per kept map, for the whole session: updated in place, never torn down, so pins don't flash.
+    const layer = kept.layer || (kept.layer = makePinLayer(G, m));
+    layer.data = { points, pick, onPick: (id) => onPickRef.current(id), onMerged: () => { moved.current = true; }, after: (mg) => { merged.current = mg; lit(); } };
+    layer.draw();
+    pts.current = points.map((d) => [d.lat, d.lng]);
     // Refit only when the set of stores changes (e.g. another manager), not on every live update.
     const key = points.map((d) => d.id).join(',');
     if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
@@ -184,7 +207,7 @@ export function SiteMap({ lat, lng, radius, name, height = 132 }) {
       if (fresh) G.event.addListenerOnce(m, 'idle', () => { fit(); if (alive) setReady(true); });
       else { fit(); setReady(true); }
       const ro = new ResizeObserver(fit); ro.observe(el.current);
-      cleanup = () => { ro.disconnect(); kept.div.remove(); };
+      const host = el.current; cleanup = () => { ro.disconnect(); parkMap(kept.div, host); };
     }).catch(() => {});
     return () => { alive = false; cleanup(); };
   }, [lat, lng, radius]);
