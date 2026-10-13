@@ -47,8 +47,7 @@ const QUIET = [
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
-  // Keep the map's own names to cities and big districts, so the store pins and labels carry the eye.
-  { featureType: 'administrative.neighborhood', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  // Fewer of the map's own names, so the store pins and labels carry the eye; neighbourhoods stay (faint) for bearings.
   { featureType: 'administrative.land_parcel', elementType: 'labels', stylers: [{ visibility: 'off' }] },
   { featureType: 'landscape', elementType: 'labels', stylers: [{ visibility: 'off' }] },
 ];
@@ -68,6 +67,7 @@ const style = (c) => [
   { elementType: 'labels.text.stroke', stylers: [{ color: c.halo }, { weight: 3 }] },
   { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: c.text }] },
   { featureType: 'administrative.sublocality', elementType: 'labels.text.fill', stylers: [{ color: c.faint }] },
+  { featureType: 'administrative.neighborhood', elementType: 'labels.text.fill', stylers: [{ color: c.faint }] },
 ];
 export const MAP_STYLES = {
   // --bg #F5F2F2, --surface-2 #EEE9E9, --line #E4DEDD, --line-strong #D3CBCA, --muted #756C6A, --faint #9A908E, --accent-soft #ECF9F5
