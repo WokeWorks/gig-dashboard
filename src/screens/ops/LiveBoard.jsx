@@ -15,6 +15,7 @@ export function LiveBoard({ go }) {
   const [only, setOnly] = useState('all');
   const [openLoc, setOpenLoc] = useState(null);
   const [pick, setPick] = useState(null);
+  const [panel, setPanel] = useState(null); // location open in the side panel (from a pin)
   useEffect(() => { if (pick) { const e = document.getElementById('lm-' + pick); if (e) e.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } }, [pick]);
   const [cover, setCover] = useState(null);
   const [handled, setHandled] = useState({});
@@ -26,25 +27,69 @@ export function LiveBoard({ go }) {
   const shown = data.filter((d) => only === 'all' || (only === 'noshow' ? d.bad : !d.bad)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
   const actions = data.flatMap((d) => d.ppl.filter((p) => p.status === 'noshow' || p.status === 'late').map((p) => ({ ...p, site: d.s }))).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
+  const pd = panel && data.find((d) => d.s.id === panel);
   return (
     <>
       <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" /><LiveClock /></span>} />
       <section className="card flush lm-wrap">
-        <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={pick} onPick={setPick} />
+        <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={panel || pick} onPick={(id) => setPanel(id)} inset={panel ? 372 : 0} />
         <div className="lm-over lm-filters">
-          {isAdmin() && <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>}
+          {isAdmin() && <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); setPanel(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>}
           <div className="lm-chips" role="tablist" aria-label="Show">
             {[['all', 'All locations', null], ['noshow', 'With a no-show', 'crit'], ['ok', 'Everyone in', 'good']].map(([k, l, tone]) => (
-              <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}</button>
+              <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); setPanel(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}</button>
             ))}
           </div>
         </div>
-        <div className="lm-over lm-stats">
+        {!pd && <div className="lm-over lm-stats">
           <div className={tot.inn ? 'good' : ''}><span className="lm-sv">{tot.inn}</span><span className="lm-sl">in now</span></div>
           <div className={tot.bad ? 'crit' : ''}><span className="lm-sv">{tot.bad}</span><span className="lm-sl">no-show</span></div>
           <div className={tot.late ? 'warn' : ''}><span className="lm-sv">{tot.late}</span><span className="lm-sl">late</span></div>
           <div><span className="lm-sv">{tot.up}</span><span className="lm-sl">later today</span></div>
-        </div>
+        </div>}
+        {pd && (() => {
+          const need = pd.ppl.filter((p) => ['noshow', 'waiting', 'late'].includes(p.status)).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
+          const inn = pd.ppl.filter((p) => ['in', 'break'].includes(p.status)).sort((a, b) => a.s0 - b.s0);
+          const ups = [...pd.up].sort((a, b) => a.s0 - b.s0);
+          const who = (p) => <button className="namelink" onClick={() => go('workforce', { worker: p.w.id })}>{p.w.name}</button>;
+          return (
+            <aside className="lm-panel" aria-label={pd.s.name}>
+              <div className="lm-panel-head">
+                <div className="lm-panel-title"><b>{pd.s.name}</b><span className="small muted">{[isAdmin() && MANAGERS.find((m) => m.sites.includes(pd.s.id)).name, pd.s.hours].filter(Boolean).join(' · ')}</span></div>
+                <button className="lm-panel-x" aria-label="Close" onClick={() => setPanel(null)}><Icon name="x" size={16} /></button>
+              </div>
+              <div className="lm-panel-stats">
+                <div className={pd.inn ? 'good' : ''}><b>{pd.inn}</b><span>in now</span></div>
+                <div className={pd.bad ? 'crit' : ''}><b>{pd.bad}</b><span>no-show</span></div>
+                <div><b>{pd.late}</b><span>late</span></div>
+                <div><b>{pd.up.length}</b><span>later today</span></div>
+              </div>
+              <div className="lm-panel-body">
+                {need.length > 0 && <div className="lm-panel-sec"><h4>Needs you</h4>
+                  {need.map((p) => (
+                    <div key={p.w.id + p.start} className={'lm-pp ' + p.status}>
+                      <span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.status === 'late' ? `In at ${hm(p.inAt)}, ${p.late} min late` : p.status === 'noshow' ? `No-show · due ${p.start}` : `Due ${p.start}, not in yet`}</span></span>
+                      <span className="lm-p-act">
+                        {p.status !== 'late' && <button className="btn sm ghost" onClick={() => setMark({ p, site: pd.s, how: 'here', at: p.start, why: 'Phone not working', excused: false })}>Mark attendance</button>}
+                        {p.status === 'noshow' && <button className="btn sm" onClick={() => setCover({ ...p, site: pd.s })}>Cover</button>}
+                      </span>
+                    </div>
+                  ))}
+                </div>}
+                <div className="lm-panel-sec"><h4>In now</h4>
+                  {inn.length ? inn.map((p) => <div key={p.w.id + p.start} className="lm-pp in"><span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.status === 'break' ? 'On break' : `In at ${hm(p.inAt)}`} · until {p.end}</span></span></div>) : <div className="small muted">Nobody in yet.</div>}
+                </div>
+                {ups.length > 0 && <div className="lm-panel-sec"><h4>Later today</h4>
+                  {ups.map((p) => <div key={p.w.id + p.start} className="lm-pp"><span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.start} – {p.end}</span></span></div>)}
+                </div>}
+              </div>
+              <div className="lm-panel-foot">
+                <button className="btn ghost sm" onClick={() => setOpenLoc(pd.s.id)}>Today's timeline</button>
+                <button className="btn ghost sm" onClick={() => go('schedule')}>Open roster</button>
+              </div>
+            </aside>
+          );
+        })()}
       </section>
       <section className="card flush lm-list">
         {shown.length === 0 && <div className="pad small muted lv-empty">No locations match.</div>}

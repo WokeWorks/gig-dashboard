@@ -1634,3 +1634,25 @@ label.btn { cursor: pointer; }
 .pm-title b { display: block; color: var(--fg); font-size: 13.5px; font-weight: 650; }
 .pm-title span { display: block; color: var(--muted); font-size: 12px; }
 .acct { padding-right: 12px; }
+
+/* Liveboard side panel: opens from a pin, docked on the right of the map. */
+.lm-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(348px, calc(100% - 24px)); z-index: 5; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.18); overflow: hidden; animation: lmpanel .16s ease-out; }
+@keyframes lmpanel { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+.lm-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 14px 10px 16px; }
+.lm-panel-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .lm-panel-title b { font-size: 15px; }
+.lm-panel-x { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.lm-panel-x:hover { background: var(--surface-2); color: var(--fg); }
+.lm-panel-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 12px; border: 1px solid var(--line); border-radius: 10px; }
+.lm-panel-stats > div { display: flex; flex-direction: column; align-items: center; padding: 7px 4px; border-left: 1px solid var(--line); }
+.lm-panel-stats > div:first-child { border-left: 0; }
+.lm-panel-stats b { font-size: 17px; font-variant-numeric: tabular-nums; } .lm-panel-stats span { font-size: 11px; color: var(--muted); }
+.lm-panel-stats .good b { color: var(--good); } .lm-panel-stats .crit b { color: var(--crit); }
+.lm-panel-body { flex: 1; overflow-y: auto; padding: 4px 16px 8px; }
+.lm-panel-sec { padding: 10px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 9px; } .lm-panel-sec:first-child { border-top: 0; }
+.lm-panel-sec h4 { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.lm-pp { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; font-size: 13px; }
+.lm-pp .lb-dot { align-self: start; margin-top: 6px; }
+.lm-pp.noshow .lb-dot { background: var(--crit); } .lm-pp.in .lb-dot { background: var(--good); }
+.lm-pp-who { display: flex; flex-direction: column; min-width: 0; } .lm-pp-who .namelink { font-weight: 600; text-align: left; }
+.lm-pp .lm-p-act { flex-wrap: wrap; justify-content: flex-end; }
+.lm-panel-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }

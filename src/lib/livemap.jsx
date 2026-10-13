@@ -4,7 +4,8 @@ const { useState, useEffect, useRef } = React;
 
 // The live map used on the Liveboard and the vendor overview: Google Maps with our own HTML pins.
 // points: [{ id, name, title?, lat, lng, due, inn, bad, late, left? }]; it frames all of them on first load.
-export function LiveMap({ points, pick, onPick, height }) {
+// inset: how many pixels on the right are covered by a panel; the picked pin is kept clear of them.
+export function LiveMap({ points, pick, onPick, height, inset = 0 }) {
   const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
   const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
@@ -107,8 +108,16 @@ export function LiveMap({ points, pick, onPick, height }) {
     // Refit only when the set of stores changes (e.g. another manager), not on every live update.
     const key = points.map((d) => d.id).join(',');
     if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
-    const pp = pick && points.find((d) => d.id === pick); if (pp) { const bb = m.getBounds(); if (bb && !bb.contains({ lat: pp.lat, lng: pp.lng })) m.panTo({ lat: pp.lat, lng: pp.lng }); }
-  }, [points, pick, state]);
+    // Keep the picked store in view, and out from under the side panel when one is open.
+    const pp = pick && points.find((d) => d.id === pick);
+    if (pp) {
+      const bb = m.getBounds(); const w = el.current ? el.current.clientWidth : 0;
+      const ne = bb && bb.getNorthEast ? bb.getNorthEast() : null, sw = bb && bb.getSouthWest ? bb.getSouthWest() : null;
+      const x = ne && sw ? ((pp.lng - sw.lng()) / (ne.lng() - sw.lng())) * w : -1;
+      const hidden = !bb || !bb.contains({ lat: pp.lat, lng: pp.lng }) || x > w - inset - 60;
+      if (hidden) { m.panTo({ lat: pp.lat, lng: pp.lng }); if (inset && m.panBy) m.panBy(Math.round(inset / 2), 0); }
+    }
+  }, [points, pick, state, inset]);
   const msg = { missing_key: 'Add GOOGLE_MAPS_API_KEY to .env and rebuild to see the map.', refused: "Google Maps refused the key for this page. Allow this address for the key in Google Cloud, or open the page through npm run serve.", offline: "The map couldn't load. Check the internet connection." }[state];
   return <div className="lm-leaf" ref={el} style={height ? { height } : undefined}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
 }
