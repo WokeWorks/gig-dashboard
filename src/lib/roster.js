@@ -10,7 +10,9 @@ export let _weeksCache = null;
 
 export const weeksAll = () => (_weeksCache = _weeksCache || { '-1': shiftWeek(ROSTER_GROUPS, -1, false), 0: ROSTER_GROUPS, 1: shiftWeek(ROSTER_GROUPS, 1, true) });
 
-export const missedAt = (sid, wid, wk, ci) => (sid.charCodeAt(1) * 7 + parseInt(wid.slice(1), 10) * 3 + ci * 5 + (wk + 1) * 11) % 7 === 0;
+// Whether a rostered shift was missed (deterministic). The original 42 workers keep their scripted misses;
+// the rest of the workforce misses about one shift in 40, closer to a real store.
+export const missedAt = (sid, wid, wk, ci) => { const n = parseInt(wid.slice(1), 10); const h = sid.charCodeAt(1) * 7 + n * 3 + ci * 5 + (wk + 1) * 11; return n < 42 ? h % 7 === 0 : h % 41 === 0; };
 
 export const timesheetOf = (w) => {
   const W = weeksAll(); const n = parseInt(w.id.slice(1), 10); const days = [];

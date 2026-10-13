@@ -153,6 +153,36 @@ ROSTER_GROUPS.push({ site: 'pool', float: true, people: POOL, cells: poolCells }
 // Keep each worker's home location in step with the roster section they sit in.
 ROSTER_GROUPS.forEach((g) => !g.float && g.people.forEach((id) => { WORKERS.find((w) => w.id === id).site = g.site; }));
 
+// Fill every store up to its required headcount (SITES[].req). The first 42 workers above carry the hand-written
+// scenarios (split shifts, covers, leave, alerts); everyone added here gets an ordinary, staggered week.
+// The vendor split is set so the totals come out at GH FZE 73, Crescent 40, Meridian 29, Falcon 20.
+const FIRST = ['Abdul', 'Ajay', 'Akash', 'Aldrin', 'Ali', 'Amir', 'Anand', 'Arif', 'Arnel', 'Babu', 'Bashir', 'Binu', 'Charles', 'Daniel', 'Deepak', 'Dennis', 'Ebuka', 'Edwin', 'Emmanuel', 'Farhan', 'Gift', 'Gopal', 'Hamid', 'Haris', 'Ifeanyi', 'Irfan', 'Jamal', 'Jason', 'Jerome', 'John', 'Joseph', 'Kabir', 'Kelvin', 'Kiran', 'Kofi', 'Lijo', 'Mahesh', 'Manoj', 'Marlon', 'Michael', 'Mohan', 'Murali', 'Nabil', 'Naveen', 'Nelson', 'Obinna', 'Oscar', 'Prakash', 'Rafael', 'Rahul', 'Raju', 'Ramon', 'Rashid', 'Renato', 'Rohan', 'Sabir', 'Sajid', 'Samson', 'Shahid', 'Shiju', 'Sibi', 'Suresh', 'Tariq', 'Tobi', 'Umar', 'Vijay', 'Vincent', 'Wasim', 'Yasir', 'Zubair'];
+const LAST = ['Ahmed', 'Ali', 'Alvarez', 'Babu', 'Bautista', 'Chowdhury', 'Cruz', 'Das', 'Dela Rosa', 'Eze', 'Fernandes', 'Garcia', 'George', 'Gurung', 'Hassan', 'Hossain', 'Iqbal', 'Jacob', 'Joseph', 'Kamau', 'Khan', 'Kumar', 'Lama', 'Mathew', 'Mendoza', 'Mensah', 'Miah', 'Nair', 'Nwosu', 'Okafor', 'Ochieng', 'Pillai', 'Rahman', 'Rai', 'Ramos', 'Reyes', 'Saleem', 'Santos', 'Shah', 'Shrestha', 'Singh', 'Thapa', 'Thomas', 'Uddin', 'Varghese', 'Villanueva', 'Yadav'];
+const taken = new Set(WORKERS.map((w) => w.name));
+const nameAt = (n) => { for (let k = 0; ; k++) { const nm = `${FIRST[(n * 7 + k) % FIRST.length]} ${LAST[(n * 11 + k * 3) % LAST.length]}`; if (!taken.has(nm)) { taken.add(nm); return nm; } } };
+const NEED = { v4: 54, v1: 31, v2: 24, v3: 11 };
+const MIX = Object.entries(NEED).flatMap(([v, n]) => Array.from({ length: n }, (_, k) => ({ v, key: (k + 0.5) / n }))).sort((a, b) => a.key - b.key || a.v.localeCompare(b.v)).map((x) => x.v);
+let made = 0;
+ROSTER_GROUPS.forEach((g, gi) => {
+  if (g.float) return;
+  const s = SITES.find((x) => x.id === g.site);
+  const lead = g.people.some((id) => WORKERS.find((w) => w.id === id).role === 'Shift lead');
+  while (g.people.length < s.req) {
+    const n = made++; const i = 42 + n; const k = g.people.length;
+    const role = (!lead && k === g.people.length && n % 9 === 0) || k % 11 === 5 ? 'Shift lead' : 'Picker';
+    WORKERS.push({ id: 'w' + i, code: 'OP-' + (1041 + i * 7), name: nameAt(n), vendor: MIX[n % MIX.length], site: g.site, role, status: n % 23 === 6 ? 'Late' : n % 17 === 3 ? 'On break' : n % 47 === 20 ? 'No-show' : 'Clocked in',
+      score: [92, 88, 84, 61, 79, 95, 73, 58, 90, 82, 77, 86][(n * 5) % 12], docs: n % 13 === 4 ? 'Visa expires in 20 days' : n % 17 === 9 ? 'Emirates ID missing' : null,
+      phone: '+971 5' + (n % 6) + ' ' + String(3100000 + n * 3907).slice(0, 7), clientId: 'DRV-' + (89100 + n * 11), shift: k % 3 === 2 ? '14:00 – 02:00' : '07:00 – 19:00', shiftType: '11+1',
+      joined: ['2025-09-14', '2025-12-01', '2026-02-09', '2026-04-27', '2026-06-15', '2026-08-03'][n % 6] });
+    // A staggered week: one weekly off, mornings and evenings, the odd 10+1 shift and a little leave.
+    const off = (k * 3 + gi) % 7; const start = k % 3 === 2 ? '14:00' : '07:00'; const tpl = k % 5 === 4 ? 'f3' : 'f5';
+    g.people.push('w' + i);
+    g.cells.push(DAYS.map((_, d) => (d === off ? 'O' : n % 29 === 7 && (d === 4 || d === 5) ? 'L' : n % 19 === 11 && d === (off + 3) % 7 ? 'X' : [[tpl, start]])));
+  }
+});
+// Headcounts follow the people actually supplied.
+VENDORS.forEach((v) => { v.heads = WORKERS.filter((w) => w.vendor === v.id).length; });
+
 export const KPIS = [
   { id: 'k1', name: 'Attendance rate', src: 'System', weight: 30, target: '98%', dir: 'Higher' },
   { id: 'k2', name: 'Punctuality rate', src: 'System', weight: 20, target: '95%', dir: 'Higher' },
@@ -162,12 +192,14 @@ export const KPIS = [
   { id: 'k6', name: 'Supervisor rating', src: 'Supervisor app', weight: 5, target: '4 / 5', dir: 'Higher' },
 ];
 
-export const FIN_VENDORS = [
-  { v: 'v4', heads: 72, days: 1786, buy: 199210, penalty: -600, net: 198610 },
-  { v: 'v1', heads: 40, days: 993, buy: 99300, penalty: -800, net: 98500 },
-  { v: 'v2', heads: 28, days: 695, buy: 65490, penalty: -1200, net: 64290 },
-  { v: 'v3', heads: 20, hours: 5670, buy: 73710, penalty: -1400, net: 72310 },
-];
+// September, priced from the headcounts above: about 24.8 days present per head (paid as days ÷ 26 of the
+// monthly rate), Falcon Crew by the hour (about 283 hours per head).
+const PENALTY = { v4: -600, v1: -800, v2: -1200, v3: -1400 };
+export const FIN_VENDORS = ['v4', 'v1', 'v2', 'v3'].map((id) => {
+  const v = VENDORS.find((x) => x.id === id);
+  if (v.unit === 'hour') { const hours = Math.round(v.heads * 283.5); const buy = hours * v.buy; return { v: id, heads: v.heads, hours, buy, penalty: PENALTY[id], net: buy + PENALTY[id] }; }
+  const days = Math.round(v.heads * 24.8); const buy = Math.round((v.buy * days) / 26 / 10) * 10; return { v: id, heads: v.heads, days, buy, penalty: PENALTY[id], net: buy + PENALTY[id] };
+});
 
 export const RATE_CARDS = [
   { vendor: 'v1', role: 'Picker', rate: 2600, unit: 'month / head', ot: '1.25×', basis: 'Days present ÷ 26' },

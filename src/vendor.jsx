@@ -1,4 +1,4 @@
-import { WORKERS, PROPOSALS, DAYS, SITES, ROSTER_GROUPS, siteOf, vendorOf } from './data.js';
+import { WORKERS, FIN_VENDORS, PROPOSALS, DAYS, SITES, ROSTER_GROUPS, siteOf, vendorOf } from './data.js';
 import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
 import { GEO } from './lib/geo.js';
@@ -228,7 +228,9 @@ export function VendorRequests({ client = 'all' }) {
   );
 }
 
-const STMTS = [['deliveroo', 'September 2026', '1,786 days', 199210, -600, 'Issued'], ['talabat', 'September 2026', '3,110 hours', 41985, -270, 'Issued'], ['aflog', 'September 2026', '254 days', 26380, 0, 'Paid'], ['deliveroo', 'August 2026', '1,810 days', 201880, -450, 'Paid'], ['talabat', 'August 2026', '3,050 hours', 41175, 0, 'Paid'], ['aflog', 'August 2026', '249 days', 25860, -100, 'Paid']];
+// Deliveroo's September line is the same figure the client sees under Vendor costs.
+const FV = FIN_VENDORS.find((f) => f.v === ME);
+const STMTS = [['deliveroo', 'September 2026', `${FV.days.toLocaleString('en')} days`, FV.buy, FV.penalty, 'Issued'], ['talabat', 'September 2026', '3,110 hours', 41985, -270, 'Issued'], ['aflog', 'September 2026', '254 days', 26380, 0, 'Paid'], ['deliveroo', 'August 2026', `${Math.round(FV.days * 1.01).toLocaleString('en')} days`, Math.round(FV.buy * 1.01 / 10) * 10, -450, 'Paid'], ['talabat', 'August 2026', '3,050 hours', 41175, 0, 'Paid'], ['aflog', 'August 2026', '249 days', 25860, -100, 'Paid']];
 export function VendorStatements({ client = 'all' }) {
   const rows = STMTS.filter(([c]) => client === 'all' || c === client);
   return (
