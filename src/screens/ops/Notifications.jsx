@@ -9,14 +9,16 @@ export function Alerts() {
   const [sel, setSel] = useState(null);
   const toast = useToast();
   const types = ['All', 'No-show', 'Late', 'Face mismatch', 'Outside geofence', 'Break overrun', 'Missing clock-out', 'Document expiry'];
+  // Short names for alert types, used on the tiles and in the list.
+  const label = (t) => ({ All: 'All open', 'Outside geofence': 'Off-site punch', 'Missing clock-out': 'No clock-out', 'Document expiry': 'Document issue' }[t] || t);
   const rows = items.filter((a) => type === 'All' || a.type === type);
   const resolve = (outcome) => { setItems((xs) => xs.map((a) => (a.id === sel.id ? { ...a, open: false, outcome } : a))); toast(`Marked ${outcome.toLowerCase()}`); setSel(null); };
   return (
     <>
       <ScreenHeader title="Notifications" phase={1} spec="5.6" />
       <div className="nt-tiles" role="tablist" aria-label="Filter by type">{types.map((t) => { const all = t === 'All' ? items : items.filter((a) => a.type === t); const open = all.filter((a) => a.open).length; const sev = all.some((a) => a.open && a.sev === 'critical') ? 'crit' : all.some((a) => a.open && a.sev === 'warning') ? 'warn' : ''; return (
-        <button key={t} role="tab" aria-selected={type === t} className={'nt-tile' + (type === t ? ' on' : '') + (sev ? ' ' + sev : '')} onClick={() => setType(t)}>
-          <span className="nt-n">{open}</span><span className="nt-l">{{ All: 'All open', 'Outside geofence': 'Off-site punch', 'Missing clock-out': 'No clock-out', 'Document expiry': 'Documents' }[t] || t}</span>
+        <button key={t} role="tab" aria-selected={type === t} className={'nt-tile' + (type === t ? ' on' : '') + (open ? '' : ' none')} onClick={() => setType(t)}>
+          <span className="nt-n">{open}</span><span className="nt-l">{t !== 'All' && sev && open > 0 && <span className={'nt-dot ' + sev} aria-label={sev === 'crit' ? 'Urgent' : 'Needs a look'} />}{label(t)}</span>
         </button>
       ); })}</div>
       <section className="card flush">
@@ -25,7 +27,7 @@ export function Alerts() {
             const w = WORKERS.find((x) => x.id === a.worker);
             return (
               <li key={a.id} className={'alert-row sev-' + a.sev} onClick={() => setSel(a)} tabIndex={0}>
-                <div><b>{a.type}</b> <span className="muted small">· {w.name} · {siteOf(a.site).name} · {vendorOf(w.vendor).code}</span><div className="small">{a.detail}</div></div>
+                <div><b>{label(a.type)}</b> <span className="muted small">· {w.name} · {siteOf(a.site).name} · {vendorOf(w.vendor).code}</span><div className="small">{a.detail}</div></div>
                 <div className="alert-meta"><span className="mono small">{a.time}</span>{a.open ? <Pill tone="info">Open</Pill> : <Pill>{a.outcome}</Pill>}</div>
               </li>
             );

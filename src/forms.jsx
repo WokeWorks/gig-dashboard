@@ -81,8 +81,11 @@ const INITIAL = [
 // Published forms, shared with the worker app.
 export const FORMS_STORE = { list: INITIAL };
 // The form a worker must finish before clocking in, if any.
-export const clockInForm = (who = 'Pickers') => FORMS_STORE.list.find((f) => f.status === 'live' && f.trigger === 'clockin' && f.block && (f.who === 'Everyone' || f.who === who));
-export const formByKey = (name) => FORMS_STORE.list.find((f) => f.status === 'live' && f.name === name);
+// Forms are a later release: until they're switched on, the phone app never asks for one
+// (no checklist before clock-in, no incident report button). The Forms screen still works.
+export const FORMS_ON = { phone: false };
+export const clockInForm = (who = 'Pickers') => FORMS_ON.phone && FORMS_STORE.list.find((f) => f.status === 'live' && f.trigger === 'clockin' && f.block && (f.who === 'Everyone' || f.who === who));
+export const formByKey = (name) => FORMS_ON.phone && FORMS_STORE.list.find((f) => f.status === 'live' && f.name === name);
 const whenText = (f) => (f.trigger === 'schedule' ? `Every ${f.every || 4} hours on shift` : TRIGGERS[f.trigger]);
 // Is this answer one the manager should hear about?
 const flagged = (q, v) => {
@@ -129,7 +132,7 @@ export function FormBody({ form, answers, setAnswers, onSubmit, ctx = 'Carrefour
         </div>
         {form.fields.length === 0 && <div className="fp-empty small muted">Add a question and it shows up here.</div>}
         {form.fields.map((q, i) => { const v = answers[q.id]; const fl = flagged(q, v); return (
-          <div key={q.id} className={'fp-q' + (fl ? ' flag' : '')}>
+          <div key={q.id} className={'fp-q' + (fl ? ' flagged' : '')}>
             <div className="fp-label">{q.label || `Question ${i + 1}`}{q.req && <span className="fp-req">*</span>}</div>
             {q.type === 'yesno' && <div className="fp-yn">{['yes', 'no'].map((o) => <button key={o} className={v === o ? 'on' : ''} onClick={() => set(q.id, o)}>{o === 'yes' ? 'Yes' : 'No'}</button>)}</div>}
             {q.type === 'check' && <div className="fp-checks">{(q.opts || []).map((o) => { const on = (v || []).includes(o); return <button key={o} className={'fp-check' + (on ? ' on' : '')} onClick={() => set(q.id, on ? (v || []).filter((x) => x !== o) : [...(v || []), o])}><span className="fp-box">{on && <Icon name="check" size={12} stroke={2.8} />}</span>{o}</button>; })}</div>}
