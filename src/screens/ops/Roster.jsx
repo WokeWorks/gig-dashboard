@@ -173,7 +173,7 @@ export function Scheduling({ go }) {
   const missed = (sid, wid, ci) => (sid.charCodeAt(1) * 7 + parseInt(wid.slice(1), 10) * 3 + ci * 5 + (wk + 1) * 11) % 7 === 0;
   // Today, once they've clocked in: a dotted green border (the day isn't over yet).
   const isTodayIn = (wid, ci) => wk === 0 && ci === TODAY && clockedIn(wid);
-  // Round, evenly spaced dots that follow the rounded corners (a CSS dotted border draws square, crowded dots).
+  // Today's clocked-in border: evenly spaced dashes that follow the rounded corners.
   const ring = (on) => (on ? <svg className="dotring" aria-hidden="true"><rect rx="8" /></svg> : null);
   const pastCls = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? ' past-miss' : ' past-ok') : here.length && isTodayIn(wid, ci) ? ' today-in' : '');
   const pastTitle = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? 'Missed: no clock-in' : 'Clocked in') : here.length && isTodayIn(wid, ci) ? 'Clocked in today' : undefined);
