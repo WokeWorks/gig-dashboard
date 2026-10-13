@@ -45,7 +45,7 @@ function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand"><span className="brand-mark" aria-hidden="true" /><b>OpsPro</b><span className="muted small">Deliveroo UAE · prototype · mock data</span></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true" /><b>OpsPro</b><span className="muted small">Deliveroo UAE</span></div>
         <nav className="personas" aria-label="Who is using OpsPro">
           {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)}>{p.label}</button>)}
         </nav>
@@ -53,15 +53,15 @@ function App() {
       </header>
       {P.nav ? (
         <div className={'body' + (persona === 'vendor' ? ' vendor' : '') + (slim ? ' slim' : '')}>
+          <button className="side-edge" onClick={() => setSlim(!slim)} aria-label={slim ? 'Expand navigation' : 'Collapse navigation'} title={slim ? 'Expand' : 'Collapse'} />
           <aside className="side">
-            <button className="side-edge" onClick={() => setSlim(!slim)} aria-label={slim ? 'Expand navigation' : 'Collapse navigation'} title={slim ? 'Expand' : 'Collapse'}><span className="side-knob"><Icon name="chevronLeft" size={12} stroke={2.4} /></span></button>
             {persona === 'vendor' && <div className="vendor-banner small">Signed in as <b>GH FZE</b>, a vendor. View only, except proposals.</div>}
             {P.nav.map(([group, xs]) => (
               <div key={group} className="side-group">
                 <div className="side-label">{group}</div>
                 {xs.map(([id, label, ph]) => (
                   <button key={id} className={'side-item' + (cur[0] === id ? ' on' : '')} onClick={() => go(id)} title={slim ? label : undefined} aria-label={label}>
-                    <span className="side-ic"><Icon name={NAV_ICONS[id] || 'document'} size={18} /></span><span className="side-text">{label}</span><Phase p={ph} />
+                    <span className="side-ic"><Icon name={NAV_ICONS[id] || 'document'} size={18} /></span><span className="side-text">{label}</span>
                   </button>
                 ))}
               </div>
