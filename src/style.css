@@ -1138,7 +1138,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   --brand:#1B5746; --brandDeep:#184D3E; --brandTint:#ECF9F5; --brandBorder:#B1E7D8; --green:#15803D; --greenBg:#DCFCE7; --amber:#B45309; --amberBg:#FEF3C7; --danger:#DC2626; --dangerBg:#FEE2E2; --teal:#14B8A6; --radius:14px;
   font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif; color: var(--ink);
 }
-.op-phone { width: 392px; height: min(812px, calc(100vh - 150px)); min-height: 640px; border-radius: 46px; background: #0B0A09; padding: 11px; box-shadow: 0 30px 70px rgba(0,0,0,.25), 0 0 0 1px #2B2522; }
+.op-phone { width: 412px; height: 866px; flex: none; border-radius: 46px; background: #0B0A09; padding: 11px; box-shadow: 0 30px 70px rgba(0,0,0,.25), 0 0 0 1px #2B2522; }
 .op-screen { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: var(--canvas); color: var(--ink); display: flex; flex-direction: column; position: relative; }
 .op-status { height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 12px; font-weight: 700; }
 .op-notch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 104px; height: 26px; border-radius: 14px; background: #0B0A09; z-index: 5; }
@@ -1180,7 +1180,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .op .op-form .fp-top { margin: 0; }
 .op .pk-camera { height: 100%; border-radius: 0; }
 @media (max-width: 1150px) { .op-stage { grid-template-columns: 1fr; justify-items: center; } .op-flows { position: static; width: 100%; max-width: 420px; } .op-info { order: -1; max-width: 420px; } }
-@media (max-width: 640px) { .op-phone { width: 100%; max-width: 392px; height: 760px; } }
 
 /* ---------- phone ui ---------- */
 .op .appbar{display:flex;align-items:center;gap:10px;padding:4px 0 14px}
@@ -1278,12 +1277,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 1150px) { .op-stage { grid-template-columns: 1fr; } }
 /* phone sized to the window: whole screen visible without scrolling, real phone proportions */
 .op-stage { display: flex; align-items: center; justify-content: center; gap: 40px; min-height: 0; height: calc(100vh - var(--tb, 64px) - 32px); padding: 0; }
-.op-phone { height: min(812px, calc(100vh - var(--tb, 64px) - 56px)); width: auto; aspect-ratio: 392 / 812; min-height: 0; max-width: none; }
 .op-info { flex: 0 1 280px; min-width: 200px; order: 0; }
 @media (max-width: 1150px) { .op-stage { flex-direction: row; } .op-info { order: 0; max-width: 280px; } }
-@media (max-width: 860px) { .op-stage { flex-direction: column; height: auto; padding: 12px 0 24px; } .op-phone { height: min(760px, calc(100vh - var(--tb, 64px) - 40px)); } .op-info { order: 1; text-align: center; } }
+@media (max-width: 860px) { .op-stage { flex-direction: column; height: auto; padding: 12px 0 24px; } .op-info { order: 1; text-align: center; } }
 .op-stage { height: calc(100vh - var(--tb, 64px) - 80px); }
-.op-phone { height: min(812px, calc(100vh - var(--tb, 64px) - 96px)); }
 
 /* ===== One design language across dashboard, vendor portal and phone ===== */
 /* Metric tiles: a plain card, the number carries the colour. Same as the phone's Today tiles. */

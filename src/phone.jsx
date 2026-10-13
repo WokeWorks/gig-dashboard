@@ -1,11 +1,11 @@
 import { WORKERS, SITES, MANAGERS, ALERTS as OPS_ALERTS, LEAVE, ROSTER_GROUPS, DAYS, tplOf, tplLabel, endOf, vendorOf, siteOf } from './data.js';
-import { Icon, useToast } from './ui.jsx';
+import { Icon, useToast, Logo } from './ui.jsx';
 import { clockInForm, formByKey, FormBody } from './forms.jsx';
 import { CameraSheet } from './camera.jsx';
 import { offDaysOf } from './lib/roster.js';
 const offThisWeek = (id) => { const ds = offDaysOf(id); return ds === 'rot' || !ds.length ? 'None this week' : ds.map((k) => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][k]).join(', '); };
 
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
 
 /* ================================================================
    The phone app. One app on the store: who signs in decides what it
@@ -102,6 +102,13 @@ const Meter = ({ a, b }) => <div className="meter">{Array.from({ length: Math.ma
 const dot = (tone) => (tone === 'red' ? 'var(--danger)' : tone === 'amber' ? 'var(--amber)' : 'var(--brand)');
 
 export function PhoneApp() {
+  // The phone is drawn at a real phone's size (390 × 844) and scaled down as a whole to fit the window,
+  // so it keeps a phone's proportions instead of getting squat on short screens.
+  const frame = useRef(null);
+  useEffect(() => {
+    const fit = () => { const el = frame.current; if (!el) return; const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tb')) || 60; el.style.zoom = Math.min(1, (window.innerHeight - top - 40) / 866, (window.innerWidth - 32) / 412).toFixed(3); };
+    fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit);
+  }, []);
   const [view, setView] = useState('chooser'); // chooser | picker | sup
   const [pk, setPk] = useState(P0);
   const [sv, setSv] = useState(S0);
@@ -345,13 +352,13 @@ export function PhoneApp() {
 
   const chooser = () => (
     <div className="center">
-      <div className="logo xl">OP</div>
+      <Logo size={64} color="var(--brand)" />
       <div><div className="big" style={{ fontSize: 23 }}>OpsPro</div><div className="sub" style={{ marginTop: 8, maxWidth: 265 }}>One app. Who signs in decides what it becomes.</div></div>
       <div className="stack" style={{ width: '100%', marginTop: 4 }}>
-        <button className="btn choose" onClick={() => { setView('picker'); P({ step: 'code' }); }}><Icon name="person" size={22} /><span><b>I work shifts</b><small>Clock in and out, my schedule</small></span></button>
-        <button className="btn ghost choose" onClick={() => { setView('sup'); V({ step: 'email' }); }}><Icon name="users" size={22} /><span><b>I run locations</b><small>Who is in, cover, approvals</small></span></button>
+        <button className="btn choose" onClick={() => { setView('picker'); P({ step: 'code' }); }}><Icon name="person" size={22} /><span><b>Employee login</b></span></button>
+        <button className="btn ghost choose" onClick={() => { setView('sup'); V({ step: 'email' }); }}><Icon name="users" size={22} /><span><b>Manager login</b></span></button>
       </div>
-      <div className="tiny lh" style={{ maxWidth: 272 }}>Asked once, at setup only. The two sign in differently (a picker is handed a code, a supervisor gets one by email), so the app has to know which before it can ask for anything.</div>
+      <div className="tiny lh" style={{ maxWidth: 272 }}>Asked once, at setup. Employees are handed a sign-in code and managers get theirs by email, so the app asks which first.</div>
     </div>
   );
 
@@ -368,7 +375,7 @@ export function PhoneApp() {
     <>
       <aside className="side op-flows" aria-label="Screens">
         <div className="side-label">Phone app</div>
-        <button className={'op-start' + (view === 'chooser' ? ' on' : '')} onClick={() => setView('chooser')}>Start: picker or supervisor</button>
+        <button className={'op-start' + (view === 'chooser' ? ' on' : '')} onClick={() => setView('chooser')}>Start: employee or manager login</button>
         {[['picker', 'Picker app'], ['sup', 'Supervisor app']].map(([k, label]) => (
           <div key={k} className={'op-flow ' + k}>
             <button className={'op-apphead' + (view === k ? ' on' : '')} onClick={() => jump(k, k === 'picker' ? (pk.step === 'done' ? pk.screen : pk.step) : (sv.step === 'done' ? sv.screen : sv.step))}><span className="dot" />{label}</button>
@@ -379,7 +386,7 @@ export function PhoneApp() {
       <main className="main">
       <div className="op-stage">
       <div className="op">
-        <div className="op-phone">
+        <div className="op-phone" ref={frame}>
           <div className="op-screen">
             <div className="op-notch" />
             <div className="op-status"><span>9:41</span><span>●●●● ▯</span></div>
