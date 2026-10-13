@@ -151,8 +151,9 @@ export function Scheduling({ go }) {
   const locsIn = (c, home) => (Array.isArray(c) ? [...new Set(c.map((x) => x[2] || home))] : []);
   const match = (w) => (!q || w.name.toLowerCase().includes(q.toLowerCase())) && (ven === 'all' || w.vendor === ven);
   const mine = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
-  // The search box matches worker names and location names; a matching location shows everyone there.
-  const siteHit = (sid) => !!q.trim() && sid !== 'pool' && siteOf(sid).name.toLowerCase().includes(q.trim().toLowerCase());
+  // The search box matches worker names, location names and supervisor names; a matching location
+  // or supervisor shows everyone at that location (or at all of that supervisor's locations).
+  const siteHit = (sid) => { const t = q.trim().toLowerCase(); if (!t || sid === 'pool') return false; const m = MANAGERS.find((x) => x.sites.includes(sid)); return siteOf(sid).name.toLowerCase().includes(t) || (!!m && m.name.toLowerCase().includes(t)); };
   const matchAt = (sid) => (w) => (siteHit(sid) ? ven === 'all' || w.vendor === ven : match(w));
   const shown = mine.filter((s) => loc === 'all' || s.id === loc);
   // The floaters band: floaters in this manager's pool, plus anyone from the pool covering at these locations this week.
