@@ -1,4 +1,4 @@
-import { ToastHost, Phase, Icon, Logo } from './ui.jsx';
+import { ToastHost, Icon, Logo, useMenu, useToast } from './ui.jsx';
 import * as Op from './screens/ops/index.js';
 import * as Vd from './vendor.jsx';
 import { Forms } from './forms.jsx';
@@ -26,6 +26,23 @@ const PERSONAS = [
 const load = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
+// Who is signed in, per surface: their name over the organisation they work for.
+const ACCOUNTS = { operator: { name: 'Omar Haddad', org: 'Deliveroo UAE' }, vendor: { name: 'Ravi Menon', org: 'GH FZE' } };
+function Account({ who }) {
+  const menu = useMenu(); const toast = useToast();
+  const initials = who.name.split(' ').map((x) => x[0]).join('').slice(0, 2);
+  return <>
+    <button className={'acct' + (menu.isOpen(who.name) ? ' open' : '')} aria-haspopup="menu" onClick={(e) => menu.open(e, who.name, [
+      { icon: 'logout', label: 'Log out', on: () => toast('Logged out (prototype: nothing happens)') },
+    ])}>
+      <span className="acct-av" aria-hidden="true">{initials}</span>
+      <span className="acct-txt"><b>{who.name}</b><span>{who.org}</span></span>
+      <Icon name="down" size={14} />
+    </button>
+    {menu.el}
+  </>;
+}
+
 function App() {
   const [persona, setPersona] = useState(() => { const v = load('ops.persona', 'operator'); return ['kiosk', 'worker', 'supervisor'].includes(v) ? (v === 'kiosk' ? 'operator' : 'phone') : v; });
   const [screen, setScreen] = useState(() => load('ops.screen', 'live'));
@@ -47,11 +64,11 @@ function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand"><Logo /><b>OpsPro</b><span className="muted small">{persona === 'vendor' ? 'GH FZE · vendor' : 'Deliveroo UAE'}</span></div>
+        <div className="brand"><Logo size={30} tight /><b>OpsPro</b></div>
         <nav className="personas" aria-label="Who is using OpsPro">
           {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)}>{p.label}</button>)}
         </nav>
-        <div className="legend small hide-sm"><Phase p={1} /> core <Phase p={2} /> next <Phase p={3} /> later</div>
+        {P.nav && <Account who={persona === 'vendor' ? ACCOUNTS.vendor : ACCOUNTS.operator} />}
       </header>
       {P.nav ? (
         <div className={'body' + (persona === 'vendor' ? ' vendor' : '') + (slim ? ' slim' : '')}>
