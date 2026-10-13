@@ -65,9 +65,9 @@ export function LiveMap({ points, pick, onPick, height }) {
     const list = [];
     points.forEach((d) => {
       const lat = d.lat, lng = d.lng; list.push([lat, lng]);
-      const tone = d.bad ? 'crit' : d.late ? 'warn' : d.due ? 'good' : 'idle';
+      const tone = d.bad ? 'crit' : d.due ? 'good' : 'idle'; // only no-shows stand out; late people are already in
       const html = `<div class="lp ${tone}${pick === d.id ? ' on' : ''}"><span class="lp-dot">${d.due ? d.inn : '–'}</span><span class="lp-lab${tone === 'good' || tone === 'idle' ? ' quiet' : ''}"><b>${d.name}</b><small>${d.due ? d.inn + '/' + d.due + ' in' : 'No one due'}${d.bad ? ' · ' + d.bad + ' no-show' : ''}${d.late ? ' · ' + d.late + ' late' : ''}</small></span></div>`;
-      const p = new Pin({ lat, lng }, html, 'lp-wrap' + (d.left ? ' left' : ''), d.bad ? 30 : d.late ? 20 : 10, d.title || d.name, d.id);
+      const p = new Pin({ lat, lng }, html, 'lp-wrap' + (d.left ? ' left' : ''), d.bad ? 30 : 10, d.title || d.name, d.id);
       p.setMap(m); pins.current.push(p);
     });
     pts.current = list;

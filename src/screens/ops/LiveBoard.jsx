@@ -25,7 +25,7 @@ export function LiveBoard({ go }) {
   // The next shift start still to come today, and how many people it brings in.
   const ups = data.flatMap((d) => d.up); const nextAt = ups.length ? Math.min(...ups.map((p) => p.s0)) : null;
   const next = nextAt === null ? null : { at: nextAt, n: ups.filter((p) => p.s0 === nextAt).length };
-  const shown = data.filter((d) => only === 'all' || (only === 'noshow' ? d.bad : only === 'late' ? d.late : !d.bad && !d.late)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
+  const shown = data.filter((d) => only === 'all' || (only === 'noshow' ? d.bad : !d.bad)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
   const actions = data.flatMap((d) => d.ppl.filter((p) => p.status === 'noshow' || p.status === 'late').map((p) => ({ ...p, site: d.s }))).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
   return (
@@ -36,7 +36,7 @@ export function LiveBoard({ go }) {
         <div className="lm-over lm-filters">
           {isAdmin() && <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>}
           <div className="lm-chips" role="tablist" aria-label="Show">
-            {[['all', 'All locations', null], ['noshow', 'With a no-show', 'crit'], ['late', 'With someone late', 'warn'], ['ok', 'Everyone in', 'good']].map(([k, l, tone]) => (
+            {[['all', 'All locations', null], ['noshow', 'With a no-show', 'crit'], ['ok', 'Everyone in', 'good']].map(([k, l, tone]) => (
               <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}</button>
             ))}
           </div>
@@ -54,9 +54,9 @@ export function LiveBoard({ go }) {
           return (
             <div key={d.s.id} className={'lm-row' + (on ? ' on' : '')} id={'lm-' + d.s.id}>
               <button className="lm-row-head" onClick={() => setPick(on ? null : d.s.id)} aria-expanded={on}>
-                <span className={'lm-k ' + (d.bad ? 'crit' : d.late ? 'warn' : d.due.length ? 'good' : 'idle')} />
+                <span className={'lm-k ' + (d.bad ? 'crit' : d.due.length ? 'good' : 'idle')} />
                 <span className="lm-name"><b>{d.s.name}</b>{isAdmin() && <span className="small muted">{MANAGERS.find((m) => m.sites.includes(d.s.id)).name}</span>}</span>
-                <span className="lm-state small">{d.bad ? <span className="neg">{d.bad} no-show</span> : null}{d.bad && d.late ? <span className="muted"> · </span> : null}{d.late ? <span className="warnt">{d.late} late</span> : null}{!d.bad && !d.late ? <span className="muted">{d.due.length ? 'All in' : 'No one due yet'}</span> : null}</span>
+                <span className="lm-state small">{d.bad ? <span className="neg">{d.bad} no-show</span> : null}{d.bad && d.late ? <span className="muted"> · </span> : null}{d.late ? <span className="muted">{d.late} late</span> : null}{!d.bad && !d.late ? <span className="muted">{d.due.length ? 'All in' : 'No one due yet'}</span> : null}</span>
                 <span className="lm-cnt mono">{d.inn}<span className="muted">/{d.due.length}</span></span>
               </button>
               {on && <div className="lm-detail">
