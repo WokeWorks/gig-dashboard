@@ -4,7 +4,7 @@ import { usual, shiftWeek } from './roster.js';
 // One set of rules per client (Settings → Cover rules). Nothing below knows about a particular client:
 // Weekly offs are never set per worker: the roster decides them each week, staggered so every location stays covered.
 // These limits are what the roster checks against (edited in Settings → Attendance rules).
-export const OFF_RULES = { perWeek: 1, maxRun: 6, sameDay: 5, mode: 'roster', days: [6] }; // mode: 'roster' (staggered) | 'fixed' (same days for everyone; days are 0 = Mon … 6 = Sun)
+export const OFF_RULES = { perWeek: 1, maxRun: 6, sameDay: 2, mode: 'roster', days: [6] }; // mode: 'roster' (staggered) | 'fixed' (same days for everyone; days are 0 = Mon … 6 = Sun)
 
 // With a fixed off, those days are off for everyone on every roster (leave stays leave).
 // Offs on any other day turn back into the worker's usual shift (floaters go back to available).

@@ -1,3 +1,4 @@
+import { workerInScope } from '../../lib/scope.js';
 import { WORKERS, LEAVE, ROSTER_GROUPS, tplOf, endOf, vendorOf, siteOf } from '../../data.js';
 import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Toggle, Note, useToast, Select } from '../../ui.jsx';
 import { coverCands } from '../../lib/cover.jsx';
@@ -7,7 +8,7 @@ import { shiftWeek } from '../../lib/roster.js';
 const { useState, useMemo } = React;
 
 export function Leave({ go }) {
-  const [items, setItems] = useState(LEAVE);
+  const [items, setItems] = useState(() => LEAVE.filter((l) => workerInScope(WORKERS.find((x) => x.id === l.worker))));
   const [tab, setTab] = useState('wait');
   const [open, setOpen] = useState(null);
   const [appr, setAppr] = useState(null); // { l, plan: { iso: 'none' | workerId }, notify }

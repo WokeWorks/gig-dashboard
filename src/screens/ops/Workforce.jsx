@@ -1,3 +1,4 @@
+import { workerInScope, siteInScope } from '../../lib/scope.js';
 import { SITES, VENDORS, WORKERS, ROSTER_GROUPS, KPIS, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf } from '../../data.js';
 import { ScreenHeader, Pill, Tabs, Drawer, Bar, statusTone, Note, useToast, Icon, Select } from '../../ui.jsx';
 import { FULL_DAYS, fmtD } from '../../lib/dates.js';
@@ -15,7 +16,7 @@ export function Workforce({ params, go }) {
   const [sel, setSel] = useState(params?.worker ? WORKERS.find((w) => w.id === params.worker) : null);
   const [tab, setTab] = useState(params?.tab || 'Overview');
   const toast = useToast();
-  const base = WORKERS.filter((w) => (vendor === 'all' || w.vendor === vendor) && (site === 'all' || w.site === site) && (role === 'all' || w.role === role) && (!q || (w.name + w.code).toLowerCase().includes(q.toLowerCase())));
+  const base = WORKERS.filter((w) => workerInScope(w) && (vendor === 'all' || w.vendor === vendor) && (site === 'all' || w.site === site) && (role === 'all' || w.role === role) && (!q || (w.name + w.code).toLowerCase().includes(q.toLowerCase())));
   const tagged = base.map((w) => ({ w, today: todayOf(w), month: timesheetOf(w).sum }));
   const counts = { all: tagged.length, in: tagged.filter((x) => x.today.key === 'in').length, notin: tagged.filter((x) => x.today.key === 'notin').length, off: tagged.filter((x) => x.today.key === 'off').length, docs: tagged.filter((x) => x.w.docs).length };
   const rows = tagged.filter((x) => show === 'all' || (show === 'docs' ? x.w.docs : x.today.key === show));
@@ -28,7 +29,7 @@ export function Workforce({ params, go }) {
       </>} />
       <div className="toolbar">
         <input id="wf-search" className="input" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
-        <Select id="wf-site" className="input" value={site} onChange={(e) => setSite(e.target.value)} aria-label="Location"><option value="all">All locations</option>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}<option value="pool">Floaters (no location)</option></Select>
+        <Select id="wf-site" className="input" value={site} onChange={(e) => setSite(e.target.value)} aria-label="Location"><option value="all">All locations</option>{SITES.filter((x) => siteInScope(x.id)).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}<option value="pool">Floaters (no location)</option></Select>
         <Select id="wf-vendor" className="input" value={vendor} onChange={(e) => setVendor(e.target.value)} aria-label="Vendor"><option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select>
         <Select id="wf-role" className="input" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Designation"><option value="all">All designations</option>{roles.map((r) => <option key={r}>{r}</option>)}</Select>
       </div>

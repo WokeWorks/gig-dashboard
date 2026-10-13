@@ -4,12 +4,13 @@ import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
 import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
+import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
 const { useState, useEffect, useRef } = React;
 
 export function LiveBoard({ go }) {
-  const [mgr, setMgr] = useState('all');
+  const [mgr, setMgr] = useState(isAdmin() ? 'all' : SCOPE.mgr);
   const [only, setOnly] = useState('all');
   const [openLoc, setOpenLoc] = useState(null);
   const [pick, setPick] = useState(null);
@@ -18,7 +19,7 @@ export function LiveBoard({ go }) {
   const [handled, setHandled] = useState({});
   const [mark, setMark] = useState(null); // { p, site, how, at, why, excused }
   const toast = useToast();
-  const sites = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
+  const sites = SITES.filter(siteInScope).filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
   const data = sites.map((s) => { const ppl = liveOf(s.id).map((p) => (handled[p.w.id] ? { ...p, status: handled[p.w.id] } : p)); const due = ppl.filter((p) => p.status !== 'upcoming'); const inn = due.filter((p) => ['in', 'late', 'break'].includes(p.status)).length; const bad = ppl.filter((p) => p.status === 'noshow').length; const late = ppl.filter((p) => p.status === 'late').length; return { s, ppl, due, inn, bad, late, up: ppl.filter((p) => p.status === 'upcoming') }; });
   const tot = data.reduce((a, d) => ({ due: a.due + d.due.length, inn: a.inn + d.inn, bad: a.bad + d.bad, late: a.late + d.late, up: a.up + d.up.length }), { due: 0, inn: 0, bad: 0, late: 0, up: 0 });
   const shown = data.filter((d) => only === 'all' || (only === 'noshow' ? d.bad : only === 'late' ? d.late : !d.bad && !d.late)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
@@ -30,7 +31,7 @@ export function LiveBoard({ go }) {
       <section className="card flush lm-wrap">
         <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={pick} onPick={setPick} />
         <div className="lm-over lm-filters">
-          <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>
+          {isAdmin() && <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>}
           <div className="lm-chips" role="tablist" aria-label="Show">
             {[['all', 'All locations', null, data.length], ['noshow', 'With a no-show', 'crit', data.filter((d) => d.bad).length], ['late', 'With someone late', 'warn', data.filter((d) => d.late).length], ['ok', 'Everyone in', 'good', data.filter((d) => !d.bad && !d.late).length]].map(([k, l, tone, n]) => (
               <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}<span className="lm-n">{n}</span></button>

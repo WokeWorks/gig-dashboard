@@ -1,3 +1,4 @@
+import { siteInScope } from '../../lib/scope.js';
 import { WORKERS, ALERTS, vendorOf, siteOf } from '../../data.js';
 import { ScreenHeader, Pill, Drawer, Note, useToast } from '../../ui.jsx';
 
@@ -5,7 +6,7 @@ const { useState } = React;
 
 export function Alerts() {
   const [type, setType] = useState('All');
-  const [items, setItems] = useState(ALERTS);
+  const [items, setItems] = useState(() => ALERTS.filter((a) => siteInScope(a.site)));
   const [sel, setSel] = useState(null);
   const toast = useToast();
   const types = ['All', 'No-show', 'Late', 'Face mismatch', 'Outside geofence', 'Break overrun', 'Missing clock-out', 'Document expiry'];

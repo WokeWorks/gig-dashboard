@@ -81,3 +81,45 @@ export function LiveMap({ points, pick, onPick, height }) {
   const msg = { missing_key: 'Add GOOGLE_MAPS_API_KEY to .env and rebuild to see the map.', refused: "Google Maps refused the key for this page. Allow this address for the key in Google Cloud, or open the page through npm run serve.", offline: "The map couldn't load. Check the internet connection." }[state];
   return <div className="lm-leaf" ref={el} style={height ? { height } : undefined}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
 }
+
+// A real map snapshot of one location: Google Maps around the store with its geofence drawn to scale.
+// Still (no pan, zoom or controls) so it reads as a picture on a card; click it to open Google Maps there.
+// Until the map loads, or if it can't, the card shows a plain drawn placeholder instead.
+export function SiteMap({ lat, lng, radius, name, height = 132 }) {
+  const el = useRef(null); const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true; let cleanup = () => {};
+    loadGoogleMaps().then((G) => {
+      if (!alive || !el.current) return;
+      const css = getComputedStyle(document.documentElement); const tok = (n) => css.getPropertyValue(n).trim();
+      const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
+      const center = { lat, lng };
+      const m = new G.Map(el.current, {
+        center, zoom: 16, styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light,
+        disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
+        backgroundColor: tok('--surface-2') || undefined,
+      });
+      const ring = new G.Circle({ map: m, center, radius, strokeColor: tok('--accent'), strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: tok('--accent'), fillOpacity: 0.12, clickable: false });
+      const dot = new G.Circle({ map: m, center, radius: Math.max(6, radius / 14), strokeColor: tok('--surface') || '#fff', strokeWeight: 2, fillColor: tok('--accent'), fillOpacity: 1, clickable: false });
+      // Frame the geofence with some street around it.
+      const fit = () => { const b = ring.getBounds(); if (b && el.current && el.current.clientWidth) m.fitBounds(b, 28); };
+      G.event.addListenerOnce(m, 'idle', () => { fit(); if (alive) setReady(true); });
+      const retheme = () => { const c = getComputedStyle(document.documentElement); m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light }); ring.setOptions({ strokeColor: c.getPropertyValue('--accent').trim(), fillColor: c.getPropertyValue('--accent').trim() }); dot.setOptions({ fillColor: c.getPropertyValue('--accent').trim(), strokeColor: c.getPropertyValue('--surface').trim() }); };
+      const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
+      const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      const ro = new ResizeObserver(fit); ro.observe(el.current);
+      cleanup = () => { mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); ring.setMap(null); dot.setMap(null); G.event.clearInstanceListeners(m); };
+    }).catch(() => {});
+    return () => { alive = false; cleanup(); };
+  }, [lat, lng, radius]);
+  return (
+    <a className={'sitemap' + (ready ? ' ready' : '')} style={{ height }} href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" title={`Open ${name} in Google Maps`} aria-label={`Map of ${name}, geofence ${radius} metres. Opens Google Maps.`}>
+      <svg viewBox="0 0 240 132" preserveAspectRatio="xMidYMid slice" className="sitemap-ph" aria-hidden="true">
+        <rect width="240" height="132" className="geo-bg" />
+        <path d="M0 86 L240 62 M70 0 L92 132 M170 0 L150 132" className="geo-road" />
+        <circle cx="120" cy="68" r="34" className="geo-ring" /><circle cx="120" cy="68" r="4" className="geo-pin" />
+      </svg>
+      <div ref={el} className="sitemap-map" />
+    </a>
+  );
+}

@@ -7,6 +7,7 @@ import { shiftHours, shiftBrk, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
 import { liveOf, LV } from '../../lib/live.js';
 import { travelMins } from '../../lib/geo.js';
+import { isAdmin, SCOPE } from '../../lib/scope.js';
 import * as XLSX from 'xlsx';
 import { toPng } from 'html-to-image';
 
@@ -78,7 +79,7 @@ export function DayTimeline({ list, home, ghost, acts, note }) {
 }
 
 export function Scheduling({ go }) {
-  const [mgr, setMgr] = useState('m1');
+  const [mgr, setMgr] = useState(isAdmin() ? 'all' : SCOPE.mgr);
   const [loc, setLoc] = useState('all');
   const [clr, setClr] = useState(null); // clear days: { g, r, days }
   const [shot, setShot] = useState(null); // share as picture: { kind: 'worker' | 'loc', sid, r }
@@ -315,9 +316,9 @@ export function Scheduling({ go }) {
         </div>
         <div className="toolbar rbar-filters">
         <label className="search"><Icon name="search" size={16} /><input id="sch-q" className="input" type="search" placeholder="Search employees or locations…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search employees or locations" /></label>
-        <Select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
+        {isAdmin() && <Select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
           <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.sites.length} locations</option>)}
-        </Select>
+        </Select>}
         <Select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
           <option value="all">All locations</option>{mine.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </Select>

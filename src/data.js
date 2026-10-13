@@ -11,17 +11,17 @@ export const MANAGERS = [
 ];
 
 export const SITES = [
-  { id: 's1', loc: 1, short: 'MAR', area: 'Dubai West', policy: 'Dark store standard', name: 'Spinneys Marina Promenade', code: 'SPN-MPR', radius: 150, req: 26, in: 24, late: 1, noshow: 1, hours: '06:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 22, 'Shift lead': 2 } },
-  { id: 's2', loc: 2, short: 'JLT', area: 'Dubai West', policy: 'Dark store standard', name: 'Carrefour Marina Mall', code: 'CRF-MML', radius: 120, req: 22, in: 22, late: 0, noshow: 0, hours: '06:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 19, 'Shift lead': 2 } },
-  { id: 's3', loc: 3, short: 'BAR', area: 'Dubai West', policy: 'Dark store standard', name: 'Carrefour Barsha Heights', code: 'CRF-BHT', radius: 150, req: 24, in: 19, late: 3, noshow: 2, hours: '07:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 21, 'Shift lead': 2 } },
-  { id: 's4', loc: 4, short: 'BBY', area: 'JVC & Motor City', policy: 'Dark store standard', name: 'Spinneys JVC Circle Mall', code: 'SPN-JCM', radius: 100, req: 20, in: 19, late: 1, noshow: 0, hours: '06:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 17, 'Shift lead': 2 } },
-  { id: 's5', loc: 5, short: 'ALQ', area: 'JVC & Motor City', policy: 'Dark store standard', name: 'Spinneys Motor City', code: 'SPN-MTC', radius: 200, req: 18, in: 18, late: 0, noshow: 0, hours: '07:00 – 23:00', tz: 'Asia/Dubai', roles: { Picker: 16, 'Shift lead': 1 } },
-  { id: 's6', loc: 6, short: 'MIR', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Majan', code: 'SPN-MJN', radius: 150, req: 18, in: 16, late: 1, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 15, 'Shift lead': 2 } },
-  { id: 's7', loc: 7, short: 'JUM', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Town Square', code: 'SPN-TSQ', radius: 120, req: 16, in: 15, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 13, 'Shift lead': 2 } },
-  { id: 's8', loc: 8, short: 'DSO', area: 'Dubailand', policy: 'Dark store, late close', name: 'Spinneys Nad Al Sheba', code: 'SPN-NAS', radius: 150, req: 12, in: 12, late: 0, noshow: 0, hours: '08:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 10, 'Shift lead': 1 } },
-  { id: 's9', loc: 9, short: 'WHD', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Carrefour Al Wahda Mall', code: 'CRF-AWM', radius: 150, req: 18, in: 17, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 16, 'Shift lead': 2 } },
-  { id: 's10', loc: 10, short: 'KHL', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Spinneys Khalidiya', code: 'SPN-KHL', radius: 120, req: 14, in: 14, late: 0, noshow: 0, hours: '07:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 12, 'Shift lead': 1 } },
-  { id: 's11', loc: 11, short: 'SHJ', area: 'Sharjah', policy: 'Dark store standard', name: 'Carrefour City Centre Sharjah', code: 'CRF-CCS', radius: 150, req: 16, in: 15, late: 0, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 14, 'Shift lead': 1 } },
+  { id: 's1', loc: 1, short: 'MAR', area: 'Dubai West', policy: 'Dark store standard', name: 'Spinneys Marina Promenade', code: 'SPN-MPR', radius: 150, req: 6, in: 24, late: 1, noshow: 1, hours: '06:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 22, 'Shift lead': 2 } },
+  { id: 's2', loc: 2, short: 'JLT', area: 'Dubai West', policy: 'Dark store standard', name: 'Carrefour Marina Mall', code: 'CRF-MML', radius: 120, req: 5, in: 22, late: 0, noshow: 0, hours: '06:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 19, 'Shift lead': 2 } },
+  { id: 's3', loc: 3, short: 'BAR', area: 'Dubai West', policy: 'Dark store standard', name: 'Carrefour Barsha Heights', code: 'CRF-BHT', radius: 150, req: 7, in: 19, late: 3, noshow: 2, hours: '07:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 21, 'Shift lead': 2 } },
+  { id: 's4', loc: 4, short: 'BBY', area: 'JVC & Motor City', policy: 'Dark store standard', name: 'Spinneys JVC Circle Mall', code: 'SPN-JCM', radius: 100, req: 5, in: 19, late: 1, noshow: 0, hours: '06:00 – 02:00', tz: 'Asia/Dubai', roles: { Picker: 17, 'Shift lead': 2 } },
+  { id: 's5', loc: 5, short: 'ALQ', area: 'JVC & Motor City', policy: 'Dark store standard', name: 'Spinneys Motor City', code: 'SPN-MTC', radius: 200, req: 4, in: 18, late: 0, noshow: 0, hours: '07:00 – 23:00', tz: 'Asia/Dubai', roles: { Picker: 16, 'Shift lead': 1 } },
+  { id: 's6', loc: 6, short: 'MIR', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Majan', code: 'SPN-MJN', radius: 150, req: 6, in: 16, late: 1, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 15, 'Shift lead': 2 } },
+  { id: 's7', loc: 7, short: 'JUM', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Town Square', code: 'SPN-TSQ', radius: 120, req: 5, in: 15, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 13, 'Shift lead': 2 } },
+  { id: 's8', loc: 8, short: 'DSO', area: 'Dubailand', policy: 'Dark store, late close', name: 'Spinneys Nad Al Sheba', code: 'SPN-NAS', radius: 150, req: 4, in: 12, late: 0, noshow: 0, hours: '08:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 10, 'Shift lead': 1 } },
+  { id: 's9', loc: 9, short: 'WHD', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Carrefour Al Wahda Mall', code: 'CRF-AWM', radius: 150, req: 5, in: 17, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 16, 'Shift lead': 2 } },
+  { id: 's10', loc: 10, short: 'KHL', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Spinneys Khalidiya', code: 'SPN-KHL', radius: 120, req: 4, in: 14, late: 0, noshow: 0, hours: '07:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 12, 'Shift lead': 1 } },
+  { id: 's11', loc: 11, short: 'SHJ', area: 'Sharjah', policy: 'Dark store standard', name: 'Carrefour City Centre Sharjah', code: 'CRF-CCS', radius: 150, req: 5, in: 15, late: 0, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 14, 'Shift lead': 1 } },
 ];
 
 export const VENDORS = [
@@ -132,7 +132,7 @@ export const ROSTER = [
 // A shift at another location carries that location's id, and also shows under that location as a visiting row.
 const OTHER_SITES = SITES.filter((x) => x.id !== 's3');
 export const ROSTER_GROUPS = SITES.map((s) => {
-  if (s.id === 's3') return { site: 's3', people: WORKERS.slice(0, 8).map((w) => w.id), cells: ROSTER };
+  if (s.id === 's3') return { site: 's3', people: WORKERS.slice(0, 8).filter((w) => w.id !== 'w6').map((w) => w.id), cells: ROSTER.filter((_, r) => r !== 6) };
   const oi = OTHER_SITES.indexOf(s);
   if (8 + oi * 4 + 3 >= 36) return { site: s.id, people: [], cells: [] }; // stores added later start empty
   const people = [0, 1, 2, 3].map((k) => WORKERS[8 + oi * 4 + k].id);
@@ -143,6 +143,7 @@ export const ROSTER_GROUPS = SITES.map((s) => {
     if (k === 3 && oi === 1 && d < 2) return 'L';
     return [base[k]];
   }));
+  if (s.id === 's1') { people.push('w6'); cells.push(ROSTER[6]); } // Imran Ali works out of Marina Promenade
   return { site: s.id, people, cells };
 });
 
@@ -160,7 +161,7 @@ ROSTER_GROUPS.forEach((g) => !g.float && g.people.forEach((id) => { WORKERS.find
 
 // Fill every store up to its required headcount (SITES[].req). The first 42 workers above carry the hand-written
 // scenarios (split shifts, covers, leave, alerts); everyone added here gets an ordinary, staggered week.
-// The vendor split is set so the totals come out at GH FZE 95, Crescent 52, Meridian 38, Falcon 25.
+// Locations are small (3 to 7 people each); the vendor mix keeps GH FZE the largest supplier.
 const FIRST = ['Abdul', 'Ajay', 'Akash', 'Aldrin', 'Ali', 'Amir', 'Anand', 'Arif', 'Arnel', 'Babu', 'Bashir', 'Binu', 'Charles', 'Daniel', 'Deepak', 'Dennis', 'Ebuka', 'Edwin', 'Emmanuel', 'Farhan', 'Gift', 'Gopal', 'Hamid', 'Haris', 'Ifeanyi', 'Irfan', 'Jamal', 'Jason', 'Jerome', 'John', 'Joseph', 'Kabir', 'Kelvin', 'Kiran', 'Kofi', 'Lijo', 'Mahesh', 'Manoj', 'Marlon', 'Michael', 'Mohan', 'Murali', 'Nabil', 'Naveen', 'Nelson', 'Obinna', 'Oscar', 'Prakash', 'Rafael', 'Rahul', 'Raju', 'Ramon', 'Rashid', 'Renato', 'Rohan', 'Sabir', 'Sajid', 'Samson', 'Shahid', 'Shiju', 'Sibi', 'Suresh', 'Tariq', 'Tobi', 'Umar', 'Vijay', 'Vincent', 'Wasim', 'Yasir', 'Zubair'];
 const LAST = ['Ahmed', 'Ali', 'Alvarez', 'Babu', 'Bautista', 'Chowdhury', 'Cruz', 'Das', 'Dela Rosa', 'Eze', 'Fernandes', 'Garcia', 'George', 'Gurung', 'Hassan', 'Hossain', 'Iqbal', 'Jacob', 'Joseph', 'Kamau', 'Khan', 'Kumar', 'Lama', 'Mathew', 'Mendoza', 'Mensah', 'Miah', 'Nair', 'Nwosu', 'Okafor', 'Ochieng', 'Pillai', 'Rahman', 'Rai', 'Ramos', 'Reyes', 'Saleem', 'Santos', 'Shah', 'Shrestha', 'Singh', 'Thapa', 'Thomas', 'Uddin', 'Varghese', 'Villanueva', 'Yadav'];
 const taken = new Set(WORKERS.map((w) => w.name));
@@ -185,7 +186,8 @@ ROSTER_GROUPS.forEach((g, gi) => {
     g.cells.push(DAYS.map((_, d) => (d === off ? 'O' : n % 29 === 7 && (d === 4 || d === 5) ? 'L' : n % 19 === 11 && d === (off + 3) % 7 ? 'X' : [[tpl, start]])));
   }
 });
-// Headcounts follow the people actually supplied.
+// Headcounts follow the people actually supplied, and each location's numbers follow the people working there.
+SITES.forEach((s) => { const ps = WORKERS.filter((w) => w.site === s.id); s.roles = {}; ps.forEach((w) => { s.roles[w.role] = (s.roles[w.role] || 0) + 1; }); s.in = ps.filter((w) => ['Clocked in', 'On break', 'Late'].includes(w.status)).length; s.late = ps.filter((w) => w.status === 'Late').length; s.noshow = ps.filter((w) => w.status === 'No-show').length; });
 VENDORS.forEach((v) => { v.heads = WORKERS.filter((w) => w.vendor === v.id).length; });
 
 export const KPIS = [

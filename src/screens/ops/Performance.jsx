@@ -1,3 +1,4 @@
+import { scopedWorkers } from '../../lib/scope.js';
 import { VENDORS, WORKERS, METRICS, WORKER_METRICS, vendorOf, siteOf } from '../../data.js';
 import { ScreenHeader, Stat, Pill, Tabs, Drawer, Bar, Avatar, Note, Select } from '../../ui.jsx';
 
@@ -8,6 +9,7 @@ export const fmtM = (m, v) => (m.step < 1 ? (+v).toFixed(m.step < 0.5 ? 1 : 1) :
 export const fails = (m, v, th) => (m.dir === 'higher' ? v < th : v > th);
 
 export function StripPlot({ m, th, values }) {
+  const PEOPLE = scopedWorkers();
   const W = 280, H = 78, padX = 8, base = 58;
   const span = m.max - m.min;
   const discrete = m.step >= 1 && span / m.step <= 20;
@@ -35,7 +37,7 @@ export function StripPlot({ m, th, values }) {
       <rect x={m.dir === 'higher' ? padX : tx} y="2" width={Math.max(0, m.dir === 'higher' ? tx - padX : W - padX - tx)} height={base - 1} className="strip-zone" rx="4" />
       <line x1={padX} x2={W - padX} y1={base + 1} y2={base + 1} className="strip-axis" />
       {cols.map((c, bi) => c.map(([id, v], k) => {
-        const w = WORKERS.find((q) => q.id === id);
+        const w = PEOPLE.find((q) => q.id === id);
         return <circle key={id} cx={dotX(bi, k)} cy={dotY(k)} r={r} className={fails(m, v, th) ? 'strip-dot bad' : 'strip-dot'}><title>{`${w.name}: ${fmt(v)}`}</title></circle>;
       }))}
       <line x1={tx} x2={tx} y1="0" y2={base + 4} className="strip-th" />
@@ -47,6 +49,7 @@ export function StripPlot({ m, th, values }) {
 }
 
 export function Performance() {
+  const PEOPLE = scopedWorkers();
   const [tab, setTab] = useState('th');
   const [th, setTh] = useState(Object.fromEntries(METRICS.map((m) => [m.id, m.def])));
   const [sel, setSel] = useState('att');
@@ -56,12 +59,12 @@ export function Performance() {
   const [open, setOpen] = useState(null);
   const [weights, setWeights] = useState(Object.fromEntries(METRICS.map((m) => [m.id, m.weight])));
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
-  const vals = (id) => WORKERS.map((w) => [w.id, WORKER_METRICS[w.id][id]]);
+  const vals = (id) => PEOPLE.map((w) => [w.id, WORKER_METRICS[w.id][id]]);
   const flaggedOn = (w) => METRICS.filter((m) => fails(m, WORKER_METRICS[w.id][m.id], th[m.id]));
-  const anyFlag = WORKERS.filter((w) => flaggedOn(w).length > 0).length;
-  const multi = WORKERS.filter((w) => flaggedOn(w).length > 1).length;
+  const anyFlag = PEOPLE.filter((w) => flaggedOn(w).length > 0).length;
+  const multi = PEOPLE.filter((w) => flaggedOn(w).length > 1).length;
   const m = METRICS.find((x) => x.id === sel);
-  const rows = WORKERS
+  const rows = PEOPLE
     .filter((w) => showAll || fails(m, WORKER_METRICS[w.id][m.id], th[m.id]))
     .filter((w) => (vendor === 'all' || w.vendor === vendor) && (w.name + w.code).toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => (m.dir === 'higher' ? 1 : -1) * (WORKER_METRICS[a.id][m.id] - WORKER_METRICS[b.id][m.id]));
@@ -72,13 +75,13 @@ export function Performance() {
       <Tabs tabs={[{ id: 'th', label: 'Thresholds' }, { id: 'w', label: 'Score weights' }]} value={tab} onChange={setTab} />
       {tab === 'th' && <>
         <div className="stats">
-          <Stat label="Workers tracked" value={WORKERS.length} sub="Deliveroo pickers · October" />
-          <Stat label="Flagged on any metric" value={anyFlag} sub={`${Math.round((anyFlag / WORKERS.length) * 100)}% of workers`} tone="warn" />
+          <Stat label="Workers tracked" value={PEOPLE.length} sub="Deliveroo pickers · October" />
+          <Stat label="Flagged on any metric" value={anyFlag} sub={`${Math.round((anyFlag / PEOPLE.length) * 100)}% of workers`} tone="warn" />
           <Stat label="Flagged on 2 or more" value={multi} sub="Worth a conversation" tone="crit" />
         </div>
         <div className="metric-grid">
           {METRICS.map((mm) => {
-            const n = WORKERS.filter((w) => fails(mm, WORKER_METRICS[w.id][mm.id], th[mm.id])).length;
+            const n = PEOPLE.filter((w) => fails(mm, WORKER_METRICS[w.id][mm.id], th[mm.id])).length;
             return (
               <section key={mm.id} className={'card metric' + (sel === mm.id ? ' on' : '')} onClick={() => { setSel(mm.id); setShowAll(false); }}>
                 <div className="metric-top">
