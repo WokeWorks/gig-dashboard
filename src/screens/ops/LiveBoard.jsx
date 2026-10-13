@@ -54,7 +54,7 @@ export function LiveBoard({ go }) {
             <div key={d.s.id} className={'lm-row' + (on ? ' on' : '')} id={'lm-' + d.s.id}>
               <button className="lm-row-head" onClick={() => setPick(on ? null : d.s.id)} aria-expanded={on}>
                 <span className={'lm-k ' + (d.bad ? 'crit' : d.late ? 'warn' : d.due.length ? 'good' : 'idle')} />
-                <span className="lm-name"><b>{d.s.name}</b><span className="small muted">{MANAGERS.find((m) => m.sites.includes(d.s.id)).name}</span></span>
+                <span className="lm-name"><b>{d.s.name}</b>{isAdmin() && <span className="small muted">{MANAGERS.find((m) => m.sites.includes(d.s.id)).name}</span>}</span>
                 <span className="lm-state small">{d.bad ? <span className="neg">{d.bad} no-show</span> : null}{d.bad && d.late ? <span className="muted"> · </span> : null}{d.late ? <span className="warnt">{d.late} late</span> : null}{!d.bad && !d.late ? <span className="muted">{d.due.length ? 'All in' : 'No one due yet'}</span> : null}</span>
                 <span className="lm-cnt mono">{d.inn}<span className="muted">/{d.due.length}</span></span>
               </button>

@@ -7,7 +7,8 @@ export const SCOPE = { role: 'admin', mgr: 'm1' };
 export const isAdmin = () => SCOPE.role === 'admin';
 export const myManager = () => MANAGERS.find((m) => m.id === SCOPE.mgr);
 export const mySites = () => (isAdmin() ? SITES.map((s) => s.id) : myManager().sites);
-export const siteInScope = (sid) => isAdmin() || sid === 'pool' || mySites().includes(sid);
+// Takes a location id or a location object, so it works as a filter callback too.
+export const siteInScope = (site) => { const sid = typeof site === 'string' ? site : site && site.id; return isAdmin() || sid === 'pool' || mySites().includes(sid); };
 export const workerInScope = (w) => !!w && siteInScope(w.site);
 export const scopedWorkers = () => WORKERS.filter(workerInScope);
 // Screens only an admin uses.

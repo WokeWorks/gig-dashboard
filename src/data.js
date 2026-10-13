@@ -217,9 +217,9 @@ export const RATE_CARDS = [
 ];
 
 export const ANNOUNCEMENTS = [
-  { id: 'n1', title: 'Ramadan timings at Deliveroo sites', to: 'Deliveroo · all sites', sent: 'Mon 5 Oct', read: 118, total: 128, ack: true },
-  { id: 'n2', title: 'New uniform pickup at Al Quoz office', to: 'All workers', sent: 'Thu 1 Oct', read: 141, total: 166, ack: false },
-  { id: 'n3', title: 'Cold room safety reminder', to: 'Pickers · Marina Promenade, Marina Mall', sent: 'Tue 29 Sep', read: 44, total: 48, ack: true },
+  { id: 'n1', title: 'Ramadan timings at Deliveroo sites', to: 'Deliveroo · all sites', sent: 'Mon 5 Oct', read: 51, total: 56, ack: true },
+  { id: 'n2', title: 'New uniform pickup at Al Quoz office', to: 'All workers', sent: 'Thu 1 Oct', read: 53, total: 62, ack: false },
+  { id: 'n3', title: 'Cold room safety reminder', to: 'Pickers · Marina Promenade, Marina Mall', sent: 'Tue 29 Sep', read: 8, total: 9, ack: true },
 ];
 export const FORMS = [
   { id: 'f1', name: 'Site opening checklist', freq: 'Daily, before 07:00', subs: 41, sites: 6, photo: true },

@@ -67,6 +67,7 @@ const style = (c) => [
 export const MAP_STYLES = {
   // --bg #F5F2F2, --surface-2 #EEE9E9, --line #E4DEDD, --line-strong #D3CBCA, --muted #756C6A, --faint #9A908E, --accent-soft #ECF9F5
   light: style({ land: '#F5F2F2', built: '#EEE9E9', park: '#E2EFE8', water: '#CFE6DD', waterText: '#4F7D6E', road: '#FFFFFF', roadEdge: '#E4DEDD', highway: '#FFFFFF', highwayEdge: '#D3CBCA', text: '#756C6A', faint: '#9A908E', halo: '#F5F2F2' }),
-  // --bg #151211, --surface #1E1A19, --surface-2 #2A2524, --line #3A3331, --line-strong #4A4240, --muted #A89F9C, --faint #7F7673
-  dark: style({ land: '#1A1716', built: '#1E1A19', park: '#17221E', water: '#0F201B', waterText: '#5C8F7F', road: '#2A2524', roadEdge: '#1E1A19', highway: '#3A3331', highwayEdge: '#2A2524', text: '#A89F9C', faint: '#7F7673', halo: '#151211' }),
+  // Dusk rather than night: a step lighter than the dark UI (--surface-2 #2A2524 land, --line #3A3331 blocks) so the map
+  // reads as a surface, with roads picked out in --line-strong and soft teal water from the dark --accent.
+  dark: style({ land: '#2A2524', built: '#312B2A', park: '#2C3A33', water: '#29453D', waterText: '#8CC7B4', road: '#3E3735', roadEdge: '#2A2524', highway: '#4F4644', highwayEdge: '#3A3331', text: '#CFC6C3', faint: '#A89F9C', halo: '#2A2524' }),
 };
