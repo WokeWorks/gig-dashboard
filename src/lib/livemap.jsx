@@ -82,7 +82,7 @@ export function LiveMap({ points, pick, onPick, height }) {
           const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}`; // late isn't an alert: it stays in the list and drawer
           const el = document.createElement('div');
           el.className = 'lp-wrap'; el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
-          el.title = g.ds.map((d) => d.title || d.name).join(', '); el.tabIndex = 0; el.setAttribute('role', 'button');
+          el.setAttribute('aria-label', g.ds.map((d) => d.title || d.name).join(', ')); // no native tooltip: the label says it el.tabIndex = 0; el.setAttribute('role', 'button');
           el.innerHTML = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}">${one ? '' : '<span class="lp-stack"></span>'}<span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : `${g.ds[0].name} + ${g.ds.length - 1} more`)}</b><small>${esc(sub)}</small></span></div>`;
           const act = () => {
             if (one) { onPickRef.current(one.id); return; }
