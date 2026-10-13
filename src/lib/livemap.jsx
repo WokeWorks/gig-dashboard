@@ -76,14 +76,14 @@ export function LiveMap({ points, pick, onPick, height }) {
         groups.forEach((g) => {
           const one = g.ds.length === 1 ? g.ds[0] : null;
           const sum = (k) => g.ds.reduce((n, d) => n + (d[k] || 0), 0);
-          const due = sum('due'), inn = sum('inn'), bad = sum('bad'), late = sum('late');
+          const due = sum('due'), inn = sum('inn'), bad = sum('bad');
           const tone = bad ? 'crit' : due ? 'good' : 'idle';
           const on = g.ds.some((d) => d.id === pick);
-          const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}${late ? ' · ' + late + ' late' : ''}`;
+          const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}`; // late isn't an alert: it stays in the list and drawer
           const el = document.createElement('div');
           el.className = 'lp-wrap'; el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
           el.title = g.ds.map((d) => d.title || d.name).join(', '); el.tabIndex = 0; el.setAttribute('role', 'button');
-          el.innerHTML = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}"><span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : g.ds.length + ' locations')}</b><small>${esc(sub)}</small></span></div>`;
+          el.innerHTML = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}">${one ? '' : '<span class="lp-stack"></span>'}<span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : `${g.ds[0].name} + ${g.ds.length - 1} more`)}</b><small>${esc(sub)}</small></span></div>`;
           const act = () => {
             if (one) { onPickRef.current(one.id); return; }
             const b = new G.LatLngBounds(); g.ds.forEach((d) => b.extend({ lat: d.lat, lng: d.lng }));

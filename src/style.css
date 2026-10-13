@@ -965,15 +965,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 1100px) { .lm-stats { top: auto; bottom: 12px; right: auto; left: 12px; } }
 .lp-layer { position: absolute; left: 0; top: 0; }
 .lp-wrap { position: absolute; background: none; border: 0; }
-.lp.many .lp-dot { box-shadow: 0 0 0 3px rgba(255,255,255,.45), 0 1px 4px rgba(0,0,0,.35); }
 .lp { position: relative; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .lp-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 12px var(--mono); color: #fff; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); background: #8a8f8c; flex: none; }
 .lp.good .lp-dot { background: #15803D; } .lp.warn .lp-dot { background: #D97706; } .lp.crit .lp-dot { background: #DC2626; }
 .lp.crit .lp-dot { animation: lpring 1.8s ease-out infinite; }
 @keyframes lpring { 0% { box-shadow: 0 0 0 0 rgba(220,38,38,.55), 0 1px 4px rgba(0,0,0,.35); } 100% { box-shadow: 0 0 0 16px rgba(220,38,38,0), 0 1px 4px rgba(0,0,0,.35); } }
 .lp.on .lp-dot { outline: 3px solid #111; }
-.lp-lab { display: flex; flex-direction: column; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.18); color: #1d1a19; line-height: 1.2; }
-.lp-lab b { font: 700 12.5px var(--body); } .lp-lab small { font: 500 11px var(--body); color: #5b5351; }
+.lp-lab { display: flex; flex-direction: column; padding: 3px 8px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.18); color: var(--fg); line-height: 1.2; }
+.lp-lab b { font: 700 12.5px var(--body); } .lp-lab small { font: 500 11px var(--body); color: var(--muted); }
+/* Everyone in: a small quiet dot; the count and label come up on hover or when picked. */
+.lp-dot, .lp-stack { transition: transform .12s ease, color .12s ease; }
+.lp.good:not(.on) .lp-dot, .lp.idle:not(.on) .lp-dot, .lp.good:not(.on) .lp-stack, .lp.idle:not(.on) .lp-stack { transform: scale(.5); color: transparent; }
+.lp.good:not(.on) .lp-dot { opacity: .85; }
+.lp-wrap:hover .lp .lp-dot, .lp-wrap:hover .lp .lp-stack, .lp-wrap:focus-visible .lp .lp-dot { transform: none; color: #fff; opacity: 1; }
+/* Merged pins: a second disc peeking out behind, so they read as a pile that splits when clicked. */
+.lp-stack { position: absolute; left: 5px; top: -5px; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #fff; background: #8a8f8c; box-sizing: border-box; z-index: -1; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.lp.good .lp-stack { background: #15803D; } .lp.crit .lp-stack { background: #DC2626; }
+.lp.good.many:not(.on) .lp-stack, .lp.idle.many:not(.on) .lp-stack { left: 2px; top: -2px; }
+.lp-wrap:hover .lp.many .lp-stack { left: 5px; top: -5px; }
+/* Label on the left: the pin sits at the right end, so the second disc hangs off that side. */
+.lp-wrap.left .lp-stack, .lp-wrap.left:hover .lp.many .lp-stack { left: auto; right: -5px; }
+.lp-wrap.left .lp.good.many:not(.on) .lp-stack, .lp-wrap.left .lp.idle.many:not(.on) .lp-stack { left: auto; right: -2px; top: -2px; }
 .lp-wrap.left .lp { flex-direction: row-reverse; transform: translateX(calc(-100% + 26px)); }
 .lm-list { position: static; max-height: none; }
 .lm-row-head { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 14px; }
