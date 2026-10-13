@@ -14,13 +14,13 @@ const ME = 'v4'; // GH FZE
 export const VCLIENTS = [
   { id: 'deliveroo', name: 'Deliveroo UAE', score: 91, trend: [78, 80, 79, 82, 83, 86, 91], rate: 'AED 2,900 per head per month, prorated by days present ÷ 26, overtime at 1.25×' },
   { id: 'talabat', name: 'Talabat Mart', score: 84, trend: [80, 81, 79, 82, 83, 84, 84], rate: 'AED 13.50 an hour worked, overtime at 1.25×',
-    sites: ['Talabat Mart Al Quoz', 'Talabat Mart JLT', 'Talabat Mart Mirdif'], roles: ['Picker', 'Picker', 'Picker', 'Shift lead'], heads: 14 },
+    sites: ['Talabat Mart Al Quoz', 'Talabat Mart Al Nahda, Sharjah', 'Talabat Mart Al Jurf, Ajman'], roles: ['Picker', 'Picker', 'Picker', 'Shift lead'], heads: 14 },
   { id: 'aflog', name: 'Al-Futtaim Logistics', score: 88, trend: [84, 85, 85, 86, 87, 88, 88], rate: 'AED 2,700 per head per month, overtime at 1.25×',
-    sites: ['Jebel Ali DC', 'Dubai Investments Park DC'], roles: ['Warehouse associate', 'Warehouse associate', 'Loader', 'Forklift operator'], heads: 10 },
+    sites: ['Jebel Ali DC', 'KIZAD DC, Abu Dhabi'], roles: ['Warehouse associate', 'Warehouse associate', 'Loader', 'Forklift operator'], heads: 10 },
 ];
 export const vclient = (id) => VCLIENTS.find((c) => c.id === id);
 // Where the mock clients' sites are (lng, lat), roughly; Deliveroo's come from GEO.
-const VGEO = { 'Talabat Mart Al Quoz': [55.2297, 25.1385], 'Talabat Mart JLT': [55.1442, 25.0693], 'Talabat Mart Mirdif': [55.4198, 25.2201], 'Jebel Ali DC': [55.0626, 24.9857], 'Dubai Investments Park DC': [55.1659, 24.9831] };
+const VGEO = { 'Talabat Mart Al Quoz': [55.2297, 25.1385], 'Talabat Mart Al Nahda, Sharjah': [55.3725, 25.2995], 'Talabat Mart Al Jurf, Ajman': [55.4710, 25.3920], 'Jebel Ali DC': [55.0626, 24.9857], 'KIZAD DC, Abu Dhabi': [54.6550, 24.7230] };
 const geoOf = (where) => { const s = SITES.find((x) => x.name === where); return s ? GEO[s.id] : VGEO[where]; };
 const nameOf = (client) => (client === 'all' ? 'your clients' : vclient(client).name);
 
@@ -167,7 +167,7 @@ const PROPS = [...PROPOSALS.filter((p) => p.vendor === ME).map((p) => ({ ...p, c
   { id: 'dp1', client: 'deliveroo', name: 'Santosh Gurung', role: 'Picker', where: 'Carrefour Barsha Heights', stage: 'proposed' },
   { id: 'dp2', client: 'deliveroo', name: 'Aldrin Bautista', role: 'Reliever', where: 'Spinneys Marina Promenade', stage: 'review' },
   { id: 'dp3', client: 'deliveroo', name: 'Moses Adeyemi', role: 'Picker', where: 'Carrefour Marina Mall', stage: 'client' },
-  { id: 'tp1', client: 'talabat', name: 'Joel Mendoza', role: 'Picker', where: 'Talabat Mart JLT', stage: 'review' },
+  { id: 'tp1', client: 'talabat', name: 'Joel Mendoza', role: 'Picker', where: 'Talabat Mart Al Nahda, Sharjah', stage: 'review' },
   { id: 'ap1', client: 'aflog', name: 'Kwame Mensah', role: 'Forklift operator', where: 'Jebel Ali DC', stage: 'proposed' }];
 const proposalsFor = (client) => PROPS.filter((p) => client === 'all' || p.client === client);
 const sitesOf = (cid) => (cid === 'deliveroo' ? SITES.map((s) => s.name) : vclient(cid).sites);
@@ -213,7 +213,7 @@ export function VendorProposals({ client = 'all' }) {
   );
 }
 
-const REQS = [['deliveroo', '5 Pickers', 'Carrefour Barsha Heights', 'From Mon 12 Oct', '2 proposed'], ['deliveroo', '1 Shift lead', 'Spinneys Majan', 'From Thu 15 Oct', 'None yet'], ['talabat', '4 Pickers', 'Talabat Mart Mirdif', 'From Sun 18 Oct', '1 proposed'], ['aflog', '2 Forklift operators', 'Jebel Ali DC', 'From Mon 19 Oct', 'None yet'], ['deliveroo', '3 Relievers', 'Any location', 'From Mon 19 Oct', 'None yet']];
+const REQS = [['deliveroo', '5 Pickers', 'Carrefour Barsha Heights', 'From Mon 12 Oct', '2 proposed'], ['deliveroo', '1 Shift lead', 'Spinneys Majan', 'From Thu 15 Oct', 'None yet'], ['talabat', '4 Pickers', 'Talabat Mart Al Nahda, Sharjah', 'From Sun 18 Oct', '1 proposed'], ['aflog', '2 Forklift operators', 'Jebel Ali DC', 'From Mon 19 Oct', 'None yet'], ['deliveroo', '3 Relievers', 'Any location', 'From Mon 19 Oct', 'None yet']];
 export function VendorRequests({ client = 'all' }) {
   const toast = useToast();
   return (

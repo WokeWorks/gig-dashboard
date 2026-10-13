@@ -1,12 +1,13 @@
 // Mock data for the OpsPro shell. All names, vendors and figures are illustrative.
 
 export const TENANT = { name: 'Deliveroo UAE', currency: 'AED' };
-export const AREAS = ['Dubai West', 'JVC & Motor City', 'Dubailand'];
+export const AREAS = ['Dubai West', 'JVC & Motor City', 'Dubailand', 'Abu Dhabi', 'Sharjah'];
 // Ops managers and the locations they look after.
 export const MANAGERS = [
   { id: 'm1', name: 'Omar Haddad', sites: ['s1', 's2', 's3'] },
   { id: 'm2', name: 'Sara Mathew', sites: ['s4', 's5'] },
   { id: 'm3', name: 'Vikram Rao', sites: ['s6', 's7', 's8'] },
+  { id: 'm4', name: 'Khalid Mansoori', sites: ['s9', 's10', 's11'] },
 ];
 
 export const SITES = [
@@ -18,6 +19,9 @@ export const SITES = [
   { id: 's6', loc: 6, short: 'MIR', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Majan', code: 'SPN-MJN', radius: 150, req: 18, in: 16, late: 1, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 15, 'Shift lead': 2 } },
   { id: 's7', loc: 7, short: 'JUM', area: 'Dubailand', policy: 'Dark store standard', name: 'Spinneys Town Square', code: 'SPN-TSQ', radius: 120, req: 16, in: 15, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 13, 'Shift lead': 2 } },
   { id: 's8', loc: 8, short: 'DSO', area: 'Dubailand', policy: 'Dark store, late close', name: 'Spinneys Nad Al Sheba', code: 'SPN-NAS', radius: 150, req: 12, in: 12, late: 0, noshow: 0, hours: '08:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 10, 'Shift lead': 1 } },
+  { id: 's9', loc: 9, short: 'WHD', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Carrefour Al Wahda Mall', code: 'CRF-AWM', radius: 150, req: 18, in: 17, late: 1, noshow: 0, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 16, 'Shift lead': 2 } },
+  { id: 's10', loc: 10, short: 'KHL', area: 'Abu Dhabi', policy: 'Dark store standard', name: 'Spinneys Khalidiya', code: 'SPN-KHL', radius: 120, req: 14, in: 14, late: 0, noshow: 0, hours: '07:00 – 00:00', tz: 'Asia/Dubai', roles: { Picker: 12, 'Shift lead': 1 } },
+  { id: 's11', loc: 11, short: 'SHJ', area: 'Sharjah', policy: 'Dark store standard', name: 'Carrefour City Centre Sharjah', code: 'CRF-CCS', radius: 150, req: 16, in: 15, late: 0, noshow: 1, hours: '07:00 – 01:00', tz: 'Asia/Dubai', roles: { Picker: 14, 'Shift lead': 1 } },
 ];
 
 export const VENDORS = [
@@ -31,8 +35,8 @@ const NAMES = ['Arjun Nair', 'Rizwan Khan', 'Chinedu Okafor', 'Mohammed Rahman',
 const statuses = ['Clocked in', 'Clocked in', 'Clocked in', 'Clocked in', 'Late', 'On break', 'Off today', 'No-show', 'On leave', 'Clocked in'];
 const roles = ['Picker', 'Picker', 'Picker', 'Picker', 'Picker', 'Shift lead'];
 // Floaters: no fixed location, they cover shifts wherever they are needed. Distance is measured from where they live.
-export const HOME_AREAS = { 'Al Quoz': [55.229, 25.139], 'Al Barsha': [55.200, 25.105], 'International City': [55.410, 25.165], 'Jumeirah Village Circle': [55.210, 25.060], 'Dubai Investments Park': [55.165, 24.985], 'Al Qusais': [55.385, 25.280] };
-const FLOAT = ['Al Quoz', 'Al Barsha', 'Jumeirah Village Circle', 'Dubai Investments Park', 'International City', 'Al Qusais'];
+export const HOME_AREAS = { 'Al Nahda, Sharjah': [55.372, 25.300], 'Mussafah, Abu Dhabi': [54.505, 24.350], 'Al Quoz': [55.229, 25.139], 'Al Barsha': [55.200, 25.105], 'International City': [55.410, 25.165], 'Jumeirah Village Circle': [55.210, 25.060], 'Dubai Investments Park': [55.165, 24.985], 'Al Qusais': [55.385, 25.280] };
+const FLOAT = ['Al Quoz', 'Al Barsha', 'Jumeirah Village Circle', 'Mussafah, Abu Dhabi', 'International City', 'Al Nahda, Sharjah'];
 
 export const WORKERS = Array.from({ length: 42 }, (_, i) => {
   const v = [1, 3, 5, 7].includes(i % 9) ? VENDORS[3] : VENDORS[i % 3]; // GH FZE supplies the largest share
@@ -130,6 +134,7 @@ const OTHER_SITES = SITES.filter((x) => x.id !== 's3');
 export const ROSTER_GROUPS = SITES.map((s) => {
   if (s.id === 's3') return { site: 's3', people: WORKERS.slice(0, 8).map((w) => w.id), cells: ROSTER };
   const oi = OTHER_SITES.indexOf(s);
+  if (8 + oi * 4 + 3 >= 36) return { site: s.id, people: [], cells: [] }; // stores added later start empty
   const people = [0, 1, 2, 3].map((k) => WORKERS[8 + oi * 4 + k].id);
   const base = [['f5', '07:00'], ['f3', '14:00'], ['f5', '07:00'], ['f5', '14:00']];
   const cells = people.map((_, k) => DAYS.map((_, d) => {
@@ -155,12 +160,12 @@ ROSTER_GROUPS.forEach((g) => !g.float && g.people.forEach((id) => { WORKERS.find
 
 // Fill every store up to its required headcount (SITES[].req). The first 42 workers above carry the hand-written
 // scenarios (split shifts, covers, leave, alerts); everyone added here gets an ordinary, staggered week.
-// The vendor split is set so the totals come out at GH FZE 73, Crescent 40, Meridian 29, Falcon 20.
+// The vendor split is set so the totals come out at GH FZE 95, Crescent 52, Meridian 38, Falcon 25.
 const FIRST = ['Abdul', 'Ajay', 'Akash', 'Aldrin', 'Ali', 'Amir', 'Anand', 'Arif', 'Arnel', 'Babu', 'Bashir', 'Binu', 'Charles', 'Daniel', 'Deepak', 'Dennis', 'Ebuka', 'Edwin', 'Emmanuel', 'Farhan', 'Gift', 'Gopal', 'Hamid', 'Haris', 'Ifeanyi', 'Irfan', 'Jamal', 'Jason', 'Jerome', 'John', 'Joseph', 'Kabir', 'Kelvin', 'Kiran', 'Kofi', 'Lijo', 'Mahesh', 'Manoj', 'Marlon', 'Michael', 'Mohan', 'Murali', 'Nabil', 'Naveen', 'Nelson', 'Obinna', 'Oscar', 'Prakash', 'Rafael', 'Rahul', 'Raju', 'Ramon', 'Rashid', 'Renato', 'Rohan', 'Sabir', 'Sajid', 'Samson', 'Shahid', 'Shiju', 'Sibi', 'Suresh', 'Tariq', 'Tobi', 'Umar', 'Vijay', 'Vincent', 'Wasim', 'Yasir', 'Zubair'];
 const LAST = ['Ahmed', 'Ali', 'Alvarez', 'Babu', 'Bautista', 'Chowdhury', 'Cruz', 'Das', 'Dela Rosa', 'Eze', 'Fernandes', 'Garcia', 'George', 'Gurung', 'Hassan', 'Hossain', 'Iqbal', 'Jacob', 'Joseph', 'Kamau', 'Khan', 'Kumar', 'Lama', 'Mathew', 'Mendoza', 'Mensah', 'Miah', 'Nair', 'Nwosu', 'Okafor', 'Ochieng', 'Pillai', 'Rahman', 'Rai', 'Ramos', 'Reyes', 'Saleem', 'Santos', 'Shah', 'Shrestha', 'Singh', 'Thapa', 'Thomas', 'Uddin', 'Varghese', 'Villanueva', 'Yadav'];
 const taken = new Set(WORKERS.map((w) => w.name));
 const nameAt = (n) => { for (let k = 0; ; k++) { const nm = `${FIRST[(n * 7 + k) % FIRST.length]} ${LAST[(n * 11 + k * 3) % LAST.length]}`; if (!taken.has(nm)) { taken.add(nm); return nm; } } };
-const NEED = { v4: 54, v1: 31, v2: 24, v3: 11 };
+const NEED = { v4: 76, v1: 43, v2: 33, v3: 16 };
 const MIX = Object.entries(NEED).flatMap(([v, n]) => Array.from({ length: n }, (_, k) => ({ v, key: (k + 0.5) / n }))).sort((a, b) => a.key - b.key || a.v.localeCompare(b.v)).map((x) => x.v);
 let made = 0;
 ROSTER_GROUPS.forEach((g, gi) => {
@@ -252,6 +257,7 @@ export const COST_BY_SITE = [
   { site: 's3', days: 571, cost: 69800, ot: 0.14, cover: 17 }, { site: 's4', days: 503, cost: 55300, ot: 0.06, cover: 5 },
   { site: 's5', days: 452, cost: 49200, ot: 0.05, cover: 4 }, { site: 's6', days: 447, cost: 51800, ot: 0.09, cover: 11 },
   { site: 's7', days: 402, cost: 43900, ot: 0.05, cover: 3 }, { site: 's8', days: 301, cost: 33200, ot: 0.07, cover: 2 },
+  { site: 's9', days: 449, cost: 49600, ot: 0.06, cover: 4 }, { site: 's10', days: 351, cost: 38700, ot: 0.05, cover: 2 }, { site: 's11', days: 398, cost: 44100, ot: 0.08, cover: 5 },
 ];
 
 // Shifts: each one is a single start time + base hours + optional overtime ("+1" = one optional overtime hour, paid at the overtime rate only if worked).

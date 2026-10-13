@@ -1595,3 +1595,4 @@ label.btn { cursor: pointer; }
 /* Vendor overview map */
 .vo-map { margin-bottom: 16px; }
 .lm-stats .good .lm-sv { color: var(--good); }
+.op .op-lockup { display: flex; flex-direction: column; align-items: center; gap: 8px; }

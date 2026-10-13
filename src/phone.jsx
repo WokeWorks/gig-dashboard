@@ -368,8 +368,7 @@ export function PhoneApp() {
 
   const chooser = () => (
     <div className="center">
-      <Logo size={64} color="var(--brand)" />
-      <div><div className="big" style={{ fontSize: 23 }}>OpsPro</div></div>
+      <div className="op-lockup"><Logo size={64} color="var(--brand)" tight /><div className="big" style={{ fontSize: 23 }}>OpsPro</div></div>
       <div className="stack" style={{ width: '100%', marginTop: 4 }}>
         <button className="btn choose" onClick={() => { setView('picker'); P({ step: 'code' }); }}><Icon name="person" size={22} /><span><b>Employee login</b></span></button>
         <button className="btn ghost choose" onClick={() => { setView('sup'); V({ step: 'email' }); }}><Icon name="users" size={22} /><span><b>Manager login</b></span></button>

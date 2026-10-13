@@ -32,7 +32,7 @@ export function LiveBoard({ go }) {
         <div className="lm-over lm-filters">
           <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>
           <div className="lm-chips" role="tablist" aria-label="Show">
-            {[['all', 'All', null, data.length], ['noshow', 'No-show', 'crit', data.filter((d) => d.bad).length], ['late', 'Late', 'warn', data.filter((d) => d.late).length], ['ok', 'All in', 'good', data.filter((d) => !d.bad && !d.late).length]].map(([k, l, tone, n]) => (
+            {[['all', 'All locations', null, data.length], ['noshow', 'With a no-show', 'crit', data.filter((d) => d.bad).length], ['late', 'With someone late', 'warn', data.filter((d) => d.late).length], ['ok', 'Everyone in', 'good', data.filter((d) => !d.bad && !d.late).length]].map(([k, l, tone, n]) => (
               <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}<span className="lm-n">{n}</span></button>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpl
 import { shiftHours, shiftBrk, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
 import { liveOf, LV } from '../../lib/live.js';
+import { travelMins } from '../../lib/geo.js';
 import * as XLSX from 'xlsx';
 import { toPng } from 'html-to-image';
 
@@ -24,7 +25,7 @@ export function dayChecks(list, home) {
   const out = [];
   for (let k = 1; k < iv.length; k++) {
     const a = iv[k - 1], b = iv[k];
-    const travel = a.site !== b.site ? (TRAVEL[a.site + '|' + b.site] || 30) : 0;
+    const travel = travelMins(a.site, b.site, TRAVEL);
     if (b.s0 < a.end) out.push(['crit', 'Blocked', 'These shifts overlap']);
     else if (b.s0 < a.end + travel) out.push(['crit', 'Blocked', `Not enough time to travel to ${siteOf(b.site).name} (about ${travel} min)`]);
     else if (b.s0 - a.end - travel < 60) out.push(['warn', 'Check', 'Less than 1 h between shifts (policy minimum)']);
@@ -59,7 +60,7 @@ export function DayTimeline({ list, home, ghost, acts, note }) {
   return (
     <div className="vday" style={{ height: (to - from) * H }} role="img" aria-label="Shifts across the day">
       {hours.map((h) => <div key={h} className="vday-hr" style={{ top: y(h * 60) }}><span>{String(h % 24).padStart(2, '0')}:00</span></div>)}
-      {items.slice(1).map((b, k) => { const a = items[k]; const gap = b.s0 - a.e0; if (gap <= 0) return null; const sa = a.x[2] || home, sb = b.x[2] || home; const tr = sa !== sb ? (TRAVEL[sa + '|' + sb] || 30) : 0;
+      {items.slice(1).map((b, k) => { const a = items[k]; const gap = b.s0 - a.e0; if (gap <= 0) return null; const sa = a.x[2] || home, sb = b.x[2] || home; const tr = travelMins(sa, sb, TRAVEL);
         return <div key={'g' + k} className="vday-gap" style={{ top: y(a.e0), height: y(b.s0) - y(a.e0) }}><span>{Math.floor(gap / 60) ? `${Math.floor(gap / 60)} h` : ''}{gap % 60 ? ` ${gap % 60} min` : ''} gap{tr ? ` · ${tr} min travel` : ''}</span></div>; })}
       {items.map((it, k) => { const site = it.x[2] || home; const T = tplOf(it.x[0]); const e = endOf(it.x[1], spanOf(T));
         return (
