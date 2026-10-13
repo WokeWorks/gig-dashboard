@@ -1614,3 +1614,6 @@ label.btn { cursor: pointer; }
 .body.slim .persona-sw { grid-template-columns: 1fr; }
 .body.slim .persona-sw span { display: none; }
 .side.op-flows .persona-sw { margin-top: auto; }
+.pm-title b { display: block; color: var(--fg); font-size: 13.5px; font-weight: 650; }
+.pm-title span { display: block; color: var(--muted); font-size: 12px; }
+.acct { padding-right: 12px; }

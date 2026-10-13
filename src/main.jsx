@@ -27,17 +27,16 @@ const load = (k, d) => { try { return localStorage.getItem(k) || d; } catch { re
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // Who is signed in, per surface: their name over the organisation they work for.
-const ACCOUNTS = { operator: { name: 'Omar Haddad', org: 'Deliveroo UAE' }, vendor: { name: 'Ravi Menon', org: 'GH FZE' } };
+const ACCOUNTS = { operator: { name: 'Omar Haddad', role: 'Operations manager', org: 'Deliveroo UAE' }, vendor: { name: 'Ravi Menon', role: 'Account manager', org: 'GH FZE' } };
 function Account({ who }) {
   const menu = useMenu(); const toast = useToast();
   const initials = who.name.split(' ').map((x) => x[0]).join('').slice(0, 2);
   return <>
     <button className={'acct' + (menu.isOpen(who.name) ? ' open' : '')} aria-haspopup="menu" onClick={(e) => menu.open(e, who.name, [
       { icon: 'logout', label: 'Log out', on: () => toast('Logged out (prototype: nothing happens)') },
-    ])}>
+    ], who.role)}>
       <span className="acct-av" aria-hidden="true">{initials}</span>
       <span className="acct-txt"><b>{who.name}</b><span>{who.org}</span></span>
-      <Icon name="down" size={14} />
     </button>
     {menu.el}
   </>;

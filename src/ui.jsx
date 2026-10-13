@@ -232,10 +232,10 @@ export function useMenu() {
     requestAnimationFrame(() => { const f = document.querySelector('.pop-menu [role="menuitem"]'); f && f.focus(); });
     return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
   }, [m]);
-  const open = (e, title, items) => {
+  const open = (e, title, items, sub) => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect(); const W = 260;
-    setM({ title, items: items.filter(Boolean), from: e.currentTarget, x: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), y: r.bottom + 4, up: r.bottom + 240 > window.innerHeight, top: r.top - 4 });
+    setM({ title, sub, items: items.filter(Boolean), from: e.currentTarget, x: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), y: r.bottom + 4, up: r.bottom + 240 > window.innerHeight, top: r.top - 4 });
   };
   const nav = (e) => {
     const l = [...e.currentTarget.querySelectorAll('[role="menuitem"]')]; const i = l.indexOf(document.activeElement);
@@ -244,7 +244,7 @@ export function useMenu() {
   };
   const el = m && (
     <div className="pop-menu" role="menu" aria-label={m.title} onKeyDown={nav} style={m.up ? { left: m.x, bottom: window.innerHeight - m.top } : { left: m.x, top: m.y }}>
-      <div className="pm-title">{m.title}</div>
+      <div className="pm-title">{m.sub ? <><b>{m.title}</b><span>{m.sub}</span></> : m.title}</div>
       {m.items.map((x, i) => (
         <button key={i} role="menuitem" className={'pm-item' + (x.danger ? ' danger' : '')} onClick={() => { setM(null); x.on(); }}>
           <Icon name={x.icon} size={16} /><span><b>{x.label}</b>{x.sub && <span className="small muted">{x.sub}</span>}</span>
