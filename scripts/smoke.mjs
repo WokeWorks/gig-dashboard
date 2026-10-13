@@ -21,12 +21,12 @@ let current = 'load';
 
 await page.goto('file://' + testFile);
 await page.waitForTimeout(500);
-for (const persona of ['Ops dashboard', 'Vendor portal', 'Phone app']) {
+for (const persona of ['Client', 'Vendor', 'Phone']) {
   current = persona;
-  await page.click(`.personas button:has-text("${persona}")`);
+  await page.click(`.persona-sw button:has-text("${persona}")`);
   await page.waitForTimeout(200);
   let n = 0;
-  if (persona === 'Phone app') {
+  if (persona === 'Phone') {
     // The phone has two apps (picker, supervisor); open each, then every screen in its list.
     for (const app of ['Picker app', 'Supervisor app']) {
       await page.click(`.op-apphead:has-text("${app}")`);

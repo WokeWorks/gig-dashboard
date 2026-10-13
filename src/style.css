@@ -1605,3 +1605,12 @@ label.btn { cursor: pointer; }
 .acct-txt b { font-size: 13.5px; font-weight: 650; }
 .acct-txt span { font-size: 12px; color: var(--muted); }
 .acct .icon { color: var(--muted); }
+
+/* Persona switcher at the foot of the side navigation */
+.persona-sw { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; background: var(--surface-2); border-radius: 10px; flex-shrink: 0; }
+.persona-sw button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.persona-sw button:hover { color: var(--fg); }
+.persona-sw button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.body.slim .persona-sw { grid-template-columns: 1fr; }
+.body.slim .persona-sw span { display: none; }
+.side.op-flows .persona-sw { margin-top: auto; }

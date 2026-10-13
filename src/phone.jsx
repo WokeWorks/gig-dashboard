@@ -117,7 +117,7 @@ function StoreCard({ label, site, start, end, onMaps }) {
   );
 }
 
-export function PhoneApp() {
+export function PhoneApp({ switcher }) {
   // The phone is drawn at a real phone's size (390 × 844) and scaled down as a whole to fit the window,
   // so it keeps a phone's proportions instead of getting squat on short screens.
   const frame = useRef(null);
@@ -397,6 +397,7 @@ export function PhoneApp() {
             {view === k && FLOWS[k].map(([g, items]) => <div key={g}><div className="op-navhead">{g}</div>{items.map(([id, l]) => <button key={id} className={'op-navitem' + (curStep(k) === id ? ' on' : '')} onClick={() => jump(k, id)}>{l}</button>)}</div>)}
           </div>
         ))}
+        {switcher}
       </aside>
       <main className="main">
       <div className="op-stage">

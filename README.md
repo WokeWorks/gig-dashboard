@@ -8,7 +8,7 @@ This repo is the **clickable prototype**: React, all data mocked in the browser,
 
 ## Three surfaces
 
-Switch between them with the tabs at the top of the prototype.
+Switch between them at the bottom of the side navigation: Client, Vendor, Phone.
 
 - **Ops dashboard:** for the client's operations team. Liveboard with a map, notifications, the roster, leave, workforce, onboarding, vendors, locations, performance, vendor costs, forms (phase 2), announcements and settings.
 - **Vendor portal:** for each manpower vendor. Its own workers, their attendance and scorecard, proposals for new hires, requests and statements. A vendor never sees other vendors or what they charge.

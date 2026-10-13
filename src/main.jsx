@@ -18,9 +18,9 @@ const VENDOR = [
 const NAV_ICONS = { live: 'activity', alerts: 'bell', schedule: 'calendar', timesheets: 'clock', leave: 'umbrella', workforce: 'users', onboarding: 'userPlus', vendors: 'building', clients: 'pin', performance: 'chart', finance: 'wallet', comms: 'megaphone', forms: 'checkCircle', settings: 'gear',
   'v-overview': 'home', 'v-workers': 'users', 'v-att': 'calendar', 'v-score': 'star', 'v-prop': 'userPlus', 'v-req': 'flag', 'v-stmt': 'document' };
 const PERSONAS = [
-  { id: 'operator', label: 'Ops dashboard', nav: OPERATOR, first: 'live' },
-  { id: 'vendor', label: 'Vendor portal', nav: VENDOR, first: 'v-overview' },
-  { id: 'phone', label: 'Phone app' },
+  { id: 'operator', label: 'Client', icon: 'building', nav: OPERATOR, first: 'live' },
+  { id: 'vendor', label: 'Vendor', icon: 'users', nav: VENDOR, first: 'v-overview' },
+  { id: 'phone', label: 'Phone', icon: 'phone' },
 ];
 
 const load = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
@@ -61,13 +61,16 @@ function App() {
   const go = (id, prm = null) => { setParams(prm); setScreen(id); };
   const pick = (p) => { setPersona(p.id); if (p.first) setScreen(p.first); };
 
+  // Which side of the product is on show: at the bottom of the side navigation, on every surface.
+  const switcher = (
+    <nav className="persona-sw" aria-label="Show the product as">
+      {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)} title={p.label} aria-pressed={persona === p.id}><Icon name={p.icon} size={16} /><span>{p.label}</span></button>)}
+    </nav>
+  );
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand"><Logo size={30} tight /><b>OpsPro</b></div>
-        <nav className="personas" aria-label="Who is using OpsPro">
-          {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)}>{p.label}</button>)}
-        </nav>
         {P.nav && <Account who={persona === 'vendor' ? ACCOUNTS.vendor : ACCOUNTS.operator} />}
       </header>
       {P.nav ? (
@@ -85,11 +88,12 @@ function App() {
                 ))}
               </div>
             ))}
+            {switcher}
           </aside>
           <main className="main" key={cur[0] + JSON.stringify(params) + (persona === 'vendor' ? vClient : '')}>{React.createElement(cur[3], { go, params, client: vClient })}</main>
         </div>
       ) : (
-        <div className="body"><PhoneApp /></div>
+        <div className="body"><PhoneApp switcher={switcher} /></div>
       )}
     </div>
   );
