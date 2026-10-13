@@ -5,7 +5,7 @@ import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/date
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
 import { shiftHours, shiftBrk, usual, shiftWeek } from '../../lib/roster.js';
 import { copyWeek, emptyWeek, applyLeave, leaveIn, templateRows, parseSheet, detectColumns, findHeader, mergeInto } from '../../lib/rosterio.js';
-import { liveOf } from '../../lib/live.js';
+import { liveOf, LV } from '../../lib/live.js';
 import * as XLSX from 'xlsx';
 import { toPng } from 'html-to-image';
 
@@ -141,9 +141,10 @@ export function Scheduling({ go }) {
   const isPool = day && day.g === 'pool';
   const checks = [...(cur === 'O' ? [['warn', 'Weekly off', `${dayWorker.name.split(' ')[0]}'s weekly off: this counts as rest-day work, paid at the overtime rate`]] : []), ...dayChecks(preview, site)];
   const fmtShift = ([t, st]) => { const T = tplOf(t); const e = endOf(st, T.base + (T.brk || 0)); return `${st} – ${e.time}${e.nextDay ? ' (overnight)' : ''}`; };
-  const openDay = (g, r, c) => { if (wk < 0) { toast('Past weeks are read-only. Timesheets has what was worked.'); return; }
-    if (c < nowIdx) { toast(`${FULL_DAYS[c]} has passed, so it can't be changed · Timesheets has what was worked`); return; }
-    if (wk === 0 && c === TODAY && Array.isArray(G(g).cells[r][c]) && clockedIn(G(g).people[r])) { toast(`${first(W(G(g).people[r]).name)} has clocked in today, so today is locked · use Timesheets for corrections`); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
+  const openDay = (g, r, c) => {
+    // Days that are done, and today once they've clocked in, open as a record of what happened.
+    if (c < nowIdx) { setDay({ g, r, c, ro: 'past' }); return; }
+    if (wk === 0 && c === TODAY && Array.isArray(G(g).cells[r][c]) && clockedIn(G(g).people[r])) { setDay({ g, r, c, ro: 'today' }); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
     // Suggest a start: an hour after their last shift that day, otherwise their usual start.
     const st = last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : (usual(G(g).cells[r])[0] || [null, '07:00'])[1];
     setDay({ g, r, c }); setRep([]); setEd(null); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
@@ -610,7 +611,32 @@ export function Scheduling({ go }) {
         })()}
       </Drawer>
       <Drawer open={!!day} onClose={() => setDay(null)} title={day && `${W(G(day.g).people[day.r]).name} · ${days[day.c]}`} sub={day && (list.length ? `${list.length} ${list.length === 1 ? 'shift' : 'shifts'} · ${shiftHours(cur)} h${shiftBrk(cur) ? ` worked + ${shiftBrk(cur)} h break` : ''} · ${locsIn(cur, site).map((x) => siteOf(x).name).join(', ')}` : cur === 'L' ? 'Annual leave' : cur === 'O' ? 'Weekly off' : cur === 'A' ? 'Available to cover · not paid' : 'Not rostered')}>
-        {day && <>
+        {day && day.ro && (() => {
+          const wid = dayWorker.id; const live = day.ro === 'today' ? SITES.flatMap((x) => liveOf(x.id)).filter((x) => x.w.id === wid) : [];
+          const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
+          const cv = cur === 'L' && covBy(wid, day.c);
+          return <>
+            <div className="small muted">{isPool ? `Floater · lives in ${dayWorker.homeArea}` : `Works from ${siteOf(site).name}`}</div>
+            {list.length > 0 && <DayTimeline list={list} home={site} />}
+            {list.length === 0 && <p className="muted">{cur === 'O' ? 'Weekly off.' : cur === 'L' ? `On annual leave${cv ? `, covered by ${cv.w.name}` : ''}.` : cur === 'A' ? 'Available, not called in.' : 'Not rostered.'}</p>}
+            {sorted.map((x, k) => {
+              const lv = live.find((y) => y.start === x[1]);
+              const [label, tone] = day.ro === 'past' ? (missed(day.g, wid, day.c + k * 3) ? ['Missed', 'crit'] : ['Clocked in', 'good']) : lv ? [lv.status === 'in' || lv.status === 'late' || lv.status === 'break' ? `${LV[lv.status][0]} · since ${hm(lv.inAt)}` : LV[lv.status][0], LV[lv.status][1]] : ['Later today', 'muted'];
+              return (
+                <div key={x.join()} className="dayshift">
+                  <span className={'locbar' + (x[2] && x[2] !== site ? ' away' : '')} />
+                  <div><b className="mono">{fmtShift(x)}</b><div className="small muted">{siteOf(x[2] || site).name} · {tplLabel(tplOf(x[0]))}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div></div>
+                  <Pill tone={tone}>{label}</Pill>
+                </div>
+              );
+            })}
+            <div className="ro-note">
+              <span className="small">{day.ro === 'past' ? 'This day is done, so the roster is fixed. Corrections to hours go in the timesheet.' : `${first(dayWorker.name)} has clocked in, so today's roster is fixed. Corrections go in the timesheet.`}</span>
+              <button className="btn sm ghost" onClick={() => go('workforce', { worker: wid, tab: 'Timesheet' })}>Open timesheet</button>
+            </div>
+          </>;
+        })()}
+        {day && !day.ro && <>
           <div className="small muted">{isPool ? `Floater · lives in ${dayWorker.homeArea} · no fixed location` : `Works from ${siteOf(site).name}`}</div>
           {cur === 'L' && (() => { const cv = covBy(dayWorker.id, day.c); const sh0 = usual(G(day.g).cells[day.r])[0]; return (
             <section className={'cv-status' + (cv ? ' ok' : '')}>

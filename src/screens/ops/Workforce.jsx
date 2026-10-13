@@ -13,7 +13,7 @@ export function Workforce({ params, go }) {
   const [role, setRole] = useState('all');
   const [show, setShow] = useState('all');
   const [sel, setSel] = useState(params?.worker ? WORKERS.find((w) => w.id === params.worker) : null);
-  const [tab, setTab] = useState('Overview');
+  const [tab, setTab] = useState(params?.tab || 'Overview');
   const toast = useToast();
   const base = WORKERS.filter((w) => (vendor === 'all' || w.vendor === vendor) && (site === 'all' || w.site === site) && (role === 'all' || w.role === role) && (!q || (w.name + w.code).toLowerCase().includes(q.toLowerCase())));
   const tagged = base.map((w) => ({ w, today: todayOf(w), month: timesheetOf(w).sum }));
