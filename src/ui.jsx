@@ -23,7 +23,7 @@ export const Spec = ({ s }) => <span className="spec" title="Section in the deta
 
 export const Pill = ({ tone = 'muted', children }) => <span className={'pill ' + tone}>{children}</span>;
 
-export function ScreenHeader({ title, phase, spec, desc, actions }) {
+export function ScreenHeader({ title, phase, spec, actions }) {
   return (
     <header className="screen-head">
       <div className="screen-head-text">
@@ -32,7 +32,6 @@ export function ScreenHeader({ title, phase, spec, desc, actions }) {
           {spec && <Spec s={spec} />}
         </div>
         <h1>{title}</h1>
-        {desc && <p className="screen-desc">{desc}</p>}
       </div>
       {actions && <div className="screen-actions">{actions}</div>}
     </header>

@@ -103,7 +103,7 @@ export function LiveBoard({ go }) {
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
   return (
     <>
-      <ScreenHeader title="Liveboard" phase={1} spec="5.1" desc="Who is in right now, location by location, and who needs chasing." actions={<span className="lv-clock"><span className="lv-live" />Wed 7 Oct · {hm(NOW_MIN)}</span>} />
+      <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" />Wed 7 Oct · {hm(NOW_MIN)}</span>} />
       <section className="card flush lm-wrap">
         <LiveMap data={shown} pick={pick} onPick={setPick} />
         <div className="lm-over lm-filters">

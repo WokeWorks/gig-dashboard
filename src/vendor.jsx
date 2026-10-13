@@ -17,7 +17,7 @@ export function VendorOverview({ go }) {
   const bySite = [...new Set(mine.map((w) => w.site))].map((sid) => { const ws = mine.filter((w) => w.site === sid); const tt = ws.map((w) => todayOf(w)); return { sid, due: tt.filter((x) => x.key !== 'off').length, in: tt.filter((x) => x.key === 'in').length, late: tt.filter((x) => x.text.startsWith('Late')).length, ns: tt.filter((x) => x.key === 'notin').length }; }).filter((x) => x.due > 0).sort((a, b) => b.ns - a.ns || b.due - a.due);
   return (
     <>
-      <ScreenHeader title="Overview" phase={1} spec="6" desc="Your own people only. Nothing about other vendors or what they charge." />
+      <ScreenHeader title="Overview" phase={1} spec="6" />
       <div className="stats">
         <Stat label="Clocked in now" value={`${inN}/${due}`} sub="Of those rostered today" />
         <Stat label="Late" value={late} tone={late ? 'warn' : undefined} />
@@ -53,7 +53,7 @@ export function VendorWorkers() {
   const mine = mineAll();
   return (
     <>
-      <ScreenHeader title="My workers" phase={1} spec="6" desc="Everyone you employ who works at Deliveroo locations. View only: changes go through a proposal or a message to ops." />
+      <ScreenHeader title="My workers" phase={1} spec="6" />
       <section className="card flush"><div className="table-wrap"><table className="table wf-table">
         <thead><tr><th>Worker</th><th>Location</th><th>Today</th><th>October so far</th><th className="num">Score</th><th>Documents</th></tr></thead>
         <tbody>{mine.map((w) => { const today = todayOf(w); const m = timesheetOf(w).sum; return (
@@ -88,7 +88,7 @@ export function VendorAttendance() {
   const mine = mineAll();
   return (
     <>
-      <ScreenHeader title="Attendance" phase={1} spec="6" desc="What each of your workers did this week, wherever they worked. Days still to come show their rostered start." />
+      <ScreenHeader title="Attendance" phase={1} spec="6" />
       <div className="legend small va-legend">{['in', 'late', 'abs', 'leave', 'off'].map((k) => <span key={k} className={'dchip ' + k}>{DAYWORD[k]}</span>)}<span className="dchip standby">Standby</span><span className="dchip plan">07:00</span><span className="muted">rostered start, still to come</span></div>
       <section className="card flush"><div className="table-wrap"><table className="table va-table">
         <thead><tr><th>Worker</th>{DAYS.map((d, i) => <th key={d} className={i === 2 ? 'today' : ''}>{d}{i === 2 && <span className="today-tag">Today</span>}</th>)}</tr></thead>
@@ -104,7 +104,7 @@ export function VendorScorecard() {
   const rows = [['Fill rate', v.fill + '%', 'Heads supplied ÷ requested', [90, 92, 94, 93, 95, 96]], ['Attendance rate', '97.1%', 'Rostered shifts attended', [95, 96, 96, 97, 96, 97]], ['No-show rate', v.noshow + '%', 'Lower is better', [3.1, 2.8, 2.4, 2.2, 2.0, 1.8]], ['Time to fill', v.ttf + ' h', 'Request to candidates proposed', [36, 30, 28, 26, 24, 22]], ['Retention at 90 days', v.retention + '%', 'Still active after 90 days', [80, 82, 84, 85, 87, 88]], ['Document compliance', v.compliance + '%', 'Workers with valid documents', [92, 93, 95, 95, 96, 97]]];
   return (
     <>
-      <ScreenHeader title="Scorecard" phase={2} spec="8" desc="Your vendor score is built from these metrics plus your workers' average score. Your rank against other vendors is never shown." />
+      <ScreenHeader title="Scorecard" phase={2} spec="8" />
       <div className="score-grid">{rows.map(([k, val, d, s]) => <section key={k} className="card"><div className="stat-label">{k}</div><div className="stat-value">{val}</div><Spark data={s} w={200} h={36} /><div className="small muted">{d}</div></section>)}</div>
     </>
   );
@@ -124,7 +124,7 @@ export function VendorProposals() {
   };
   return (
     <>
-      <ScreenHeader title="Proposals" phase={1} spec="6" desc="The one thing a vendor can create. Deliveroo reviews every proposal before the person is rostered." />
+      <ScreenHeader title="Proposals" phase={1} spec="6" />
       <div className="grid-2">
         <form className="card form" onSubmit={submit}>
           <div className="card-head"><h3>Propose a candidate</h3></div>
@@ -153,7 +153,7 @@ export function VendorRequests() {
   const toast = useToast();
   return (
     <>
-      <ScreenHeader title="Headcount requests" phase={2} spec="6" desc="Deliveroo asks for people; you answer by proposing candidates." />
+      <ScreenHeader title="Headcount requests" phase={2} spec="6" />
       <section className="card">
         {[['5 Pickers', 'Carrefour Barsha Heights', 'From Mon 12 Oct', '2 proposed'], ['1 Shift lead', 'Spinneys Majan', 'From Thu 15 Oct', 'None yet'], ['3 Relievers', 'Any location', 'From Mon 19 Oct', 'None yet']].map(([n, s, d, st]) => (
           <div key={n + s} className="row-line"><b>{n}</b><span className="small">{s} · {d}</span><Pill tone={st === 'None yet' ? 'warn' : 'info'}>{st}</Pill><button className="btn sm" onClick={() => toast('Opened proposal form for this request')}>Propose</button></div>
@@ -166,7 +166,7 @@ export function VendorRequests() {
 export function VendorStatements() {
   return (
     <>
-      <ScreenHeader title="Statements" phase={2} spec="9" desc="What Deliveroo owes you, from approved timesheets." />
+      <ScreenHeader title="Statements" phase={2} spec="9" />
       <section className="card flush"><table className="table">
         <thead><tr><th>Period</th><th className="num">Days present</th><th className="num">Gross</th><th className="num">No-show deductions</th><th className="num">Net payable</th><th>Status</th></tr></thead>
         <tbody>

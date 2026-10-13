@@ -251,7 +251,7 @@ export function Forms({ go }) {
   const industries = [...new Set(TEMPLATES.map((t) => t.industry))];
   return (
     <>
-      <ScreenHeader title="Forms" phase={2} spec="5.11" desc="Checklists and reports workers fill in on their phone: at clock-in, at clock-out, on a schedule, or whenever needed." actions={<button className="btn" onClick={() => setPicking(true)}><Icon name="plus" size={15} /> New form</button>} />
+      <ScreenHeader title="Forms" phase={2} spec="5.11" actions={<button className="btn" onClick={() => setPicking(true)}><Icon name="plus" size={15} /> New form</button>} />
       <Tabs tabs={[{ id: 'forms', label: 'Forms' }, { id: 'subs', label: `Submissions` }]} value={tab} onChange={setTab} />
       {tab === 'forms' && <section className="card flush">
         <div className="table-wrap"><table className="table hover fm-table">

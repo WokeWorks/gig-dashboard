@@ -7,7 +7,7 @@ export function Vendors({ go }) {
   const [sel, setSel] = useState(null);
   return (
     <>
-      <ScreenHeader title="Vendors" phase={1} spec="8" desc="Every manpower supplier. Click a vendor to see its workers. Only you see vendors side by side; each vendor sees only its own people." />
+      <ScreenHeader title="Vendors" phase={1} spec="8" />
       <section className="card flush">
         <div className="table-wrap">
           <table className="table hover">

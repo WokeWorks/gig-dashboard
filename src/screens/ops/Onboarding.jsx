@@ -30,7 +30,7 @@ export function Onboarding() {
   const create = () => { setDone({ code: 'OP-' + (1349 + Math.floor(Math.random() * 40)), face: d.photo }); if (d.fromProp) setProps(props.filter((x) => x.id !== d.fromProp)); };
   return (
     <>
-      <ScreenHeader title="Onboarding" phase={1} spec="6" desc="Add workers one at a time or in bulk, then send them the app link to set their PIN." />
+      <ScreenHeader title="Onboarding" phase={1} spec="6" />
       <Tabs tabs={[{ id: 'new', label: 'Add a worker' }, { id: 'bulk', label: 'Bulk import' }, { id: 'prop', label: `From vendors (${props.length})` }]} value={tab} onChange={setTab} />
       {tab === 'new' && !done && <div className="ob">
         <ol className="ob-steps">{OB_STEPS.map(([l, sub], i) => <li key={l} className={i === step ? 'on' : i < step ? 'done' : ''}><span className="ob-n">{i < step ? <Icon name="check" size={13} stroke={2.6} /> : i + 1}</span><div><b>{l}</b><span className="small muted">{sub}</span></div></li>)}</ol>

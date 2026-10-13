@@ -5,7 +5,7 @@ export function ClientsSites() {
   const toast = useToast();
   return (
     <>
-      <ScreenHeader title="Locations" phase={1} spec="5.3" desc="Each location has a geofence, operating hours, required headcount by role and attendance rules." actions={<button className="btn" onClick={() => toast('Add a location: draw the geofence on the map, set hours and headcount')}>Add location</button>} />
+      <ScreenHeader title="Locations" phase={1} spec="5.3" actions={<button className="btn" onClick={() => toast('Add a location: draw the geofence on the map, set hours and headcount')}>Add location</button>} />
       {AREAS.map((a) => (
         <section key={a} className="area-group">
           <div className="area-head"><h3>{a}</h3><span className="muted small">{SITES.filter((s) => s.area === a).length} locations · {SITES.filter((s) => s.area === a).reduce((x, s) => x + s.req, 0)} heads required</span></div>

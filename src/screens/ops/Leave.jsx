@@ -28,7 +28,7 @@ export function Leave({ go }) {
   const overlap = (l) => { const w = who(l); return items.filter((o) => o.id !== l.id && o.status === 'Approved' && who(o).site === w.site && o.from <= l.to && o.to >= l.from).length; };
   return (
     <>
-      <ScreenHeader title="Leave" phase={1} spec="5.8" desc="Requests come from the worker app. Approving clears their shifts on those days and never counts as absence. The vendor is told, not asked." />
+      <ScreenHeader title="Leave" phase={1} spec="5.8" />
       <Tabs tabs={[{ id: 'wait', label: `Waiting for you${pending.length ? ` (${pending.length})` : ''}` }, { id: 'done', label: 'Decided' }]} value={tab} onChange={setTab} />
       {tab === 'wait' && <section className="card flush">
         {pending.length === 0 ? <div className="pad small muted lv-empty">Nothing to review.</div> :

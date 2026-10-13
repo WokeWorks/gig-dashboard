@@ -68,7 +68,7 @@ export function Performance() {
   const word = (mm) => (mm.dir === 'higher' ? 'below' : 'above');
   return (
     <>
-      <ScreenHeader title="Performance" phase={2} spec="8" desc="Set the line for each metric and see how many workers fall short. Pick a metric to list them." />
+      <ScreenHeader title="Performance" phase={2} spec="8" />
       <Tabs tabs={[{ id: 'th', label: 'Thresholds' }, { id: 'w', label: 'Score weights' }]} value={tab} onChange={setTab} />
       {tab === 'th' && <>
         <div className="stats">

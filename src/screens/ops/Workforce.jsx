@@ -22,7 +22,7 @@ export function Workforce({ params, go }) {
   const roles = [...new Set(WORKERS.map((w) => w.role))];
   return (
     <>
-      <ScreenHeader title="Workforce" phase={1} spec="5.2" desc="Everyone working at your locations, whichever vendor employs them." actions={<>
+      <ScreenHeader title="Workforce" phase={1} spec="5.2" actions={<>
         <button className="btn ghost" onClick={() => toast('Bulk import: upload CSV or XLSX, get a per-row error report')}>Bulk import</button>
         <button className="btn" onClick={() => go('onboarding')}>Add worker</button>
       </>} />

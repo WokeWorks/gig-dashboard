@@ -290,7 +290,7 @@ export function Scheduling({ go }) {
   };
   return (
     <>
-      <ScreenHeader title="Roster" phase={1} spec="5.4" desc="The week broken down by location. Click a day to assign shifts; a worker can get more than one shift a day." actions={<>
+      <ScreenHeader title="Roster" phase={1} spec="5.4" actions={<>
         <button className="btn ghost" onClick={() => setUp({ wk: Math.max(wk, wk === 0 ? 0 : 1), step: 'pick' })}><Icon name="upload" size={15} /> Upload roster</button>
         <button className="btn ghost" onClick={() => toast('Exported the roster for these locations (XLSX and PDF)')}>Export</button>
         <button className="btn ghost" onClick={() => go('settings')}>Shifts and rules</button>

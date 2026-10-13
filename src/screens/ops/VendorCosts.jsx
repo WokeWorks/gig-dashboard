@@ -11,7 +11,7 @@ export function Finance({ go }) {
   const net = FIN_VENDORS.reduce((a, v) => a + v.net, 0);
   return (
     <>
-      <ScreenHeader title="Vendor costs" phase={2} spec="9" desc="What you owe each vendor, priced from approved timesheets and each vendor's rate card." />
+      <ScreenHeader title="Vendor costs" phase={2} spec="9" />
       <Tabs tabs={[{ id: 'close', label: 'Period close' }, { id: 'rates', label: 'Rate cards' }, { id: 'sites', label: 'Cost by location' }]} value={tab} onChange={setTab} />
       {tab === 'close' && <>
         <div className="stats">

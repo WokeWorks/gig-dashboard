@@ -87,7 +87,7 @@ export function Settings({ params }) {
   };
     return (
     <>
-      <ScreenHeader title="Settings" phase={1} spec="5.10" desc="Everything that used to be hardcoded lives here: shifts, attendance rules, leave types and roles." actions={<button className="btn" onClick={() => toast('Saved · applies from the next shift')}>Save</button>} />
+      <ScreenHeader title="Settings" phase={1} spec="5.10" actions={<button className="btn" onClick={() => toast('Saved · applies from the next shift')}>Save</button>} />
       <Tabs tabs={[{ id: 'templates', label: 'Shifts' }, { id: 'policy', label: 'Attendance rules' }, { id: 'leave', label: 'Leave types' }, { id: 'roles', label: 'Roles & access' }]} value={tab} onChange={setTab} />
       {tab === 'templates' && <>
         <section className="card flush">
