@@ -3,7 +3,7 @@ import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
 import { GEO } from './lib/geo.js';
 import { LiveMap } from './lib/livemap.jsx';
-import { ScreenHeader, Stat, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
+import { ScreenHeader, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
 
 const { useState } = React;
 const ME = 'v4'; // GH FZE
@@ -68,15 +68,14 @@ export function VendorOverview({ go, client = 'all' }) {
   return (
     <>
       <ScreenHeader title="Overview" phase={1} spec="6" />
-      <div className="stats">
-        <Stat label="Clocked in now" value={`${t.in}/${t.due}`} sub="Of those rostered today" />
-        <Stat label="Late" value={t.late} tone={t.late ? 'warn' : undefined} />
-        <Stat label="No-show" value={t.ns} tone={t.ns ? 'crit' : undefined} />
-        <Stat label={client === 'all' ? 'Score across clients' : 'Your score'} value={score} sub={client === 'all' ? 'Weighted by headcount' : `From ${vclient(client).name}`} tone="good" />
-      </div>
-      <section className="card flush vo-map">
-        <div className="card-head pad"><h3>Where your people are today</h3><span className="small muted">Your people only; other vendors aren't shown</span></div>
-        <div className="lm-wrap"><LiveMap height={360} pick={pick} onPick={setPick} points={[...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))].map((w) => geoOf(w) && { w, g: geoOf(w), ...todayCounts(ps.filter((p) => p.where === w)) }).filter(Boolean).map((x) => ({ id: x.w, name: x.w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, ''), title: x.w, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} /></div>
+      <section className="card flush lm-wrap vo-map">
+        <LiveMap height={420} pick={pick} onPick={setPick} points={[...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))].map((w) => geoOf(w) && { w, g: geoOf(w), ...todayCounts(ps.filter((p) => p.where === w)) }).filter(Boolean).map((x) => ({ id: x.w, name: x.w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, ''), title: x.w, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
+        <div className="lm-over lm-stats">
+          <div><span className="lm-sv">{t.in}<small>/{t.due}</small></span><span className="lm-sl">in now</span></div>
+          <div className={t.ns ? 'crit' : ''}><span className="lm-sv">{t.ns}</span><span className="lm-sl">no-show</span></div>
+          <div className={t.late ? 'warn' : ''}><span className="lm-sv">{t.late}</span><span className="lm-sl">late</span></div>
+          <div className="good" title={client === 'all' ? 'Score across clients, weighted by headcount' : `Your score from ${vclient(client).name}`}><span className="lm-sv">{score}</span><span className="lm-sl">score</span></div>
+        </div>
       </section>
       <div className="grid-2">
         <section className="card flush">
