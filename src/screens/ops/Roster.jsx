@@ -291,11 +291,7 @@ export function Scheduling({ go }) {
   return (
     <>
       <ScreenHeader title="Roster" phase={1} spec="5.4" actions={<>
-        <button className="btn quiet icon-only" aria-label="More roster actions" aria-haspopup="menu" title="More" onClick={(e) => menu.open(e, 'Roster', [
-          wk >= 1 && !empty && { icon: 'copy', label: 'Copy a week…', sub: 'Into this week and the ones after', on: () => openCopy(wk) },
-          { icon: 'download', label: 'Export', sub: 'Excel and PDF, for these locations', on: () => toast('Exported the roster for these locations (XLSX and PDF)') },
-          { icon: 'gear', label: 'Shifts and rules', sub: 'Shift lengths, weekly offs, cover', on: () => go('settings') },
-        ])}><Icon name="more" size={18} /></button>
+        <button className="btn ghost" onClick={() => toast('Exported the roster for these locations (XLSX and PDF)')}><Icon name="download" size={15} /> Export</button>
         <button className="btn ghost" onClick={() => setUp({ wk: Math.max(wk, wk === 0 ? 0 : 1), step: 'pick' })}><Icon name="upload" size={15} /> Upload</button>
         {wk >= 0 && !empty && <button className="btn" onClick={() => setPubOpen(true)}>Publish…</button>}
       </>} />
