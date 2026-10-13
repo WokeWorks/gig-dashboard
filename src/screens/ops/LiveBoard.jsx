@@ -22,6 +22,9 @@ export function LiveBoard({ go }) {
   const sites = SITES.filter(siteInScope).filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
   const data = sites.map((s) => { const ppl = liveOf(s.id).map((p) => (handled[p.w.id] ? { ...p, status: handled[p.w.id] } : p)); const due = ppl.filter((p) => p.status !== 'upcoming'); const inn = due.filter((p) => ['in', 'late', 'break'].includes(p.status)).length; const bad = ppl.filter((p) => p.status === 'noshow').length; const late = ppl.filter((p) => p.status === 'late').length; return { s, ppl, due, inn, bad, late, up: ppl.filter((p) => p.status === 'upcoming') }; });
   const tot = data.reduce((a, d) => ({ due: a.due + d.due.length, inn: a.inn + d.inn, bad: a.bad + d.bad, late: a.late + d.late, up: a.up + d.up.length }), { due: 0, inn: 0, bad: 0, late: 0, up: 0 });
+  // The next shift start still to come today, and how many people it brings in.
+  const ups = data.flatMap((d) => d.up); const nextAt = ups.length ? Math.min(...ups.map((p) => p.s0)) : null;
+  const next = nextAt === null ? null : { at: nextAt, n: ups.filter((p) => p.s0 === nextAt).length };
   const shown = data.filter((d) => only === 'all' || (only === 'noshow' ? d.bad : only === 'late' ? d.late : !d.bad && !d.late)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
   const actions = data.flatMap((d) => d.ppl.filter((p) => p.status === 'noshow' || p.status === 'late').map((p) => ({ ...p, site: d.s }))).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
@@ -39,10 +42,8 @@ export function LiveBoard({ go }) {
           </div>
         </div>
         <div className="lm-over lm-stats">
-          <div><span className="lm-sv">{tot.inn}<small>/{tot.due}</small></span><span className="lm-sl">in now</span></div>
-          <div className={tot.bad ? 'crit' : ''}><span className="lm-sv">{tot.bad}</span><span className="lm-sl">no-show</span></div>
-          <div className={tot.late ? 'warn' : ''}><span className="lm-sv">{tot.late}</span><span className="lm-sl">late</span></div>
-          <div><span className="lm-sv">{tot.up}</span><span className="lm-sl">later today</span></div>
+          <div><span className="lm-sv">{tot.inn}<small>/{tot.due}</small></span><span className="lm-sl">in now{tot.late ? ` · ${tot.late} came in late` : ''}</span></div>
+          {next && <div title={`${next.n} ${next.n === 1 ? 'person starts' : 'people start'} at ${hm(next.at)}`}><span className="lm-sv">{next.n}</span><span className="lm-sl">start at {hm(next.at)}</span></div>}
         </div>
       </section>
       <section className="card flush lm-list">
