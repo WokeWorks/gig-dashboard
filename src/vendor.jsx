@@ -71,7 +71,9 @@ export function VendorOverview({ go, client = 'all' }) {
       <section className="card flush lm-wrap vo-map">
         <LiveMap height={420} pick={pick} onPick={setPick} points={[...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))].map((w) => geoOf(w) && { w, g: geoOf(w), ...todayCounts(ps.filter((p) => p.where === w)) }).filter(Boolean).map((x) => ({ id: x.w, name: x.w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, ''), title: x.w, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
         <div className="lm-over lm-stats">
-          <div><span className="lm-sv">{t.in}<small>/{t.due}</small></span><span className="lm-sl">in now{t.late ? ` · ${t.late} came in late` : ''}</span></div>
+          <div><span className="lm-sv">{t.in}</span><span className="lm-sl">in now</span></div>
+          <div className={t.ns ? 'crit' : ''}><span className="lm-sv">{t.ns}</span><span className="lm-sl">no-show</span></div>
+          <div className={t.late ? 'warn' : ''}><span className="lm-sv">{t.late}</span><span className="lm-sl">late</span></div>
           <div className="good" title={client === 'all' ? 'Score across clients, weighted by headcount' : `Your score from ${vclient(client).name}`}><span className="lm-sv">{score}</span><span className="lm-sl">score</span></div>
         </div>
       </section>
