@@ -66,7 +66,6 @@ function App() {
                 ))}
               </div>
             ))}
-            {persona === 'operator' && <div className="side-group"><div className="side-label">Phase 3</div><div className="side-later small">Chat · Surveys · Training · Ask OpsPro · AI rosters</div></div>}
           </aside>
           <main className="main" key={cur[0] + JSON.stringify(params)}>{React.createElement(cur[3], { go, params })}</main>
         </div>

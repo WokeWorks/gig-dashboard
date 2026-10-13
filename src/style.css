@@ -1,4 +1,4 @@
-@property --side-w { syntax: '<length>'; inherits: true; initial-value: 232px; }
+@property --side-w { syntax: '<length>'; inherits: true; initial-value: 200px; }
 /* Layout: ops console — top persona bar, left module rail, dense working canvas; mobile personas on a phone stage with notes beside it.
    Palette: GrowHub, shared with the OpsPro picker app (brand #1B5746 on warm neutrals). Type: Plus Jakarta Sans + DM Mono, as the dashboard. */
 :root {
@@ -48,7 +48,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .personas button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; white-space: nowrap; color: var(--muted); font-weight: 550; }
 .personas button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
 .topbar .legend { margin-left: auto; }
-.body { --side-w: 232px; position: relative; display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); flex: 1; min-height: 0; }
+.body { --side-w: 200px; position: relative; display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); flex: 1; min-height: 0; }
 .side { border-right: 1px solid var(--line); background: var(--surface); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; }
 .side-group { display: flex; flex-direction: column; gap: 2px; }
 .side-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 8px 4px; font-weight: 600; }
