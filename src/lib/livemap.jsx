@@ -36,12 +36,10 @@ export function LiveMap({ points, pick, onPick, height }) {
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
       });
       map.current = m;
-      // The map frames itself on first load, when the set of stores changes, and on "Show all". Anything the
+      // The map frames itself on first load and when the set of stores changes. Anything the
       // person does on the map (click, drag, wheel, touch, keys) hands it to them: no more automatic refits.
       const box = el.current; const mine = () => { moved.current = true; };
       const EVS = ['pointerdown', 'wheel', 'touchstart', 'keydown']; EVS.forEach((ev) => box.addEventListener(ev, mine, { passive: true, capture: true }));
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lm-fit'; btn.textContent = 'Show all'; btn.title = 'Fit every location in view'; btn.onclick = () => fitAll();
-      m.controls[G.ControlPosition.RIGHT_BOTTOM].push(btn);
       const retheme = () => m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light });
       const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
       const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
