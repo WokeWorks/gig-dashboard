@@ -1570,3 +1570,16 @@ label.btn { cursor: pointer; }
 .nt-l { display: inline-flex; align-items: center; gap: 6px; }
 .nt-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .nt-dot.crit { background: var(--crit); } .nt-dot.warn { background: var(--warn); }
+
+/* Phone: today's store card, as in the picker app */
+.op .store-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-top: 4px; }
+.op .sc-top { display: flex; gap: 12px; padding: 16px; }
+.op .sc-copy { flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.op .sc-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.op .sc-chain { color: var(--ink); font-size: 20px; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+.op .sc-area { color: var(--inkMid); font-size: 18px; font-weight: 500; margin-top: 1px; line-height: 1.25; }
+.op .sc-times { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+.op .sc-times b { color: var(--ink); font-size: 22px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.15; }
+.op .sc-times span { color: var(--muted); font-size: 12px; font-weight: 600; margin: 1px 0; }
+.op .sc-map { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--brand); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.op .sc-map:active { background: var(--brandTint); }

@@ -101,6 +101,22 @@ const Pill = ({ s }) => <span className={'pill ' + s}>{PILL[s]}</span>;
 const Meter = ({ a, b }) => <div className="meter">{Array.from({ length: Math.max(b, 1) }, (_, i) => <div key={i} className={'pip' + (i < a ? ' f' : '')} />)}</div>;
 const dot = (tone) => (tone === 'red' ? 'var(--danger)' : tone === 'amber' ? 'var(--amber)' : 'var(--brand)');
 
+// Today's store, as in the picker app (opspro-picker-app StoreCard): chain over area on the left,
+// start and end stacked big on the right, "Open in Maps" along the bottom.
+const fmt12 = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return `${h % 12 === 0 ? 12 : h % 12}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
+function StoreCard({ label, site, start, end, onMaps }) {
+  const m = site.name.match(/^(Carrefour|Spinneys)\s+(.*)$/); const chain = m ? m[1] : site.name; const area = m ? m[2] : null;
+  return (
+    <div className="store-card">
+      <div className="sc-top">
+        <div className="sc-copy">{label && <div className="sc-label">{label}</div>}<div className="sc-chain">{chain}</div>{area && <div className="sc-area">{area}</div>}</div>
+        <div className="sc-times" aria-label={`${fmt12(start)} to ${fmt12(end)}`}><b>{fmt12(start)}</b><span>to</span><b>{fmt12(end)}</b></div>
+      </div>
+      <button className="sc-map" onClick={onMaps}><Icon name="pin" size={18} /> Open in Maps</button>
+    </div>
+  );
+}
+
 export function PhoneApp() {
   // The phone is drawn at a real phone's size (390 × 844) and scaled down as a whole to fit the window,
   // so it keeps a phone's proportions instead of getting squat on short screens.
@@ -149,7 +165,7 @@ export function PhoneApp() {
     const sc = pk.screen;
     if (sc === 'home') { const f = clockInForm('Pickers'); return <>
       <Appbar title={`Hi ${ME.name.split(' ')[0]}`} right={<button className="iconBtn" onClick={() => P({ screen: 'profile' })} aria-label="Profile"><Icon name="person" size={18} /></button>} />
-      <div className="card"><div className="row"><span className="ic"><Icon name="pin" size={18} /></span><div className="grow"><div className="name">{MY_SITE.name}</div><div className="sub">Today {MY_TODAY} · {tplLabel(tplOf(myShift[0]))}</div></div></div></div>
+      <StoreCard label="Today" site={MY_SITE} start={myShift[1]} end={endOf(myShift[1], tplOf(myShift[0]).base + (tplOf(myShift[0]).brk || 0)).time} onMaps={() => toast(`Opening ${MY_SITE.name} in Maps`)} />
       {pk.clockedIn && <div className="card"><div className="row"><div className="grow"><div className="sub">Clocked in at</div><div className="big" style={{ fontSize: 24 }}>06:54</div></div><div style={{ textAlign: 'right' }}><div className="sub">{pk.onBreak ? 'On break' : 'Break left'}</div><div className="name">1h 00m</div></div></div></div>}
       <div className="op-clock">
         <button className={'clockBtn' + (pk.clockedIn ? ' out' : '')} onClick={() => (pk.clockedIn ? setCam('out') : startIn())}><Icon name="face" size={40} /><span>{pk.clockedIn ? 'Clock out' : 'Clock in'}</span></button>
