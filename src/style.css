@@ -1643,6 +1643,13 @@ label.btn { cursor: pointer; }
 .lm-side-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 12px 12px 6px; border: 1px solid var(--line); border-radius: 10px; flex: none; }
 .lm-side-stats > div { display: flex; flex-direction: column; align-items: center; padding: 7px 4px; border-left: 1px solid var(--line); }
 .lm-side-stats > div:first-child { border-left: 0; }
+.lm-side-stats > .lm-stat-btn { display: flex; flex-direction: column; align-items: center; padding: 7px 4px; border: 0; border-left: 1px solid var(--line); background: none; font: inherit; color: var(--fg); cursor: pointer; }
+.lm-stat-btn:hover:not(:disabled) { background: var(--surface-2); } .lm-stat-btn:disabled { cursor: default; }
+.lm-stat-btn.on { background: var(--crit-soft); box-shadow: inset 0 0 0 1.5px var(--crit); border-radius: 2px; }
+.lm-side-mgr { padding: 12px 12px 0; }
+.lm-side-mgr .lm-sel { width: 100%; border-radius: 10px; box-shadow: none; } .lm-side-mgr .lm-sel .select { flex: 1; justify-content: space-between; }
+.lm-filtered { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 4px; }
+.lm-side-mgr + .lm-side-stats { margin-top: 10px; }
 .lm-side-stats b { font-size: 18px; font-variant-numeric: tabular-nums; } .lm-side-stats span { font-size: 11px; color: var(--muted); }
 .lm-side-stats .good b { color: var(--good); } .lm-side-stats .crit b { color: var(--crit); } .lm-side-stats .warn b { color: var(--warn); }
 .lm-side-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 8px; }
