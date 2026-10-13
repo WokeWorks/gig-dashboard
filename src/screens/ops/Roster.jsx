@@ -43,11 +43,11 @@ export function MiniBar({ list, home }) {
   );
 }
 
-export function DayTimeline({ list, home }) {
+export function DayTimeline({ list, home, ghost }) {
   const W = 460, H = 96, L = 8, R = 8, top = 22, bh = 30;
   const X = (min) => L + pos(min) * (W - L - R);
   const ticks = [6, 9, 12, 15, 18, 21, 0, 3];
-  const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
+  const sorted = [...list, ...(ghost ? [Object.assign([...ghost], { ghost: true })] : [])].sort((a, b) => toMin(a[1]) - toMin(b[1]));
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="daytl" role="img" aria-label="Shifts across the day">
       {ticks.map((h) => <g key={h}><line x1={X(h * 60)} x2={X(h * 60)} y1={top - 4} y2={top + bh + 4} className="tl-grid" /><text x={X(h * 60)} y={H - 6} textAnchor={h === 3 ? "end" : h === 6 ? "start" : "middle"} className="tl-tick">{String(h).padStart(2, '0')}:00</text></g>)}
@@ -56,9 +56,9 @@ export function DayTimeline({ list, home }) {
         const x0 = X(s0), x1 = X(s0 + spanOf(T) * 60);
         return (
           <g key={k}>
-            <rect x={x0} y={top} width={Math.max(2, x1 - x0)} height={bh} rx="5" className={'tl-seg' + (site !== home ? ' away' : '')} />
-            <text x={x0 + 6} y={top + 13} className={'tl-lab' + (site !== home ? ' away' : '')}>{siteOf(site).name}</text>
-            <text x={x0 + 6} y={top + 25} className={'tl-sub' + (site !== home ? ' away' : '')}>{st} · {tplLabel(T)}</text>
+            <rect x={x0} y={top} width={Math.max(2, x1 - x0)} height={bh} rx="5" className={'tl-seg' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')} />
+            <text x={x0 + 6} y={top + 13} className={'tl-lab' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')}>{siteOf(site).name}</text>
+            <text x={x0 + 6} y={top + 25} className={'tl-sub' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')}>{st} · {tplLabel(T)}</text>
           </g>
         );
       })}
@@ -96,6 +96,7 @@ export function Scheduling({ go }) {
   const [up, setUp] = useState(null); // upload: { wk, step: 'pick' | 'report', file, aoa, map }
   const [cp, setCp] = useState(null); // copy: { from, to, n, sites }
   const [rep, setRep] = useState([]); // "copy this day to" days in the day drawer
+  const [adding, setAdding] = useState(false); // the add-a-shift form in the day drawer is open
   const [pubOpt, setPubOpt] = useState({ notify: true, ack: true });
   const has = (w) => !!weeks[w];
   const groups = fixedOff(weeks[wk] || emptyWeek());
@@ -147,7 +148,7 @@ export function Scheduling({ go }) {
     if (wk === 0 && c === TODAY && Array.isArray(G(g).cells[r][c]) && clockedIn(G(g).people[r])) { setDay({ g, r, c, ro: 'today' }); return; } if (fixedMode && OFF_RULES.days.includes(c)) { toast(`${FULL_DAYS[c]} is the weekly off for everyone · change it in Settings → Attendance rules`); return; } { const cell = G(g).cells[r][c]; const ls = Array.isArray(cell) ? cell : []; const last = ls.reduce((m, x) => Math.max(m, toMin(x[1]) + tplOf(x[0]).base * 60), -1);
     // Suggest a start: an hour after their last shift that day, otherwise their usual start.
     const st = last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : (usual(G(g).cells[r])[0] || [null, '07:00'])[1];
-    setDay({ g, r, c }); setRep([]); setEd(null); setAdd({ ...add, t: last >= 0 ? 'f7' : add.t, st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
+    setDay({ g, r, c }); setRep([]); setEd(null); setAdding(!Array.isArray(cell) && cell !== 'O' && cell !== 'L'); setAdd({ ...add, t: last >= 0 ? 'f7' : (usual(G(g).cells[r])[0] || ['f5'])[0], st, site: g === 'pool' ? (shown[0] || SITES[0]).id : g }); } };
   const locsIn = (c, home) => (Array.isArray(c) ? [...new Set(c.map((x) => x[2] || home))] : []);
   const match = (w) => (!q || w.name.toLowerCase().includes(q.toLowerCase())) && (ven === 'all' || w.vendor === ven);
   const mine = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
@@ -609,7 +610,7 @@ export function Scheduling({ go }) {
           </>;
         })()}
       </Drawer>
-      <Drawer open={!!day} onClose={() => setDay(null)} title={day && `${W(G(day.g).people[day.r]).name} · ${days[day.c]}`} sub={day && (list.length ? `${list.length} ${list.length === 1 ? 'shift' : 'shifts'} · ${shiftHours(cur)} h${shiftBrk(cur) ? ` worked + ${shiftBrk(cur)} h break` : ''} · ${locsIn(cur, site).map((x) => siteOf(x).name).join(', ')}` : cur === 'L' ? 'Annual leave' : cur === 'O' ? 'Weekly off' : cur === 'A' ? 'Available to cover · not paid' : 'Not rostered')}>
+      <Drawer open={!!day} onClose={() => setDay(null)} title={day && W(G(day.g).people[day.r]).name} sub={day && `${FULL_DAYS[day.c]} ${days[day.c].split(' ').slice(1).join(' ')} · ${isPool ? 'Floater' : siteOf(site).name}`}>
         {day && day.ro && (() => {
           const wid = dayWorker.id; const live = day.ro === 'today' ? SITES.flatMap((x) => liveOf(x.id)).filter((x) => x.w.id === wid) : [];
           const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
@@ -635,94 +636,94 @@ export function Scheduling({ go }) {
             </div>
           </>;
         })()}
-        {day && !day.ro && <>
-          <div className="small muted">{isPool ? `Floater · lives in ${dayWorker.homeArea} · no fixed location` : `Works from ${siteOf(site).name}`}</div>
-          {cur === 'L' && (() => { const cv = covBy(dayWorker.id, day.c); const sh0 = usual(G(day.g).cells[day.r])[0]; return (
-            <section className={'cv-status' + (cv ? ' ok' : '')}>
-              {cv ? <>
-                <div><b>Covered by {cv.w.name}</b><div className="small muted"><span className="vtag">{vendorOf(cv.w.vendor).code}</span> {isFloat(cv.w) ? `Floater · ${cv.w.homeArea}` : siteOf(cv.g).name} · {cv.sh[1]} to {endOf(cv.sh[1], tplOf(cv.sh[0]).base + (tplOf(cv.sh[0]).brk || 0)).time}</div></div>
-                {day.c >= nowIdx && <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>}
-              </> : <>
-                <div><b>{day.c >= nowIdx ? 'Not covered yet' : 'Was not covered'}</b><div className="small muted">Usual shift {sh0[1]} to {endOf(sh0[1], tplOf(sh0[0]).base + (tplOf(sh0[0]).brk || 0)).time} · {tplLabel(tplOf(sh0[0]))}</div></div>
-                {day.c >= nowIdx && <button className="btn sm" onClick={() => findCover(dayWorker.id, day.g, day.c, sh0, 'Annual leave')}>Find cover</button>}
-              </>}
-            </section>
-          ); })()}
-          {(() => {
-            const prevG = has(wk - 1) && weeks[wk - 1].find((g) => g.site === day.g);
-            const raw = prevG && prevG.cells[day.r] && prevG.cells[day.r][day.c];
-            const prev = Array.isArray(raw) ? (raw.filter((y) => !y[3]).length ? raw.filter((y) => !y[3]) : null) : raw === 'O' || raw === 'X' || raw === 'A' ? raw : null;
-            const showPrev = prev && cur !== 'L' && JSON.stringify(prev) !== JSON.stringify(cur);
-            const covering = list.some((y) => y[3]) || list.some((y) => coverFor(dayWorker.id, day.c, y));
-            const canOff = cur !== 'O' && cur !== 'L' && !covering;
-            if (!showPrev && !canOff) return null;
-            return (
-              <div className="day-quick">
-                {showPrev && <button className="btn sm ghost" onClick={() => { setCell(day.g, day.r, day.c, prev); toast(`Same as last ${days[day.c].split(' ')[0]}`); }}><Icon name="copy" size={13} /> Same as last week: {shotText(prev, site).join(', ')}</button>}
-                {canOff && <button className="btn sm ghost" onClick={() => { setCell(day.g, day.r, day.c, 'O'); toast(`${days[day.c]} is now ${first(dayWorker.name)}'s weekly off`); }}>Make this a weekly off</button>}
-              </div>
-            );
-          })()}
-          {list.length > 0 && <DayTimeline list={list} home={site} />}
-          {list.length === 0 && cur !== 'L' && <p className="muted">{isPool ? 'Available. Assign a cover from the absent worker\'s day, or add a shift below.' : 'Nothing planned. Add one or more shifts below.'}</p>}
-          {[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x) => {
-            const key = x.join(); const cv = !x[3] && coverFor(dayWorker.id, day.c, x);
-            const editing = ed && ed.key === key;
-            const swapped = editing && list.map((y) => (y === x ? mk(ed.t, ed.st, ed.site) : y));
-            const eChecks = editing ? dayChecks(swapped.map(norm), site) : [];
-            const removeShift = () => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); if (cv) setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : cv ? `Shift removed · ${first(cv.w.name)}'s cover cancelled` : 'Shift removed'); };
-            return (
-              <div key={key} className="dayshift-wrap">
-                <div className="dayshift">
-                  <span className={'locbar' + (x[2] && x[2] !== site ? ' away' : '')} />
-                  <div><b className="mono">{fmtShift(x)}</b><div className="small muted">{siteOf(x[2] || site).name} · {tplLabel(tplOf(x[0]))}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div>
-                    {cv && <div className="small cov-line">Covered by <b>{cv.w.name}</b> <span className="muted">· {isFloat(cv.w) ? 'Floater' : siteOf(cv.g).name}</span></div>}</div>
-                  <div className="ds-acts">
-                    {!x[3] && !editing && <button className="btn sm ghost" onClick={() => setEd({ key, t: x[0], st: x[1], site: x[2] || (isPool ? (shown[0] || SITES[0]).id : site) })}>Edit</button>}
-                    {!x[3] && !cv && <button className="btn sm ghost" onClick={() => findCover(dayWorker.id, x[2] || day.g, day.c, x, 'Can\'t make this shift')}>Find cover</button>}
-                    {cv && <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>}
-                    <button className="btn sm ghost danger" onClick={removeShift}>Remove</button>
-                  </div>
-                </div>
-                {editing && <div className="ds-edit">
-                  <div className="form-grid">
-                    <Field label="Shift"><Select id="ed-t" className="input" value={ed.t} onChange={(e) => setEd({ ...ed, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>
-                    <Field label="Starts" hint={`Ends ${endOf(ed.st, spanOf(tplOf(ed.t))).time}${endOf(ed.st, spanOf(tplOf(ed.t))).nextDay ? ', after midnight' : ''}`}><input id="ed-st" type="time" className="input mono" value={ed.st} onChange={(e) => setEd({ ...ed, st: e.target.value || ed.st })} /></Field>
-                    <Field label="Location"><Select id="ed-site" className="input" value={ed.site} onChange={(e) => setEd({ ...ed, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (their location)' : ''}</option>)}</Select></Field>
-                  </div>
-                  {eChecks.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>)}
-                  {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
-                  <div className="ds-edit-acts"><button className="btn ghost sm" onClick={() => setEd(null)}>Cancel</button><button className="btn sm" disabled={eChecks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, swapped.map(norm)); setEd(null); toast('Shift updated'); }}>Save</button></div>
-                </div>}
-              </div>
-            );
-          })}
-          {list.length > 0 && !list.some((x) => x[3]) && (() => {
-            const row = G(day.g).cells[day.r];
-            const can = (d) => d !== day.c && d >= (nowIdx < 0 ? 0 : nowIdx) && row[d] !== 'L' && !(fixedMode && OFF_RULES.days.includes(d));
-            const same = (d) => JSON.stringify(row[d]) === JSON.stringify(cur);
-            return (
-              <section className="repeat">
-                <div className="small"><b>Same shifts on other days</b> <span className="muted">Pick days, then apply. Leave and past days are skipped.</span></div>
-                <div className="rep-days">{days.map((d, i) => <button key={i} className={'wk-day' + (rep.includes(i) ? ' on' : '') + (same(i) && i !== day.c ? ' same' : '')} disabled={!can(i)} aria-pressed={rep.includes(i)} title={row[i] === 'L' ? 'On leave' : i === day.c ? 'This day' : same(i) ? 'Already the same' : d} onClick={() => setRep(rep.includes(i) ? rep.filter((x) => x !== i) : [...rep, i])}>{d.slice(0, 2)}</button>)}
-                  <button className="linkbtn small" onClick={() => setRep(days.map((_, i) => i).filter((i) => can(i) && row[i] !== 'O' && !same(i)))}>All working days</button></div>
-                {rep.length > 0 && <button className="btn sm" onClick={() => { setCells(day.g, day.r, rep, cur); toast(`Copied to ${rep.length} ${rep.length === 1 ? 'day' : 'days'}${rep.some((i) => row[i] === 'O') ? ' · that includes a weekly off' : ''}`); setRep([]); }}>Apply to {rep.length} {rep.length === 1 ? 'day' : 'days'}</button>}
-              </section>
-            );
-          })()}
-          {cur !== 'L' && <section className="addshift">
-            <h3>{list.length ? 'Add another shift' : 'Add a shift'}</h3>
-            <div className="form-grid">
-              <Field label="Shift"><Select id="as-t" className="input" value={add.t} onChange={(e) => setAdd({ ...add, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>
-              <Field label="Starts" hint={`Ends ${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).time}${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).nextDay ? ', after midnight' : ''}`}><input id="as-st" type="time" className="input mono" value={add.st} onChange={(e) => setAdd({ ...add, st: e.target.value || add.st })} /></Field>
-              <Field label="Location"><Select id="as-site" className="input" value={add.site} onChange={(e) => setAdd({ ...add, site: e.target.value })}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}{x.id === site ? ' (their location)' : ''}</option>)}</Select></Field>
+        {day && !day.ro && (() => {
+          const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
+          const editingX = ed && list.find((y) => y.join() === ed.key);
+          const tlList = editingX ? list.filter((y) => y !== editingX) : list;
+          const ghost = editingX ? mk(ed.t, ed.st, ed.site) : adding ? mk(add.t, add.st, add.site) : null;
+          const row = G(day.g).cells[day.r];
+          const prevG = has(wk - 1) && weeks[wk - 1].find((g) => g.site === day.g);
+          const raw = prevG && prevG.cells[day.r] && prevG.cells[day.r][day.c];
+          const prev = Array.isArray(raw) ? (raw.filter((y) => !y[3]).length ? raw.filter((y) => !y[3]) : null) : raw === 'O' || raw === 'X' || raw === 'A' ? raw : null;
+          const showPrev = prev && cur !== 'L' && JSON.stringify(prev) !== JSON.stringify(cur);
+          const covering = list.some((y) => y[3]) || list.some((y) => coverFor(dayWorker.id, day.c, y));
+          const canOff = cur !== 'O' && cur !== 'L' && !covering && !isPool;
+          const canRep = (d) => d !== day.c && d >= (nowIdx < 0 ? 0 : nowIdx) && row[d] !== 'L' && !(fixedMode && OFF_RULES.days.includes(d));
+          const same = (d) => JSON.stringify(row[d]) === JSON.stringify(cur);
+          const fields = (v, set, pre) => (
+            <div className="sf-grid">
+              <Field label="Length"><Select id={pre + '-t'} className="input" value={v.t} onChange={(e) => set({ ...v, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>
+              <Field label="Starts" hint={`Ends ${endOf(v.st, spanOf(tplOf(v.t))).time}${endOf(v.st, spanOf(tplOf(v.t))).nextDay ? ' next day' : ''}`}><input id={pre + '-st'} type="time" className="input mono" value={v.st} onChange={(e) => set({ ...v, st: e.target.value || v.st })} /></Field>
+              <Field label="Location"><Select id={pre + '-site'} className="input" value={v.site} onChange={(e) => set({ ...v, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (theirs)' : ''}</option>)}</Select></Field>
             </div>
-            <DayTimeline list={preview.map(norm)} home={site} />
-            {checks.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>)}
-            <button className="btn" disabled={checks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, preview.map(norm)); toast(add.site !== site ? `Shift added · also shows under ${siteOf(add.site).name}` : 'Shift added · add another if needed'); }}>Add shift</button>
-          </section>}
-          <Note>Each shift has its own clock-in and clock-out at its own location, and attendance is judged per shift. A shift at another location also appears under that location's roster.</Note>
-        </>}
+          );
+          const checkLines = (cs) => cs.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>);
+          return <>
+            {cur === 'L' && (() => { const cv = covBy(dayWorker.id, day.c); const sh0 = usual(row)[0]; return (
+              <section className={'cv-status' + (cv ? ' ok' : '')}>
+                {cv ? <>
+                  <div><b>On leave · covered by {cv.w.name}</b><div className="small muted"><span className="vtag">{vendorOf(cv.w.vendor).code}</span> {isFloat(cv.w) ? `Floater · ${cv.w.homeArea}` : siteOf(cv.g).name} · {cv.sh[1]} to {endOf(cv.sh[1], spanOf(tplOf(cv.sh[0]))).time}</div></div>
+                  <button className="btn sm ghost" onClick={() => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); }}>Remove cover</button>
+                </> : <>
+                  <div><b>On leave · not covered yet</b><div className="small muted">Usual shift {sh0[1]} to {endOf(sh0[1], spanOf(tplOf(sh0[0]))).time}</div></div>
+                  <button className="btn sm" onClick={() => findCover(dayWorker.id, day.g, day.c, sh0, 'Annual leave')}>Find cover</button>
+                </>}
+              </section>
+            ); })()}
+            {cur === 'O' && !adding && <section className="day-state"><div><b>Weekly off</b><div className="small muted">A shift today is paid as rest-day work.</div></div><button className="btn sm ghost" onClick={() => setAdding(true)}>Add a shift anyway</button></section>}
+            {(tlList.length > 0 || ghost) && <DayTimeline list={tlList} ghost={ghost} home={site} />}
+            {sorted.length > 0 && <div className="ds-list">{sorted.map((x) => {
+              const key = x.join(); const cv = !x[3] && coverFor(dayWorker.id, day.c, x);
+              const editing = ed && ed.key === key;
+              const swapped = editing && list.map((y) => (y === x ? mk(ed.t, ed.st, ed.site) : y));
+              const eChecks = editing ? dayChecks(swapped.map(norm), site) : [];
+              const removeShift = () => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); if (cv) setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : cv ? `Shift removed · ${first(cv.w.name)}'s cover cancelled` : 'Shift removed'); };
+              const away = (x[2] || site) !== site;
+              return (
+                <div key={key} className={'ds-item' + (editing ? ' editing' : '')}>
+                  <div className="ds-row">
+                    <span className={'locbar' + (away ? ' away' : '')} />
+                    <div className="ds-main"><b className="mono">{fmtShift(x)}</b>
+                      <div className="small muted">{tplLabel(tplOf(x[0]))}{away || isPool ? ` · ${siteOf(x[2]).name}` : ''}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div>
+                      {cv && <div className="small cov-line">Covered by <b>{cv.w.name}</b></div>}</div>
+                    {!editing && <div className="ds-acts">
+                      {!x[3] && <button className="btn sm ghost" onClick={() => { setAdding(false); setEd({ key, t: x[0], st: x[1], site: x[2] || (isPool ? (shown[0] || SITES[0]).id : site) }); }}>Edit</button>}
+                      <button className="btn sm quiet icon-only" aria-label="More for this shift" onClick={(e) => menu.open(e, fmtShift(x), [
+                        !x[3] && !cv && { icon: 'users', label: 'Find cover', sub: 'Someone else works this shift', on: () => findCover(dayWorker.id, x[2] || day.g, day.c, x, 'Can\'t make this shift') },
+                        cv && { icon: 'users', label: 'Remove cover', sub: `${first(cv.w.name)} is told`, on: () => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); } },
+                        { icon: 'trash', label: x[3] ? 'Remove this cover' : 'Remove shift', danger: true, on: removeShift },
+                      ])}><Icon name="more" size={16} /></button>
+                    </div>}
+                  </div>
+                  {editing && <div className="ds-form">
+                    {fields(ed, setEd, 'ed')}
+                    {checkLines(eChecks)}
+                    {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
+                    <div className="ds-form-acts"><button className="btn ghost sm" onClick={() => setEd(null)}>Cancel</button><button className="btn sm" disabled={eChecks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, swapped.map(norm)); setEd(null); toast('Shift updated'); }}>Save</button></div>
+                  </div>}
+                </div>
+              );
+            })}</div>}
+            {cur !== 'L' && (adding ? <div className="ds-item editing ds-new">
+              <div className="ds-form">
+                <div className="ds-form-title">{list.length ? 'Another shift' : 'New shift'}</div>
+                {fields(add, setAdd, 'as')}
+                {checkLines(checks)}
+                <div className="ds-form-acts">{(list.length > 0 || cur === 'O') && <button className="btn ghost sm" onClick={() => setAdding(false)}>Cancel</button>}<button className="btn sm" disabled={checks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, preview.map(norm)); setAdding(false); toast(add.site !== site ? `Shift added · also shows under ${siteOf(add.site).name}` : 'Shift added'); }}>Add shift</button></div>
+              </div>
+            </div> : cur !== 'O' && !ed && <button className="ds-add" onClick={() => { const last = list.reduce((m, y) => Math.max(m, toMin(y[1]) + spanOf(tplOf(y[0])) * 60), -1); setAdd({ ...add, t: list.length ? 'f7' : add.t, st: last >= 0 ? hm(Math.min(last + 60, 23 * 60)) : add.st }); setAdding(true); }}><Icon name="plus" size={15} /> Add {list.length ? 'another ' : 'a '}shift</button>)}
+            {list.length > 0 && !list.some((x) => x[3]) && !adding && !ed && <section className="ds-copy">
+              <div className="ds-copy-head"><b>Copy this day to</b><button className="linkbtn small" onClick={() => setRep(days.map((_, i) => i).filter((i) => canRep(i) && row[i] !== 'O' && !same(i)))}>All working days</button></div>
+              <div className="rep-days">{days.map((d, i) => <button key={i} className={'wk-day' + (rep.includes(i) ? ' on' : '') + (same(i) && i !== day.c ? ' same' : '')} disabled={!canRep(i)} aria-pressed={rep.includes(i)} title={row[i] === 'L' ? 'On leave' : i === day.c ? 'This day' : same(i) ? 'Already the same' : d} onClick={() => setRep(rep.includes(i) ? rep.filter((x) => x !== i) : [...rep, i])}>{d.slice(0, 2)}</button>)}
+                {rep.length > 0 && <button className="btn sm" onClick={() => { setCells(day.g, day.r, rep, cur); toast(`Copied to ${rep.length} ${rep.length === 1 ? 'day' : 'days'}${rep.some((i) => row[i] === 'O') ? ' · that includes a weekly off' : ''}`); setRep([]); }}>Copy to {rep.length} {rep.length === 1 ? 'day' : 'days'}</button>}</div>
+            </section>}
+            {(showPrev || canOff || cur === 'O') && !ed && <div className="ds-foot">
+              {showPrev && <button className="linkbtn small" onClick={() => { setCell(day.g, day.r, day.c, prev); setAdding(false); toast(`Same as last ${days[day.c].split(' ')[0]}`); }}>Same as last week ({shotText(prev, site).join(', ')})</button>}
+              {canOff && <button className="linkbtn small" onClick={() => { setCell(day.g, day.r, day.c, 'O'); setAdding(false); toast(`${days[day.c]} is now ${first(dayWorker.name)}'s weekly off`); }}>Make this a weekly off</button>}
+              {cur === 'O' && <button className="linkbtn small" onClick={() => { setCell(day.g, day.r, day.c, 'X'); toast('No longer a weekly off'); }}>Not a weekly off</button>}
+            </div>}
+          </>;
+        })()}
       </Drawer>
       <Drawer open={!!clr} onClose={() => setClr(null)} title={clr && `Clear days · ${W(G(clr.g).people[clr.r]).name}`} sub={weekLabel(wk)}>
         {clr && (() => {
