@@ -173,6 +173,8 @@ export function Scheduling({ go }) {
   const missed = (sid, wid, ci) => (sid.charCodeAt(1) * 7 + parseInt(wid.slice(1), 10) * 3 + ci * 5 + (wk + 1) * 11) % 7 === 0;
   // Today, once they've clocked in: a dotted green border (the day isn't over yet).
   const isTodayIn = (wid, ci) => wk === 0 && ci === TODAY && clockedIn(wid);
+  // Round, evenly spaced dots that follow the rounded corners (a CSS dotted border draws square, crowded dots).
+  const ring = (on) => (on ? <svg className="dotring" aria-hidden="true"><rect rx="8" /></svg> : null);
   const pastCls = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? ' past-miss' : ' past-ok') : here.length && isTodayIn(wid, ci) ? ' today-in' : '');
   const pastTitle = (sid, wid, ci, here) => (ci < nowIdx && here.length ? (missed(sid, wid, ci) ? 'Missed: no clock-in' : 'Clocked in') : here.length && isTodayIn(wid, ci) ? 'Clocked in today' : undefined);
   const segCls = (sid, wid, ci, k) => (ci < nowIdx ? (missed(sid, wid, ci + k * 3) ? ' past-miss' : ' past-ok') : isTodayIn(wid, ci) && k === 0 ? ' today-in' : '');
@@ -180,7 +182,7 @@ export function Scheduling({ go }) {
   // Two or more shifts in a day: the cell splits into side-by-side segments, one per shift, same height as a single shift.
   const split = (list, sid, wid, ci, onOpen, label) => (
     <div className="cell-split">{[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x, k) => (
-      <button key={k} className={'cell one cseg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{chip(x, k, sid)}</button>
+      <button key={k} className={'cell one cseg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{ring(!!segCls(sid, wid, ci, k).includes('today-in'))}{chip(x, k, sid)}</button>
     ))}</div>
   );
   // Upload helpers: the template, reading a file, the error report, and the demo sample.
@@ -349,7 +351,7 @@ export function Scheduling({ go }) {
                   <button key={x.w.id + (x.visiting ? 'v' : '')} className="dv-row" onClick={() => openDay(x.g, x.r, dIdx)}>
                     <span className="dv-who"><span className="namerow"><b>{x.w.name}</b></span><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.w.role}</span></span>
                     <span className="dv-what">
-                      {here.map((y, k) => <span key={k} className={'dv-shift' + segCls(s.id, x.w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span>{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).nextDay && <span className="sc-moon filled"><Icon name="moon" size={11} /></span>}</span>)}
+                      {here.map((y, k) => <span key={k} className={'dv-shift' + segCls(s.id, x.w.id, dIdx, k)}>{ring(segCls(s.id, x.w.id, dIdx, k).includes('today-in'))}<span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span>{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).nextDay && <span className="sc-moon filled"><Icon name="moon" size={11} /></span>}</span>)}
                       {x.c === 'O' && <span className="dv-tag">Weekly off</span>}
                       {x.c === 'L' && <span className="dv-tag">Annual leave{covBy(x.w.id, dIdx) ? ` · covered by ${first(covBy(x.w.id, dIdx).w.name)}` : ''}</span>}
                       {x.c === 'X' && <span className="dv-tag faint">Not rostered</span>}
@@ -367,7 +369,7 @@ export function Scheduling({ go }) {
             <button key={w.id} className="dv-row" onClick={() => openDay('pool', r, dIdx)}>
               <span className="dv-who"><b>{w.name}</b><span className="small muted"><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</span></span>
               <span className="dv-what">
-                {Array.isArray(c) && c.map((y, k) => <span key={k} className={'dv-shift' + segCls('pool', w.id, dIdx, k)}><span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span><span className="small muted"> {siteOf(y[2]).name.replace(/^(Spinneys|Carrefour) /, '')}</span></span>)}
+                {Array.isArray(c) && c.map((y, k) => <span key={k} className={'dv-shift' + segCls('pool', w.id, dIdx, k)}>{ring(segCls('pool', w.id, dIdx, k).includes('today-in'))}<span className="mono">{y[1]}–{endOf(y[1], tplOf(y[0]).base + (tplOf(y[0]).brk || 0)).time}</span><span className="small muted"> {siteOf(y[2]).name.replace(/^(Spinneys|Carrefour) /, '')}</span></span>)}
                 {c === 'A' && <span className="dv-tag faint">Available</span>}
                 {c === 'O' && <span className="dv-tag">Weekly off</span>}
               </span>
@@ -410,6 +412,7 @@ export function Scheduling({ go }) {
                           <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                             {here.length > 1 ? split(here, s.id, w.id, ci, () => openDay(s.id, r, ci), `${w.name} ${days[ci]}`) :
                             <button className={'cell ' + (Array.isArray(c) ? (away ? 'elsewhere' : 'one') + pastCls(s.id, w.id, ci, here) : c)} title={pastTitle(s.id, w.id, ci, here)} onClick={() => openDay(s.id, r, ci)} aria-label={`${w.name} ${days[ci]}`}>
+                              {ring(Array.isArray(c) && pastCls(s.id, w.id, ci, here).includes('today-in'))}
                               {c === 'O' && <span className="cell-main">Weekly off</span>}
                               {c === 'L' && (() => { const cv = covBy(w.id, ci); return <><span className="cell-main">Annual leave</span>{cv ? <span className="cell-sub cov">Covered by {first(cv.w.name)}</span> : <span className={'cell-sub' + (ci >= nowIdx ? ' uncov' : '')}>{ci >= nowIdx ? 'Not covered' : 'Approved'}</span>}</>; })()}
                               {c === 'X' && <span className="cell-main">Not rostered</span>}
@@ -426,7 +429,7 @@ export function Scheduling({ go }) {
                     <tr key={'v' + v.w.id} className="visitor">
                       <td className="mq-host"><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.w.role}</Marquee></div></td>
                       {v.days.map((d, ci) => (
-                        <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" />}</td>
+                        <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{ring(pastCls(s.id, v.w.id, ci, d).includes('today-in'))}{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" />}</td>
                       ))}
                     </tr>
                   ))}
@@ -448,6 +451,7 @@ export function Scheduling({ go }) {
                       <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                         {Array.isArray(c) && c.length > 1 ? split(c, 'pool', w.id, ci, () => openDay('pool', r, ci), `${w.name} ${days[ci]}`) :
                         <button className={'cell ' + (Array.isArray(c) ? 'one' + pastCls('pool', w.id, ci, c) : c)} title={pastTitle('pool', w.id, ci, Array.isArray(c) ? c : [])} onClick={() => openDay('pool', r, ci)} aria-label={`${w.name} ${days[ci]}`}>
+                          {ring(Array.isArray(c) && pastCls('pool', w.id, ci, c).includes('today-in'))}
                           {c === 'A' && <span className="cell-main">Available</span>}
                           {c === 'O' && <span className="cell-main">Weekly off</span>}
                           {c === 'L' && <span className="cell-main">Annual leave</span>}
