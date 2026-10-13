@@ -252,13 +252,13 @@ export function useMenu() {
   return { open, el, isOpen: (t) => !!m && m.title === t };
 }
 
-// The OpsPro mark: a week of shifts on a roster, the last one ending in a clock-in dot.
-export function Logo({ size = 22 }) {
+// The OpsPro mark: two rings side by side, the client and the vendor, overlapping where OpsPro sits.
+// The faint ring is drawn first so the solid one stays crisp where they cross.
+export function Logo({ size = 26 }) {
   return (
     <svg className="logo" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <rect width="24" height="24" rx="6.5" fill="var(--accent)" />
-      <path d="M6 8.2h7.5M10.5 12h7.5M6 15.8h4.5" stroke="var(--accent-ink)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
-      <circle cx="16.4" cy="15.8" r="2.1" fill="var(--accent-ink)" />
+      <circle cx="15.8" cy="12" r="5.9" stroke="var(--accent)" strokeWidth="2.8" fill="none" opacity=".55" />
+      <circle cx="8.2" cy="12" r="5.9" stroke="var(--accent)" strokeWidth="2.8" fill="none" />
     </svg>
   );
 }

@@ -18,7 +18,7 @@ function write(result) {
   const html = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpsPro</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6.5' fill='%231B5746'/%3E%3Cpath d='M6 8.2h7.5M10.5 12h7.5M6 15.8h4.5' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='16.4' cy='15.8' r='2.1' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='15.8' cy='12' r='5.9' stroke='%231B5746' stroke-width='2.8' fill='none' opacity='.55'/%3E%3Ccircle cx='8.2' cy='12' r='5.9' stroke='%231B5746' stroke-width='2.8' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
 <style>${css}</style>
