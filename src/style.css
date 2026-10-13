@@ -1592,3 +1592,6 @@ label.btn { cursor: pointer; }
 .vc-pick .select { width: 100%; }
 .body.slim .vc-pick { display: none; }
 .vc-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+/* Vendor overview map */
+.vo-map { margin-bottom: 16px; }
+.vo-map .lm-wrap { border-top: 1px solid var(--line); }

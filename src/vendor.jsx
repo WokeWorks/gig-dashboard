@@ -1,6 +1,8 @@
 import { WORKERS, PROPOSALS, DAYS, SITES, ROSTER_GROUPS, siteOf, vendorOf } from './data.js';
 import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
+import { GEO } from './lib/geo.js';
+import { LiveMap } from './lib/livemap.jsx';
 import { ScreenHeader, Stat, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
 
 const { useState } = React;
@@ -17,6 +19,9 @@ export const VCLIENTS = [
     sites: ['Jebel Ali DC', 'Dubai Investments Park DC'], roles: ['Warehouse associate', 'Warehouse associate', 'Loader', 'Forklift operator'], heads: 10 },
 ];
 export const vclient = (id) => VCLIENTS.find((c) => c.id === id);
+// Where the mock clients' sites are (lng, lat), roughly; Deliveroo's come from GEO.
+const VGEO = { 'Talabat Mart Al Quoz': [55.2297, 25.1385], 'Talabat Mart JLT': [55.1442, 25.0693], 'Talabat Mart Mirdif': [55.4198, 25.2201], 'Jebel Ali DC': [55.0626, 24.9857], 'Dubai Investments Park DC': [55.1659, 24.9831] };
+const geoOf = (where) => { const s = SITES.find((x) => x.name === where); return s ? GEO[s.id] : VGEO[where]; };
 const nameOf = (client) => (client === 'all' ? 'your clients' : vclient(client).name);
 
 // Mock people for the other clients, generated so they stay the same on every load.
@@ -53,6 +58,7 @@ const Pips = ({ a, b }) => <span className="pips" aria-hidden="true">{Array.from
 const ClientCell = ({ id }) => <span className="vc-tag">{vclient(id).name}</span>;
 
 export function VendorOverview({ go, client = 'all' }) {
+  const [pick, setPick] = useState(null);
   const ps = peopleFor(client); const t = todayCounts(ps);
   const score = client === 'all' ? Math.round(VCLIENTS.reduce((a, c) => a + c.score * peopleFor(c.id).length, 0) / peopleFor('all').length) : vclient(client).score;
   // By location for one client; by client when looking at all of them.
@@ -68,6 +74,10 @@ export function VendorOverview({ go, client = 'all' }) {
         <Stat label="No-show" value={t.ns} tone={t.ns ? 'crit' : undefined} />
         <Stat label={client === 'all' ? 'Score across clients' : 'Your score'} value={score} sub={client === 'all' ? 'Weighted by headcount' : `From ${vclient(client).name}`} tone="good" />
       </div>
+      <section className="card flush vo-map">
+        <div className="card-head pad"><h3>Where your people are today</h3><span className="small muted">Your people only; other vendors aren't shown</span></div>
+        <div className="lm-wrap"><LiveMap height={360} pick={pick} onPick={setPick} points={[...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))].map((w) => geoOf(w) && { w, g: geoOf(w), ...todayCounts(ps.filter((p) => p.where === w)) }).filter(Boolean).map((x) => ({ id: x.w, name: x.w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, ''), title: x.w, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} /></div>
+      </section>
       <div className="grid-2">
         <section className="card flush">
           <div className="card-head pad"><h3>Today, {client === 'all' ? 'by client' : 'by location'}</h3></div>

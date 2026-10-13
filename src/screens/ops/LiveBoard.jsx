@@ -2,88 +2,11 @@ import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
 import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon, Select } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
-import { GEO, LEFT, loadGoogleMaps, MAP_STYLES } from '../../lib/geo.js';
+import { GEO, LEFT } from '../../lib/geo.js';
+import { LiveMap } from '../../lib/livemap.jsx';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
 const { useState, useEffect, useRef } = React;
-
-export function LiveMap({ data, pick, onPick }) {
-  const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
-  const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
-  const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
-  const onPickRef = useRef(onPick); onPickRef.current = onPick;
-  // Frame every store: room on the right for the labels, and clear of the filter bar and count tiles
-  // that sit over the map (top on wide screens, bottom on narrow ones). Never closer than street level.
-  const fitAll = () => {
-    const m = map.current, G = gm.current; if (!m || !G || !pts.current.length || !el.current || !el.current.clientWidth) return;
-    const box = el.current.getBoundingClientRect();
-    let top = 0, bottom = 0;
-    el.current.parentElement.querySelectorAll('.lm-over').forEach((e) => { const r = e.getBoundingClientRect(); if (r.top + r.height / 2 < box.top + box.height / 2) top = Math.max(top, r.bottom - box.top); else bottom = Math.max(bottom, box.bottom - r.top); });
-    const b = new G.LatLngBounds(); pts.current.forEach(([lat, lng]) => b.extend({ lat, lng }));
-    m.fitBounds(b, { top: Math.max(50, top + 40), right: 190, bottom: Math.max(50, bottom + 30), left: 70 });
-    G.event.addListenerOnce(m, 'idle', () => { if (m.getZoom() > 15) m.setZoom(15); });
-    moved.current = false;
-  };
-  useEffect(() => {
-    let alive = true; let cleanup = () => {};
-    const refused = () => alive && setState('refused');
-    window.addEventListener('opspro-maps-refused', refused);
-    loadGoogleMaps().then((G) => {
-      if (!alive || !el.current) return;
-      gm.current = G;
-      const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
-      const m = new G.Map(el.current, {
-        center: { lat: 25.09, lng: 55.23 }, zoom: 12, styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light,
-        disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: G.ControlPosition.RIGHT_BOTTOM },
-        clickableIcons: false, gestureHandling: 'cooperative', // the page scrolls; ctrl/two fingers zoom the map
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
-      });
-      map.current = m;
-      // The map frames itself on first load, when the set of stores changes, and on "Show all". Anything the
-      // person does on the map (click, drag, wheel, touch, keys) hands it to them: no more automatic refits.
-      const box = el.current; const mine = () => { moved.current = true; };
-      const EVS = ['pointerdown', 'wheel', 'touchstart', 'keydown']; EVS.forEach((ev) => box.addEventListener(ev, mine, { passive: true, capture: true }));
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lm-fit'; btn.textContent = 'Show all'; btn.title = 'Fit every location in view'; btn.onclick = () => fitAll();
-      m.controls[G.ControlPosition.RIGHT_BOTTOM].push(btn);
-      const retheme = () => m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light });
-      const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
-      const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-      // Refit on a real size change (window resized, panel reflowed) only while the map is still untouched;
-      // ignore the small jitters that layout changes cause.
-      let last = [box.clientWidth, box.clientHeight];
-      const ro = new ResizeObserver(() => { if (!alive) return; const now = [box.clientWidth, box.clientHeight]; if (Math.abs(now[0] - last[0]) > 40 || Math.abs(now[1] - last[1]) > 40) { last = now; if (!moved.current) fitAll(); } }); ro.observe(box);
-      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; G.event.clearInstanceListeners(m); };
-      setState('ready');
-    }).catch((e) => { if (alive) setState(e.message === 'missing_key' ? 'missing_key' : e.message === 'refused' ? 'refused' : 'offline'); });
-    return () => { alive = false; window.removeEventListener('opspro-maps-refused', refused); cleanup(); map.current = null; };
-  }, []);
-  useEffect(() => {
-    const m = map.current, G = gm.current; if (!m || !G || state !== 'ready') return;
-    pins.current.forEach((p) => p.setMap(null)); pins.current = [];
-    // Store pins are our own HTML (count, name, status), drawn on a Google overlay so they match the rest of the dashboard.
-    class Pin extends G.OverlayView {
-      constructor(pos, html, cls, z, title, id) { super(); this.pos = pos; this.html = html; this.cls = cls; this.z = z; this.title = title; this.id = id; }
-      onAdd() { const d = document.createElement('div'); d.className = this.cls; d.innerHTML = this.html; d.title = this.title; d.tabIndex = 0; d.setAttribute('role', 'button'); d.style.position = 'absolute'; d.style.zIndex = String(this.z); d.onclick = (e) => { e.stopPropagation(); onPickRef.current(this.id); }; d.onkeydown = (e) => { if (e.key === 'Enter') onPickRef.current(this.id); }; this.div = d; this.getPanes().overlayMouseTarget.appendChild(d); }
-      draw() { const p = this.getProjection().fromLatLngToDivPixel(new G.LatLng(this.pos)); if (p && this.div) { this.div.style.left = (p.x - 13) + 'px'; this.div.style.top = (p.y - 13) + 'px'; } }
-      onRemove() { if (this.div) { this.div.remove(); this.div = null; } }
-    }
-    const list = [];
-    data.forEach((d) => {
-      const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; list.push([lat, lng]);
-      const tone = d.bad ? 'crit' : d.late ? 'warn' : d.due.length ? 'good' : 'idle';
-      const html = `<div class="lp ${tone}${pick === d.s.id ? ' on' : ''}"><span class="lp-dot">${d.due.length ? d.inn : '–'}</span><span class="lp-lab${tone === 'good' || tone === 'idle' ? ' quiet' : ''}"><b>${d.s.name.replace(/^(Spinneys|Carrefour) /, '')}</b><small>${d.due.length ? d.inn + '/' + d.due.length + ' in' : 'No one due'}${d.bad ? ' · ' + d.bad + ' no-show' : d.late ? ' · ' + d.late + ' late' : ''}</small></span></div>`;
-      const p = new Pin({ lat, lng }, html, 'lp-wrap' + (LEFT[d.s.id] ? ' left' : ''), d.bad ? 30 : d.late ? 20 : 10, d.s.name, d.s.id);
-      p.setMap(m); pins.current.push(p);
-    });
-    pts.current = list;
-    // Refit only when the set of stores changes (e.g. another manager), not on every live update.
-    const key = data.map((d) => d.s.id).join(',');
-    if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
-    if (pick) { const g = GEO[pick]; const bb = m.getBounds(); if (g && bb && !bb.contains({ lat: g[1], lng: g[0] })) m.panTo({ lat: g[1], lng: g[0] }); }
-  }, [data, pick, state]);
-  const msg = { missing_key: 'Add GOOGLE_MAPS_API_KEY to .env and rebuild to see the map.', refused: "Google Maps refused the key for this page. Allow this address for the key in Google Cloud, or open the page through npm run serve.", offline: "The map couldn't load. Check the internet connection." }[state];
-  return <div className="lm-leaf" ref={el}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
-}
 
 export function LiveBoard({ go }) {
   const [mgr, setMgr] = useState('all');
@@ -105,7 +28,7 @@ export function LiveBoard({ go }) {
     <>
       <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" />Wed 7 Oct · {hm(NOW_MIN)}</span>} />
       <section className="card flush lm-wrap">
-        <LiveMap data={shown} pick={pick} onPick={setPick} />
+        <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={pick} onPick={setPick} />
         <div className="lm-over lm-filters">
           <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>
           <div className="lm-chips" role="tablist" aria-label="Show">
