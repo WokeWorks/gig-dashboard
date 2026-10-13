@@ -43,7 +43,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .topbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; }
 .brand { display: flex; align-items: center; gap: 8px; }
 .brand b { font-family: var(--display); font-size: 17px; letter-spacing: -0.02em; }
-.brand-mark { width: 18px; height: 18px; border-radius: 5px; background: conic-gradient(from 200deg, var(--accent) 0 70%, var(--surface-2) 70% 100%); border: 2px solid var(--accent); }
+.brand .logo { flex: none; display: block; }
 .personas { display: flex; gap: 2px; background: var(--surface-2); padding: 3px; border-radius: 10px; overflow-x: auto; max-width: 100%; }
 .personas button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; white-space: nowrap; color: var(--muted); font-weight: 550; }
 .personas button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }

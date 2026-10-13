@@ -1,4 +1,4 @@
-import { ToastHost, Phase, Icon } from './ui.jsx';
+import { ToastHost, Phase, Icon, Logo } from './ui.jsx';
 import * as Op from './screens/ops/index.js';
 import * as Vd from './vendor.jsx';
 import { Forms } from './forms.jsx';
@@ -45,7 +45,7 @@ function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand"><span className="brand-mark" aria-hidden="true" /><b>OpsPro</b><span className="muted small">Deliveroo UAE</span></div>
+        <div className="brand"><Logo /><b>OpsPro</b><span className="muted small">Deliveroo UAE</span></div>
         <nav className="personas" aria-label="Who is using OpsPro">
           {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)}>{p.label}</button>)}
         </nav>
