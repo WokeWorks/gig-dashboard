@@ -1511,3 +1511,9 @@ label.btn { cursor: pointer; }
 .roster tbody tr.rg-head > td.rg-name .rg-toggle { white-space: normal; }
 .rg-loc { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
 .rg-sup { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* Location header: one cell across the whole row; the name stays on one line and runs as long as it needs */
+.roster tbody tr.rg-head > td.rg-name { overflow: visible; }
+.rg-inner { position: sticky; left: 12px; display: inline-flex; align-items: center; gap: 8px; max-width: calc(100vw - 280px); }
+.roster tbody tr.rg-head > td.rg-name .rg-toggle { width: auto; padding-right: 0; white-space: nowrap; }
+.rg-loc { display: block !important; -webkit-line-clamp: unset; line-clamp: unset; white-space: nowrap; overflow: visible; }
+.rg-head .more-btn { position: static; transform: none; flex: none; }

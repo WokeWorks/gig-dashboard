@@ -392,15 +392,10 @@ export function Scheduling({ go }) {
               return (
                 <tbody key={s.id} className="rgroup">
                   <tr className="rg-head">
-                    <td className="rg-name" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
+                    <td className="rg-name" colSpan={8} style={{ zIndex: 11 + si * 2 }}><div className="rg-inner"><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
                       <span className={'rg-caret' + (isCol ? ' col' : '')}><Icon name="down" size={14} stroke={2.2} /></span><b className="rg-loc" title={s.name}>{s.name}</b><span className="muted small rg-sup">{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</span>
                     </button>
-                    {locActs(s)}</td>
-                    {days.map((d, ci) => { const offs = g.people.filter((id, r) => g.cells[r][ci] === 'O').length; const over = !fixedMode && offs > OFF_RULES.sameDay; if (fixedMode && OFF_RULES.days.includes(ci)) return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}><span className="rg-off">Everyone off</span></td>; return (
-                      <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}>
-                        {offs > 0 && <span className={'rg-off' + (over ? ' over' : '')} title={over ? `${offs} people off on the same day here; the limit is ${OFF_RULES.sameDay}` : `${offs} on weekly off`}>{over && <Icon name="alert" size={11} />}{offs} off</span>}
-                      </td>
-                    ); })}
+                    {locActs(s)}</div></td>
                   </tr>
                   {!isCol && rows.map(({ w, r }) => (
                     <tr key={w.id}>
@@ -439,10 +434,9 @@ export function Scheduling({ go }) {
             {poolRows.length > 0 && (() => { const isCol = collapsed.pool && !q && ven === 'all'; const zi = shown.length; return (
               <tbody className="rgroup pool">
                 <tr className="rg-head">
-                  <td className="rg-name" style={{ zIndex: 11 + zi * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, pool: !collapsed.pool })} aria-expanded={!isCol}>
+                  <td className="rg-name" colSpan={8} style={{ zIndex: 11 + zi * 2 }}><div className="rg-inner"><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, pool: !collapsed.pool })} aria-expanded={!isCol}>
                     <span className={'rg-caret' + (isCol ? ' col' : '')}><Icon name="down" size={14} stroke={2.2} /></span><b className="rg-loc">Floaters</b>{isCol && <span className="muted small rg-sup">{poolRows.length} {poolRows.length === 1 ? 'employee' : 'employees'}</span>}
-                  </button></td>
-                  {days.map((d, ci) => { const offs = poolRows.filter(({ r }) => PG.cells[r][ci] === 'O').length; return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + zi * 2 }}>{offs > 0 && <span className="rg-off">{offs} off</span>}</td>; })}
+                  </button></div></td>
                 </tr>
                 {!isCol && poolRows.map(({ w, r }) => (
                   <tr key={w.id}>
