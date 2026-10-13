@@ -291,11 +291,25 @@ export function Scheduling({ go }) {
   return (
     <>
       <ScreenHeader title="Roster" phase={1} spec="5.4" actions={<>
-        <button className="btn ghost" onClick={() => setUp({ wk: Math.max(wk, wk === 0 ? 0 : 1), step: 'pick' })}><Icon name="upload" size={15} /> Upload roster</button>
-        <button className="btn ghost" onClick={() => toast('Exported the roster for these locations (XLSX and PDF)')}>Export</button>
-        <button className="btn ghost" onClick={() => go('settings')}>Shifts and rules</button>
+        <button className="btn ghost" onClick={() => setUp({ wk: Math.max(wk, wk === 0 ? 0 : 1), step: 'pick' })}><Icon name="upload" size={15} /> Upload</button>
+        <button className="btn ghost icon-only" aria-label="More roster actions" aria-haspopup="menu" title="More" onClick={(e) => menu.open(e, 'Roster', [
+          wk >= 1 && !empty && { icon: 'copy', label: 'Copy a week…', sub: 'Into this week and the ones after', on: () => openCopy(wk) },
+          { icon: 'download', label: 'Export', sub: 'Excel and PDF, for these locations', on: () => toast('Exported the roster for these locations (XLSX and PDF)') },
+          { icon: 'gear', label: 'Shifts and rules', sub: 'Shift lengths, weekly offs, cover', on: () => go('settings') },
+        ])}><Icon name="more" size={18} /></button>
+        {wk >= 0 && !empty && <button className="btn" onClick={() => setPubOpen(true)}>{pub[wk] === 'draft' ? 'Publish week' : dirty[wk] ? 'Publish changes' : 'Publish'}</button>}
       </>} />
-      <div className="toolbar">
+      <div className="rbar">
+        <div className="rbar-week">
+          <div className="wk-step">
+            <button disabled={wk <= -1} onClick={() => setWk(wk - 1)} aria-label="Previous week"><Icon name="chevronLeft" size={16} stroke={2.2} /></button>
+            <div className="wk-label"><b>{weekLabel(wk)}</b><span>{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : wk < 0 ? 'Last week' : `In ${wk} weeks`}</span></div>
+            <button disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
+          </div>
+          {wk !== 0 && <button className="btn ghost" onClick={() => setWk(0)}>Today</button>}
+          {empty ? <Pill>No roster yet</Pill> : wk < 0 ? <Pill>Read-only</Pill> : pub[wk] !== 'draft' && dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
+        </div>
+        <div className="toolbar rbar-filters">
         <label className="search"><Icon name="search" size={16} /><input id="sch-q" className="input" type="search" placeholder="Search employees or locations…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search employees or locations" /></label>
         <Select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
           <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.sites.length} locations</option>)}
@@ -306,21 +320,6 @@ export function Scheduling({ go }) {
         <Select id="sch-ven" className="input" value={ven} onChange={(e) => setVen(e.target.value)} aria-label="Vendor">
           <option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </Select>
-      </div>
-      <div className="weekbar">
-        <div className="wk-nav">
-          <div className="wk-step">
-            <button disabled={wk <= -1} onClick={() => setWk(wk - 1)} aria-label="Previous week"><Icon name="chevronLeft" size={16} stroke={2.2} /></button>
-            <div className="wk-label"><b>{weekLabel(wk)}</b><span>{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : wk < 0 ? 'Last week' : `In ${wk} weeks`}</span></div>
-            <button disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
-          </div>
-          {wk !== 0 && <button className="btn ghost sm" onClick={() => setWk(0)}>Back to this week</button>}
-          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? null : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
-        </div>
-        <div className="wk-actions">
-          {wk >= 1 && !empty && <button className="btn ghost sm" onClick={() => openCopy(wk)}>Copy a week…</button>}
-          {wk >= 0 && !empty && <button className="btn sm" onClick={() => setPubOpen(true)}>Publish…</button>}
-          {wk < 0 && <span className="small muted">Past weeks are read-only</span>}
         </div>
       </div>
       {empty ? <section className="card wk-empty">

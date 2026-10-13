@@ -1482,3 +1482,19 @@ label.btn { cursor: pointer; }
 .toolbar .search .icon { position: absolute; left: 11px; color: var(--muted); pointer-events: none; }
 .toolbar .search .input { width: 100%; padding-left: 34px; border-radius: 8px; }
 .toolbar .search .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Roster header: title with actions (upload, more, publish); one bar below with the week on the left and filters on the right. Every control is 36px tall. */
+.screen-actions .btn, .rbar .btn { height: 36px; padding: 0 14px; border-radius: 8px; }
+.btn.icon-only { width: 36px; padding: 0 !important; }
+.rbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 12px; }
+.rbar-week { display: flex; align-items: center; gap: 8px; flex: none; }
+.rbar-filters { flex: 1 1 520px; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.rbar-filters .search { flex: 0 1 280px; }
+.rbar .wk-step { height: 36px; }
+.rbar .wk-step .wk-label { flex-direction: row; align-items: baseline; gap: 8px; padding: 0 14px; min-width: 0; align-self: center; border: 0; }
+.rbar .wk-step button:first-child { border-right: 1px solid var(--line); }
+.rbar .wk-step button:last-child { border-left: 1px solid var(--line); }
+.rbar .wk-step .wk-label b { white-space: nowrap; }
+.rbar .wk-step .wk-label span { white-space: nowrap; }
+@media (max-width: 1300px) { .rbar-filters { justify-content: flex-start; } }
+@media (max-width: 900px) { .rbar-filters .search { flex: 1 1 100%; max-width: none; } }
