@@ -32,7 +32,7 @@ export function LiveBoard({ go }) {
       <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" /><LiveClock /></span>} />
       <section className="card flush lm-wrap lm-split">
         <div className="lm-mapcol">
-          <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={panel || pick} focus={panel} onPick={(id) => setPanel(id)} />
+          <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} />
         </div>
         <aside className="lm-side" aria-label={pd ? pd.s.name : 'Locations'}>
           {!pd ? <>

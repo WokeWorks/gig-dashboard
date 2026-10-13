@@ -992,7 +992,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lm-state { white-space: nowrap; } .warnt { color: var(--warn); }
 .lp-lab.quiet { display: none; }
 .lp.on .lp-lab.quiet, .lp-wrap:hover .lp-lab.quiet { display: flex; }
-.lp-wrap:hover { z-index: 2000 !important; }
+.lp-wrap:hover, .lp-wrap.hl { z-index: 2000 !important; }
+.lp-wrap.hl .lp-lab.quiet { display: flex; }
+.lp-wrap.hl .lp .lp-dot, .lp-wrap.hl .lp .lp-stack { transform: none; color: #fff; opacity: 1; }
+.lp-wrap.hl .lp-dot { outline: 3px solid var(--fg); outline-offset: 1px; }
 .lm-leaf { height: min(620px, 72vh); }
 
 /* ---- Float pool and cover ---- */

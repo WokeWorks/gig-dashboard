@@ -54,44 +54,83 @@ const deliveroo = () => WORKERS.filter((w) => w.vendor === ME).map((w) => { cons
 export const peopleFor = (client) => [...deliveroo(), ...others].filter((p) => client === 'all' || p.client === client);
 const todayCounts = (ps) => ({ due: ps.filter((p) => p.today.key !== 'off').length, in: ps.filter((p) => p.today.key === 'in').length, late: ps.filter((p) => p.today.text.startsWith('Late')).length, ns: ps.filter((p) => p.today.key === 'notin').length });
 
-const Pips = ({ a, b }) => <span className="pips" aria-hidden="true">{Array.from({ length: Math.max(b, 1) }, (_, i) => <span key={i} className={i < a ? 'f' : ''} />)}</span>;
 const ClientCell = ({ id }) => <span className="vc-tag">{vclient(id).name}</span>;
 
 export function VendorOverview({ go, client = 'all' }) {
-  const [pick, setPick] = useState(null);
+  const [pick, setPick] = useState(null); // hovered in the list
+  const [panel, setPanel] = useState(null); // location open in the side column
+  const [only, setOnly] = useState('all'); // 'all' | 'noshow'
   const ps = peopleFor(client); const t = todayCounts(ps);
   const score = client === 'all' ? Math.round(VCLIENTS.reduce((a, c) => a + c.score * peopleFor(c.id).length, 0) / peopleFor('all').length) : vclient(client).score;
-  // By location for one client; by client when looking at all of them.
-  const groups = client === 'all'
-    ? VCLIENTS.map((c) => ({ key: c.id, title: c.name, sub: `${peopleFor(c.id).length} people · score ${c.score}`, ...todayCounts(peopleFor(c.id)) }))
-    : [...new Set(ps.map((p) => p.where))].map((w) => ({ key: w, title: w, ...todayCounts(ps.filter((p) => p.where === w)) })).filter((x) => x.due > 0).sort((a, b) => b.ns - a.ns || b.due - a.due);
+  // Every place your people are due today, worst first.
+  const locs = [...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))]
+    .map((w) => { const here = ps.filter((p) => p.where === w); return { key: w, title: w, client: here[0].client, ppl: here, g: geoOf(w), ...todayCounts(here) }; })
+    .sort((a, b) => b.ns - a.ns || b.due - a.due || a.title.localeCompare(b.title));
+  const shown = locs.filter((x) => only === 'all' || x.ns);
+  const pd = panel && locs.find((x) => x.key === panel);
+  const short = (w) => w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, '');
   return (
     <>
       <ScreenHeader title="Overview" phase={1} spec="6" />
-      <section className="card flush lm-wrap vo-map">
-        <LiveMap height={420} pick={pick} onPick={setPick} points={[...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))].map((w) => geoOf(w) && { w, g: geoOf(w), ...todayCounts(ps.filter((p) => p.where === w)) }).filter(Boolean).map((x) => ({ id: x.w, name: x.w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, ''), title: x.w, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
-        <div className="lm-over lm-stats">
-          <div className={t.in ? 'good' : ''}><span className="lm-sv">{t.in}</span><span className="lm-sl">in now</span></div>
-          <div className={t.ns ? 'crit' : ''}><span className="lm-sv">{t.ns}</span><span className="lm-sl">no-show</span></div>
-          <div className={t.late ? 'warn' : ''}><span className="lm-sv">{t.late}</span><span className="lm-sl">late</span></div>
-          <div className="good" title={client === 'all' ? 'Score across clients, weighted by headcount' : `Your score from ${vclient(client).name}`}><span className="lm-sv">{score}</span><span className="lm-sl">score</span></div>
+      <section className="card flush lm-wrap lm-split vo-map">
+        <div className="lm-mapcol">
+          <LiveMap pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} points={shown.filter((x) => x.g).map((x) => ({ id: x.key, name: short(x.key), title: x.key, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
         </div>
+        <aside className="lm-side" aria-label={pd ? pd.title : 'Locations'}>
+          {!pd ? <>
+            <div className="lm-side-stats">
+              <div className={t.in ? 'good' : ''}><b>{t.in}</b><span>in now</span></div>
+              <button className={'lm-stat-btn' + (t.ns ? ' crit' : '') + (only === 'noshow' ? ' on' : '')} aria-pressed={only === 'noshow'} disabled={!t.ns && only !== 'noshow'} onClick={() => { setOnly(only === 'noshow' ? 'all' : 'noshow'); setPick(null); }}><b>{t.ns}</b><span>no-show</span></button>
+              <div className={t.late ? 'warn' : ''}><b>{t.late}</b><span>late</span></div>
+              <div className="good"><b>{score}</b><span>score</span></div>
+            </div>
+            <div className="lm-side-body lm-locs">
+              {only === 'noshow' && <div className="lm-filtered small muted">Locations with a no-show <button className="linkbtn" onClick={() => setOnly('all')}>Show all</button></div>}
+              {shown.length === 0 && <div className="small muted lm-none">No locations match.</div>}
+              {shown.map((x) => (
+                <button key={x.key} className={'lm-loc' + (pick === x.key ? ' on' : '')} onClick={() => { setPick(null); setPanel(x.key); }} onMouseEnter={() => setPick(x.key)} onMouseLeave={() => setPick((k) => (k === x.key ? null : k))} onFocus={() => setPick(x.key)} onBlur={() => setPick((k) => (k === x.key ? null : k))}>
+                  <span className={'lm-k ' + (x.ns ? 'crit' : x.due ? 'good' : 'idle')} />
+                  <span className="lm-name"><b>{x.title}</b><span className="small muted">{x.ns ? <span className="neg">{x.ns} no-show</span> : null}{x.ns && x.late ? ' · ' : null}{x.late ? `${x.late} late` : null}{!x.ns && !x.late ? 'All in' : null}{client === 'all' ? ` · ${vclient(x.client).name}` : ''}</span></span>
+                  <span className="lm-cnt mono">{x.in}<span className="muted">/{x.due}</span></span>
+                  <Icon name="chevronRight" size={15} />
+                </button>
+              ))}
+            </div>
+          </> : (() => {
+            const order = (p) => (p.today.key === 'notin' ? 0 : p.today.text.startsWith('Late') ? 1 : p.today.key === 'in' ? 2 : 3);
+            const need = pd.ppl.filter((p) => order(p) < 2), inn = pd.ppl.filter((p) => order(p) === 2), rest = pd.ppl.filter((p) => order(p) === 3);
+            const row = (p) => <div key={p.id} className={'lm-pp' + (p.today.key === 'notin' ? ' noshow' : p.today.text.startsWith('Late') ? ' late' : p.today.key === 'in' ? ' in' : '')}><span className="lb-dot" /><span className="lm-pp-who"><b>{p.name}</b><span className="small muted">{p.role} · {p.today.text}</span></span></div>;
+            return <>
+              <div className="lm-panel-head">
+                <button className="lm-panel-x" aria-label="Back to all locations" onClick={() => setPanel(null)}><Icon name="chevronLeft" size={17} /></button>
+                <div className="lm-panel-title"><b>{pd.title}</b><span className="small muted">{vclient(pd.client).name} · {pd.ppl.length} of your people</span></div>
+              </div>
+              <div className="lm-side-stats">
+                <div className={pd.in ? 'good' : ''}><b>{pd.in}</b><span>in now</span></div>
+                <div className={pd.ns ? 'crit' : ''}><b>{pd.ns}</b><span>no-show</span></div>
+                <div className={pd.late ? 'warn' : ''}><b>{pd.late}</b><span>late</span></div>
+                <div><b>{pd.due}</b><span>due today</span></div>
+              </div>
+              <div className="lm-side-body">
+                {need.length > 0 && <div className="lm-panel-sec"><h4>No-shows and late</h4>{need.map(row)}</div>}
+                <div className="lm-panel-sec"><h4>In now</h4>{inn.length ? inn.map(row) : <div className="small muted">Nobody in yet.</div>}</div>
+                {rest.length > 0 && <div className="lm-panel-sec"><h4>Not working today</h4>{rest.map(row)}</div>}
+              </div>
+              <div className="lm-panel-foot">
+                <button className="btn ghost sm" onClick={() => go && go('v-att')}>Attendance</button>
+                <button className="btn ghost sm" onClick={() => go && go('v-workers')}>My workers</button>
+              </div>
+            </>;
+          })()}
+        </aside>
       </section>
       <div className="grid-2">
-        <section className="card flush">
-          <div className="card-head pad"><h3>Today, {client === 'all' ? 'by client' : 'by location'}</h3></div>
-          {groups.map((x) => (
-            <div key={x.key} className="vo-loc">
-              <div><b>{x.title}</b><div className="small muted">{x.sub ? `${x.sub} · ` : ''}{x.in}/{x.due} clocked in{x.late ? ` · ${x.late} late` : ''}</div></div>
-              <Pips a={x.in} b={x.due} />
-              {x.ns ? <Pill tone="crit">{x.ns} no-show</Pill> : <span className="small muted">All in</span>}
-            </div>
-          ))}
-        </section>
         <section className="card">
           <div className="card-head"><h3>Your proposals</h3><button className="btn sm ghost" onClick={() => go && go('v-prop')}>Open</button></div>
           {proposalsFor(client).map((p) => <div key={p.id} className="row-line"><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill><span className="small">{p.name}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>)}
-          <div className="card-head" style={{ marginTop: 16 }}><h3>Score trend</h3></div>
+        </section>
+        <section className="card">
+          <div className="card-head"><h3>Score trend</h3></div>
           <Spark data={client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend} w={280} h={56} />
           <div className="small muted">April to October 2026</div>
         </section>

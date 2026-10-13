@@ -6,11 +6,17 @@ const { useState, useEffect, useRef } = React;
 // points: [{ id, name, title?, lat, lng, due, inn, bad, late, left? }]; it frames all of them on first load.
 // inset: how many pixels on the right are covered by a panel; the picked pin is kept clear of them.
 // focus: the store opened elsewhere (e.g. from a list); if it is hidden inside a merged pin the map zooms in to it.
-export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null }) {
+// pick: the selected store (pinned label, kept in view). hover: a store hovered elsewhere (e.g. its row in a list); it is
+// only highlighted, never panned to, and never rebuilds the pins.
+export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0, focus = null }) {
   const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
   const pts = useRef([]); const merged = useRef({}); const moved = useRef(false); const fitKey = useRef('');
   const onPickRef = useRef(onPick); onPickRef.current = onPick;
+  const hoverRef = useRef(hover); hoverRef.current = hover;
+  // Rebuild the pins only when what they show changes, not every time the parent re-renders with a new array.
+  const pkey = JSON.stringify(points);
+  const lit = () => { const box = el.current; if (!box) return; box.querySelectorAll('.lp-wrap').forEach((w) => w.classList.toggle('hl', !!hoverRef.current && (w.dataset.ids || '').split('|').includes(hoverRef.current))); };
   // Frame every store: room on the right for the labels, and clear of the filter bar and count tiles
   // that sit over the map (top on wide screens, bottom on narrow ones). Never closer than street level.
   const fitAll = () => {
@@ -84,7 +90,7 @@ export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null 
           const on = g.ds.some((d) => d.id === pick);
           const sub = `${due ? inn + '/' + due + ' in' : 'No one due'}${bad ? ' · ' + bad + ' no-show' : ''}`; // late isn't an alert: it stays in the list and drawer
           const el = document.createElement('div');
-          el.className = 'lp-wrap'; el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
+          el.className = 'lp-wrap'; el.dataset.ids = g.ds.map((d) => d.id).join('|'); el.style.left = (g.x - 13) + 'px'; el.style.top = (g.y - 13) + 'px'; el.style.zIndex = String(on ? 40 : bad ? 30 : 10);
           el.setAttribute('aria-label', g.ds.map((d) => d.title || d.name).join(', ')); // no native tooltip: the label says it el.tabIndex = 0; el.setAttribute('role', 'button');
           el.innerHTML = `<div class="lp ${tone}${on ? ' on' : ''}${one ? '' : ' many'}">${one ? '' : '<span class="lp-stack"></span>'}<span class="lp-dot">${due ? inn : '–'}</span><span class="lp-lab"><b>${esc(one ? one.name : `${g.ds[0].name} + ${g.ds.length - 1} more`)}</b><small>${esc(sub)}</small></span></div>`;
           const act = () => {
@@ -102,6 +108,7 @@ export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null 
           if (spot) { taken.push(spot[1]); if (spot[0] === 'left') el.classList.add('left'); }
           else { lab.classList.add('quiet'); if (free(left) && !free(right)) el.classList.add('left'); }
         });
+        lit();
       }
     }
     const list = points.map((d) => [d.lat, d.lng]);
@@ -110,7 +117,10 @@ export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null 
     // Refit only when the set of stores changes (e.g. another manager), not on every live update.
     const key = points.map((d) => d.id).join(',');
     if (key !== fitKey.current) { fitKey.current = key; fitAll(); }
-    // Keep the picked store in view, and out from under the side panel when one is open.
+  }, [pkey, pick, state]);
+  // Keep the selected store in view, and out from under a side panel if one covers the map. Only on selection.
+  useEffect(() => {
+    const m = map.current; if (!m || state !== 'ready') return;
     const pp = pick && points.find((d) => d.id === pick);
     if (pp) {
       const bb = m.getBounds(); const w = el.current ? el.current.clientWidth : 0;
@@ -119,7 +129,8 @@ export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null 
       const hidden = !bb || !bb.contains({ lat: pp.lat, lng: pp.lng }) || x > w - inset - 60;
       if (hidden) { m.panTo({ lat: pp.lat, lng: pp.lng }); if (inset && m.panBy) m.panBy(Math.round(inset / 2), 0); }
     }
-  }, [points, pick, state, inset]);
+  }, [pick, state, inset]);
+  useEffect(lit, [hover, pkey, pick, state]);
   useEffect(() => {
     const m = map.current; if (!m || state !== 'ready' || !focus || !merged.current[focus]) return;
     const d = points.find((x) => x.id === focus); if (!d) return;
