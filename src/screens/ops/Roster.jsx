@@ -314,7 +314,7 @@ export function Scheduling({ go }) {
             <button disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
           </div>
           {wk !== 0 && <button className="btn ghost sm" onClick={() => setWk(0)}>Back to this week</button>}
-          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? <Pill tone="warn">Draft · not visible to workers</Pill> : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
+          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? null : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
         </div>
         <div className="wk-actions">
           {wk >= 1 && !empty && <button className="btn ghost sm" onClick={() => openCopy(wk)}>Copy a week…</button>}
