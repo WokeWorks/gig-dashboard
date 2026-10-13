@@ -5,7 +5,7 @@ import { GEO } from './lib/geo.js';
 import { LiveMap } from './lib/livemap.jsx';
 import { ScreenHeader, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
 
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
 const ME = 'v4'; // GH FZE
 
 /* ---------- the clients this vendor supplies ----------
@@ -55,6 +55,43 @@ export const peopleFor = (client) => [...deliveroo(), ...others].filter((p) => c
 const todayCounts = (ps) => ({ due: ps.filter((p) => p.today.key !== 'off').length, in: ps.filter((p) => p.today.key === 'in').length, late: ps.filter((p) => p.today.text.startsWith('Late')).length, ns: ps.filter((p) => p.today.key === 'notin').length });
 
 const ClientCell = ({ id }) => <span className="vc-tag">{vclient(id).name}</span>;
+
+// Score trend: the latest score up top with the change since the first month, then a line across the months with
+// a hover read-out per month. Sized to its card (measured), so text and strokes stay at their real size.
+const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+function ScoreTrend({ data, sub }) {
+  const box = useRef(null); const [w, setW] = useState(480); const [hov, setHov] = useState(null);
+  useEffect(() => { const el = box.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth || 480)); ro.observe(el); return () => ro.disconnect(); }, []);
+  const H = 190, L = 30, R = 14, T = 18, B = 26;
+  const lo = Math.floor((Math.min(...data) - 2) / 5) * 5, hi = Math.ceil((Math.max(...data) + 2) / 5) * 5;
+  const x = (i) => L + (i / (data.length - 1)) * (w - L - R);
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const line = data.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('');
+  const area = `${line}L${x(data.length - 1).toFixed(1)} ${H - B}L${x(0).toFixed(1)} ${H - B}Z`;
+  const ticks = []; for (let v = lo; v <= hi; v += 5) ticks.push(v);
+  const last = data[data.length - 1], diff = last - data[0];
+  const at = hov ?? data.length - 1;
+  return (
+    <div className="st">
+      <div className="st-head">
+        <div><h3>Score trend</h3><div className="small muted">{sub}</div></div>
+        <div className="st-now"><b>{last}</b><span className={'small ' + (diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'muted')}>{diff > 0 ? '+' : ''}{diff} since April</span></div>
+      </div>
+      <div ref={box} className="st-plot">
+        <svg width={w} height={H} role="img" aria-label={`Score by month, April to October: ${data.map((v, i) => `${MONTHS[i]} ${v}`).join(', ')}`} onMouseLeave={() => setHov(null)}>
+          {ticks.map((t) => <g key={t}><line x1={L} x2={w - R} y1={y(t)} y2={y(t)} className="st-grid" /><text x={L - 8} y={y(t) + 4} className="st-ax" textAnchor="end">{t}</text></g>)}
+          {MONTHS.slice(0, data.length).map((m, i) => <text key={m} x={x(i)} y={H - 6} className={'st-ax' + (i === at ? ' on' : '')} textAnchor="middle">{m}</text>)}
+          <path d={area} className="st-area" />
+          <path d={line} className="st-line" />
+          {hov != null && <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} className="st-cross" />}
+          <circle cx={x(at)} cy={y(data[at])} r="5" className="st-dot" />
+          <text x={x(at)} y={y(data[at]) - 11} className="st-val" textAnchor={at === 0 ? 'start' : at === data.length - 1 ? 'end' : 'middle'}>{data[at]}</text>
+          {data.map((_, i) => <rect key={i} x={x(i) - (w - L - R) / (data.length - 1) / 2} y={T} width={(w - L - R) / (data.length - 1)} height={H - T} fill="transparent" onMouseEnter={() => setHov(i)} />)}
+        </svg>
+      </div>
+    </div>
+  );
+}
 
 export function VendorOverview({ go, client = 'all' }) {
   const [pick, setPick] = useState(null); // hovered in the list
@@ -130,9 +167,7 @@ export function VendorOverview({ go, client = 'all' }) {
           {proposalsFor(client).map((p) => <div key={p.id} className="row-line"><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill><span className="small">{p.name}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>)}
         </section>
         <section className="card">
-          <div className="card-head"><h3>Score trend</h3></div>
-          <Spark data={client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend} w={280} h={56} />
-          <div className="small muted">April to October 2026</div>
+          <ScoreTrend data={client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend} sub={client === 'all' ? 'Average across your clients' : `From ${vclient(client).name}`} />
         </section>
       </div>
     </>

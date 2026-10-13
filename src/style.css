@@ -1679,3 +1679,16 @@ label.btn { cursor: pointer; }
   .lm-side { height: auto; border-left: 0; border-top: 1px solid var(--line); }
   .lm-side-body { overflow: visible; }
 }
+
+/* Vendor score trend */
+.st { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.st-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; } .st-head h3 { margin: 0 0 2px; }
+.st-now { display: flex; flex-direction: column; align-items: flex-end; } .st-now b { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.st-now .pos { color: var(--good); }
+.st-plot { width: 100%; margin-top: 4px; } .st-plot svg { display: block; overflow: visible; }
+.st-grid { stroke: var(--line); stroke-width: 1; }
+.st-ax { font: 500 11px var(--body); fill: var(--muted); } .st-ax.on { fill: var(--fg); font-weight: 600; }
+.st-area { fill: var(--accent-soft); } .st-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.st-cross { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.st-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.st-val { font: 700 12px var(--body); fill: var(--fg); }
