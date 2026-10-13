@@ -1501,3 +1501,6 @@ label.btn { cursor: pointer; }
 /* A quiet button: no border until hovered (overflow menus) */
 .btn.quiet { background: transparent; border-color: transparent; color: var(--ink-mid); }
 .btn.quiet:hover, .btn.quiet[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
+/* Location header: the chevron sits centred against the name and supervisor lines */
+.roster tbody tr.rg-head > td.rg-name .rg-toggle { align-items: center; }
+.roster tbody tr.rg-head > td.rg-name .rg-toggle > .rg-caret { grid-row: 1 / span 2; align-self: center; }
