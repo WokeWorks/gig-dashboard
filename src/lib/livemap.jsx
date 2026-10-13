@@ -5,10 +5,11 @@ const { useState, useEffect, useRef } = React;
 // The live map used on the Liveboard and the vendor overview: Google Maps with our own HTML pins.
 // points: [{ id, name, title?, lat, lng, due, inn, bad, late, left? }]; it frames all of them on first load.
 // inset: how many pixels on the right are covered by a panel; the picked pin is kept clear of them.
-export function LiveMap({ points, pick, onPick, height, inset = 0 }) {
+// focus: the store opened elsewhere (e.g. from a list); if it is hidden inside a merged pin the map zooms in to it.
+export function LiveMap({ points, pick, onPick, height, inset = 0, focus = null }) {
   const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
-  const pts = useRef([]); const moved = useRef(false); const fitKey = useRef('');
+  const pts = useRef([]); const merged = useRef({}); const moved = useRef(false); const fitKey = useRef('');
   const onPickRef = useRef(onPick); onPickRef.current = onPick;
   // Frame every store: room on the right for the labels, and clear of the filter bar and count tiles
   // that sit over the map (top on wide screens, bottom on narrow ones). Never closer than street level.
@@ -74,6 +75,7 @@ export function LiveMap({ points, pick, onPick, height, inset = 0 }) {
         this.box.innerHTML = '';
         const taken = groups.map((g) => [g.x - 15, g.y - 15, g.x + 15, g.y + 15]);
         const free = (r) => !taken.some((t) => r[0] < t[2] && r[2] > t[0] && r[1] < t[3] && r[3] > t[1]);
+        merged.current = {}; groups.forEach((g) => g.ds.forEach((d) => { merged.current[d.id] = g.ds.length > 1; }));
         groups.forEach((g) => {
           const one = g.ds.length === 1 ? g.ds[0] : null;
           const sum = (k) => g.ds.reduce((n, d) => n + (d[k] || 0), 0);
@@ -118,6 +120,11 @@ export function LiveMap({ points, pick, onPick, height, inset = 0 }) {
       if (hidden) { m.panTo({ lat: pp.lat, lng: pp.lng }); if (inset && m.panBy) m.panBy(Math.round(inset / 2), 0); }
     }
   }, [points, pick, state, inset]);
+  useEffect(() => {
+    const m = map.current; if (!m || state !== 'ready' || !focus || !merged.current[focus]) return;
+    const d = points.find((x) => x.id === focus); if (!d) return;
+    moved.current = true; m.panTo({ lat: d.lat, lng: d.lng }); m.setZoom(Math.min(16, (m.getZoom() || 11) + 2));
+  }, [focus, state]);
   const msg = { missing_key: 'Add GOOGLE_MAPS_API_KEY to .env and rebuild to see the map.', refused: "Google Maps refused the key for this page. Allow this address for the key in Google Cloud, or open the page through npm run serve.", offline: "The map couldn't load. Check the internet connection." }[state];
   return <div className="lm-leaf" ref={el} style={height ? { height } : undefined}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
 }
