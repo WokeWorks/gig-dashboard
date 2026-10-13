@@ -1692,3 +1692,5 @@ label.btn { cursor: pointer; }
 .st-cross { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
 .st-dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
 .st-val { font: 700 12px var(--body); fill: var(--fg); }
+
+.vo-more { align-self: flex-start; margin-top: 10px; }

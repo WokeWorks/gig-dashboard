@@ -163,8 +163,18 @@ export function VendorOverview({ go, client = 'all' }) {
       </section>
       <div className="grid-2">
         <section className="card">
-          <div className="card-head"><h3>Your proposals</h3><button className="btn sm ghost" onClick={() => go && go('v-prop')}>Open</button></div>
-          {proposalsFor(client).map((p) => <div key={p.id} className="row-line"><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill><span className="small">{p.name}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>)}
+          {(() => {
+            // At most five, the ones that need you first (returned, then ready to start), newest stage last.
+            const RANK = { returned: 0, ready: 1, client: 2, review: 3, proposed: 4 };
+            const all = [...proposalsFor(client)].sort((a, b) => RANK[a.stage] - RANK[b.stage]);
+            const more = all.length - 5;
+            return <>
+              <div className="card-head"><h3>Your proposals <span className="muted small">{all.length}</span></h3><button className="btn sm ghost" onClick={() => go && go('v-prop')}>See all</button></div>
+              {all.length === 0 && <div className="small muted">No proposals with {client === 'all' ? 'any client' : vclient(client).name} yet.</div>}
+              {all.slice(0, 5).map((p) => <div key={p.id} className="row-line"><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill><span className="small">{p.name}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>)}
+              {more > 0 && <button className="linkbtn small vo-more" onClick={() => go && go('v-prop')}>{more} more {more === 1 ? 'proposal' : 'proposals'}</button>}
+            </>;
+          })()}
         </section>
         <section className="card">
           <ScoreTrend data={client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend} sub={client === 'all' ? 'Average across your clients' : `From ${vclient(client).name}`} />
