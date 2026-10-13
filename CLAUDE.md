@@ -37,5 +37,6 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 ## Gotchas
 
 - The Liveboard map is Google Maps, as in opspro-app (`loadGoogleMaps` and `MAP_STYLES` in `src/lib/geo.js`; light and dark styles follow the theme). Store pins are our own HTML, laid out together on one `google.maps.OverlayView` on every zoom: pins closer than 30 px merge (click to zoom in), and labels go right or left of their pin in priority order (selected, then no-shows) or are hidden until hover when there's no room. The map itself is `LiveMap` in `src/lib/livemap.jsx` (points with id, name, lat, lng and counts), shared by the Liveboard and the vendor overview. The key comes from `GOOGLE_MAPS_API_KEY` in `.env` at build time; never commit it, the repo is public.
+- The clock is `useNow`/`LiveClock` in `src/lib/clock.jsx`: one shared timer on minute boundaries, paused while the tab is hidden, UAE time. The day stays Wednesday 7 October because the data (`NOW_MIN`, `TODAY`) is fixed to it.
 - The roster's sticky headers sit under drawers via `.overlay { z-index: 200 }`.
 - Settings mutate shared rule objects (`OFF_RULES`, `DESIG_ACCESS`) so other screens pick them up on their next render; there is no global store.

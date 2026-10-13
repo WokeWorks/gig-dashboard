@@ -2,6 +2,7 @@ import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
 import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon, Select } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
+import { LiveClock } from '../../lib/clock.jsx';
 import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
@@ -27,7 +28,7 @@ export function LiveBoard({ go }) {
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
   return (
     <>
-      <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" />Wed 7 Oct · {hm(NOW_MIN)}</span>} />
+      <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" /><LiveClock /></span>} />
       <section className="card flush lm-wrap">
         <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={pick} onPick={setPick} />
         <div className="lm-over lm-filters">
