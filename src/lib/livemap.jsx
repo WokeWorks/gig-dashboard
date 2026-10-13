@@ -2,13 +2,30 @@ import { loadGoogleMaps, MAP_STYLES } from './geo.js';
 
 const { useState, useEffect, useRef } = React;
 
+// Maps are created once and reused. Google bills every new google.maps.Map as a map load, and a reused map comes back
+// instantly, where it was left. Each slot keeps one map on its own div, which is moved into whichever container is
+// showing it and taken out (not destroyed) when that container goes away. Theme changes are applied to every kept map.
+const POOL = new Map();
+const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
+const rethemeAll = () => POOL.forEach((e) => { if (!e.map) return; e.map.setOptions({ styles: isDark() ? MAP_STYLES.dark : MAP_STYLES.light }); if (e.retheme) e.retheme(); });
+let themeWatch = false;
+function pooledMap(slot, host, G, opts) {
+  if (!themeWatch) { themeWatch = true; window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rethemeAll); new MutationObserver(rethemeAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); }
+  let e = POOL.get(slot); const fresh = !e;
+  if (!e) { const div = document.createElement('div'); div.className = 'gm-canvas'; e = { div, map: null, st: {} }; POOL.set(slot, e); }
+  host.appendChild(e.div);
+  if (!e.map) e.map = new G.Map(e.div, { ...opts, styles: isDark() ? MAP_STYLES.dark : MAP_STYLES.light });
+  return { e, fresh };
+}
+
 // The live map used on the Liveboard and the vendor overview: Google Maps with our own HTML pins.
 // points: [{ id, name, title?, lat, lng, due, inn, bad, late, left? }]; it frames all of them on first load.
 // inset: how many pixels on the right are covered by a panel; the picked pin is kept clear of them.
 // focus: the store opened elsewhere (e.g. from a list); if it is hidden inside a merged pin the map zooms in to it.
 // pick: the selected store (pinned label, kept in view). hover: a store hovered elsewhere (e.g. its row in a list); it is
 // only highlighted, never panned to, and never rebuilds the pins.
-export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0, focus = null }) {
+// slot: which kept map to use (one per screen that shows a live map).
+export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0, focus = null, slot = 'live' }) {
   const el = useRef(null); const map = useRef(null); const pins = useRef([]); const gm = useRef(null);
   const [state, setState] = useState('loading'); // loading | ready | missing_key | refused | offline
   const pts = useRef([]); const merged = useRef({}); const moved = useRef(false); const fitKey = useRef('');
@@ -36,26 +53,25 @@ export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0,
     loadGoogleMaps().then((G) => {
       if (!alive || !el.current) return;
       gm.current = G;
-      const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
-      const m = new G.Map(el.current, {
-        center: { lat: 25.09, lng: 55.23 }, zoom: 12, styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light,
+      const { e: kept, fresh } = pooledMap('live:' + slot, el.current, G, {
+        center: { lat: 25.09, lng: 55.23 }, zoom: 12,
         disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: G.ControlPosition.RIGHT_BOTTOM },
         clickableIcons: false, gestureHandling: 'cooperative', // the page scrolls; ctrl/two fingers zoom the map
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2') || undefined,
       });
+      const m = kept.map;
+      // A kept map remembers whether it was framed for these stores and whether the person has moved it since.
+      if (!fresh) { fitKey.current = kept.st.fitKey || ''; moved.current = !!kept.st.moved; }
       map.current = m;
       // The map frames itself on first load and when the set of stores changes. Anything the
       // person does on the map (click, drag, wheel, touch, keys) hands it to them: no more automatic refits.
       const box = el.current; const mine = () => { moved.current = true; };
       const EVS = ['pointerdown', 'wheel', 'touchstart', 'keydown']; EVS.forEach((ev) => box.addEventListener(ev, mine, { passive: true, capture: true }));
-      const retheme = () => m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light });
-      const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
-      const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
       // Refit on a real size change (window resized, panel reflowed) only while the map is still untouched;
       // ignore the small jitters that layout changes cause.
       let last = [box.clientWidth, box.clientHeight];
       const ro = new ResizeObserver(() => { if (!alive) return; const now = [box.clientWidth, box.clientHeight]; if (Math.abs(now[0] - last[0]) > 40 || Math.abs(now[1] - last[1]) > 40) { last = now; if (!moved.current) fitAll(); } }); ro.observe(box);
-      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; G.event.clearInstanceListeners(m); };
+      cleanup = () => { EVS.forEach((ev) => box.removeEventListener(ev, mine, { capture: true })); ro.disconnect(); pins.current.forEach((p) => p.setMap(null)); pins.current = []; kept.st.fitKey = fitKey.current; kept.st.moved = moved.current; kept.div.remove(); };
       setState('ready');
     }).catch((e) => { if (alive) setState(e.message === 'missing_key' ? 'missing_key' : e.message === 'refused' ? 'refused' : 'offline'); });
     return () => { alive = false; window.removeEventListener('opspro-maps-refused', refused); cleanup(); map.current = null; };
@@ -149,24 +165,26 @@ export function SiteMap({ lat, lng, radius, name, height = 132 }) {
     let alive = true; let cleanup = () => {};
     loadGoogleMaps().then((G) => {
       if (!alive || !el.current) return;
-      const css = getComputedStyle(document.documentElement); const tok = (n) => css.getPropertyValue(n).trim();
-      const dark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches; };
+      const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
       const center = { lat, lng };
-      const m = new G.Map(el.current, {
-        center, zoom: 16, styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light,
-        disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
+      const { e: kept, fresh } = pooledMap(`site:${lat},${lng}`, el.current, G, {
+        center, zoom: 16, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
         backgroundColor: tok('--surface-2') || undefined,
       });
-      const ring = new G.Circle({ map: m, center, radius, strokeColor: tok('--accent'), strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: tok('--accent'), fillOpacity: 0.12, clickable: false });
-      const dot = new G.Circle({ map: m, center, radius: Math.max(6, radius / 14), strokeColor: tok('--surface') || '#fff', strokeWeight: 2, fillColor: tok('--accent'), fillOpacity: 1, clickable: false });
+      const m = kept.map;
+      if (fresh || kept.st.radius !== radius) {
+        if (kept.st.ring) { kept.st.ring.setMap(null); kept.st.dot.setMap(null); }
+        kept.st.radius = radius;
+        kept.st.ring = new G.Circle({ map: m, center, radius, strokeColor: tok('--accent'), strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: tok('--accent'), fillOpacity: 0.12, clickable: false });
+        kept.st.dot = new G.Circle({ map: m, center, radius: Math.max(6, radius / 14), strokeColor: tok('--surface') || '#fff', strokeWeight: 2, fillColor: tok('--accent'), fillOpacity: 1, clickable: false });
+        kept.retheme = () => { kept.st.ring.setOptions({ strokeColor: tok('--accent'), fillColor: tok('--accent') }); kept.st.dot.setOptions({ fillColor: tok('--accent'), strokeColor: tok('--surface') }); };
+      }
       // Frame the geofence with some street around it.
-      const fit = () => { const b = ring.getBounds(); if (b && el.current && el.current.clientWidth) m.fitBounds(b, 28); };
-      G.event.addListenerOnce(m, 'idle', () => { fit(); if (alive) setReady(true); });
-      const retheme = () => { const c = getComputedStyle(document.documentElement); m.setOptions({ styles: dark() ? MAP_STYLES.dark : MAP_STYLES.light }); ring.setOptions({ strokeColor: c.getPropertyValue('--accent').trim(), fillColor: c.getPropertyValue('--accent').trim() }); dot.setOptions({ fillColor: c.getPropertyValue('--accent').trim(), strokeColor: c.getPropertyValue('--surface').trim() }); };
-      const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', retheme);
-      const mo = new MutationObserver(retheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      const fit = () => { const b = kept.st.ring.getBounds(); if (b && el.current && el.current.clientWidth) m.fitBounds(b, 28); };
+      if (fresh) G.event.addListenerOnce(m, 'idle', () => { fit(); if (alive) setReady(true); });
+      else { fit(); setReady(true); }
       const ro = new ResizeObserver(fit); ro.observe(el.current);
-      cleanup = () => { mq.removeEventListener('change', retheme); mo.disconnect(); ro.disconnect(); ring.setMap(null); dot.setMap(null); G.event.clearInstanceListeners(m); };
+      cleanup = () => { ro.disconnect(); kept.div.remove(); };
     }).catch(() => {});
     return () => { alive = false; cleanup(); };
   }, [lat, lng, radius]);

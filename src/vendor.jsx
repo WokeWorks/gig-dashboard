@@ -111,7 +111,7 @@ export function VendorOverview({ go, client = 'all' }) {
       <ScreenHeader title="Overview" phase={1} spec="6" />
       <section className="card flush lm-wrap lm-split vo-map">
         <div className="lm-mapcol">
-          <LiveMap pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} points={shown.filter((x) => x.g).map((x) => ({ id: x.key, name: short(x.key), title: x.key, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
+          <LiveMap slot="vendor" pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} points={shown.filter((x) => x.g).map((x) => ({ id: x.key, name: short(x.key), title: x.key, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
         </div>
         <aside className="lm-side" aria-label={pd ? pd.title : 'Locations'}>
           {!pd ? <>
