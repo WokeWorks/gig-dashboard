@@ -16,7 +16,7 @@ export function Alerts() {
       <ScreenHeader title="Notifications" phase={1} spec="5.6" />
       <div className="nt-tiles" role="tablist" aria-label="Filter by type">{types.map((t) => { const all = t === 'All' ? items : items.filter((a) => a.type === t); const open = all.filter((a) => a.open).length; const sev = all.some((a) => a.open && a.sev === 'critical') ? 'crit' : all.some((a) => a.open && a.sev === 'warning') ? 'warn' : ''; return (
         <button key={t} role="tab" aria-selected={type === t} className={'nt-tile' + (type === t ? ' on' : '') + (sev ? ' ' + sev : '')} onClick={() => setType(t)}>
-          <span className="nt-n">{open}</span><span className="nt-l">{{ All: 'All open', 'Outside geofence': 'Off-site punch', 'Missing clock-out': 'No clock-out', 'Document expiry': 'Documents' }[t] || t}</span><span className="nt-s small">{all.length - open ? `${all.length - open} reviewed` : 'Open'}</span>
+          <span className="nt-n">{open}</span><span className="nt-l">{{ All: 'All open', 'Outside geofence': 'Off-site punch', 'Missing clock-out': 'No clock-out', 'Document expiry': 'Documents' }[t] || t}</span>
         </button>
       ); })}</div>
       <section className="card flush">
