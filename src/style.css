@@ -1498,3 +1498,6 @@ label.btn { cursor: pointer; }
 .rbar .wk-step .wk-label span { white-space: nowrap; }
 @media (max-width: 1300px) { .rbar-filters { justify-content: flex-start; } }
 @media (max-width: 900px) { .rbar-filters .search { flex: 1 1 100%; max-width: none; } }
+/* A quiet button: no border until hovered (overflow menus) */
+.btn.quiet { background: transparent; border-color: transparent; color: var(--ink-mid); }
+.btn.quiet:hover, .btn.quiet[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
