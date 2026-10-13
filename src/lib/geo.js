@@ -33,31 +33,36 @@ export function loadGoogleMaps() {
   return gmLoad;
 }
 
-// Quiet map styles so the store pins carry the colour: no business or transit pins, muted roads.
+// Map styles built from the OpsPro palette (style.css tokens), so the map reads as part of the app:
+// warm neutral land like --bg, roads like --surface with --line edges, water and parks in tints of the
+// brand green. Business and transit pins are off so the store pins carry the colour.
+// Google needs literal hex values here; keep them in step with the tokens if the palette changes.
 const QUIET = [
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ visibility: 'on' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+];
+const style = (c) => [
+  ...QUIET,
+  { elementType: 'geometry', stylers: [{ color: c.land }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ color: c.built }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: c.park }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: c.water }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: c.waterText }] },
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: c.road }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: c.roadEdge }] },
+  { featureType: 'road.highway', elementType: 'geometry.fill', stylers: [{ color: c.highway }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: c.highwayEdge }] },
+  { featureType: 'road.local', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: c.text }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: c.halo }, { weight: 3 }] },
+  { featureType: 'administrative.neighborhood', elementType: 'labels.text.fill', stylers: [{ color: c.faint }] },
 ];
 export const MAP_STYLES = {
-  light: [
-    ...QUIET,
-    { elementType: 'geometry', stylers: [{ color: '#f2f1ee' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#e6e2da' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#cfe1ea' }] },
-    { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ color: '#ebe9e4' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#6f6a64' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#f7f6f3' }] },
-  ],
-  dark: [
-    ...QUIET,
-    { elementType: 'geometry', stylers: [{ color: '#1f2321' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c312e' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a403c' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#142228' }] },
-    { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ color: '#242926' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#9aa29d' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#1f2321' }] },
-  ],
+  // --bg #F5F2F2, --surface-2 #EEE9E9, --line #E4DEDD, --line-strong #D3CBCA, --muted #756C6A, --faint #9A908E, --accent-soft #ECF9F5
+  light: style({ land: '#F5F2F2', built: '#EEE9E9', park: '#E2EFE8', water: '#CFE6DD', waterText: '#4F7D6E', road: '#FFFFFF', roadEdge: '#E4DEDD', highway: '#FFFFFF', highwayEdge: '#D3CBCA', text: '#756C6A', faint: '#9A908E', halo: '#F5F2F2' }),
+  // --bg #151211, --surface #1E1A19, --surface-2 #2A2524, --line #3A3331, --line-strong #4A4240, --muted #A89F9C, --faint #7F7673
+  dark: style({ land: '#1A1716', built: '#1E1A19', park: '#17221E', water: '#0F201B', waterText: '#5C8F7F', road: '#2A2524', roadEdge: '#1E1A19', highway: '#3A3331', highwayEdge: '#2A2524', text: '#A89F9C', faint: '#7F7673', halo: '#151211' }),
 };
