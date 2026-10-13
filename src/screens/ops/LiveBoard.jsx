@@ -39,7 +39,7 @@ export function LiveBoard({ go }) {
           </div>
         </div>
         <div className="lm-over lm-stats">
-          <div><span className="lm-sv">{tot.inn}</span><span className="lm-sl">in now</span></div>
+          <div className={tot.inn ? 'good' : ''}><span className="lm-sv">{tot.inn}</span><span className="lm-sl">in now</span></div>
           <div className={tot.bad ? 'crit' : ''}><span className="lm-sv">{tot.bad}</span><span className="lm-sl">no-show</span></div>
           <div className={tot.late ? 'warn' : ''}><span className="lm-sv">{tot.late}</span><span className="lm-sl">late</span></div>
           <div><span className="lm-sv">{tot.up}</span><span className="lm-sl">later today</span></div>
