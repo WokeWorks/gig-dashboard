@@ -1,5 +1,5 @@
 import { MANAGERS, SITES, VENDORS, WORKERS, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, TRAVEL, tplOf, tplLabel, spanOf, MAX_ON_SITE, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon, Marquee } from '../../ui.jsx';
+import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon, Marquee, useMenu } from '../../ui.jsx';
 import { isFloat, coverOf, coverCell, undoCell, CoverDrawer } from '../../lib/cover.jsx';
 import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/dates.js';
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
@@ -105,6 +105,7 @@ export function Scheduling({ go }) {
   const nowIdx = wk < 0 ? 7 : wk > 0 ? -1 : TODAY; // days before this index have happened
   const [add, setAdd] = useState({ t: 'f7', st: '13:00', site: 's3' });
   const toast = useToast();
+  const menu = useMenu();
   const W = (id) => WORKERS.find((w) => w.id === id);
   const G = (sid) => groups.find((g) => g.site === sid);
   const setCells = (g, r, cs, v) => { setWeeks((Wk) => ({ ...Wk, [wk]: Wk[wk].map((x) => (x.site !== g ? x : { ...x, cells: x.cells.map((row, ri) => row.map((y, ci) => (ri === r && cs.includes(ci) ? v : y))) })) })); setDirty((d) => ({ ...d, [wk]: (d[wk] || 0) + 1 })); };
@@ -264,14 +265,19 @@ export function Scheduling({ go }) {
     if (withMistakes) { if (aoa[3]) aoa[3][5] = '9-12'; if (aoa[5]) aoa[5][7] = '7 till late'; aoa.push(['OP-9999', 'Sam New', aoa[1][2], '07:00-18:00', '07:00-18:00', 'OFF', '07:00-18:00', '07:00-18:00', '07:00-18:00', '07:00-18:00']); }
     return aoa;
   };
-  // Per-worker actions, shown when the row is hovered: copy their week forward, clear days, save as a picture.
-  const rowActs = (sid, r, w) => (
-    <span className="row-acts">
-      {wk >= 0 && wk < MAXWK && <button className="act" title="Copy this week forward" aria-label={`Copy ${w.name}'s week forward`} onClick={() => openCopy(wk + 1, { from: wk, sites: sid === 'pool' ? [] : [sid], workers: [w.id], stay: true })}><Icon name="copy" size={13} /></button>}
-      {wk >= 0 && <button className="act" title="Clear days" aria-label={`Clear days for ${w.name}`} onClick={() => setClr({ g: sid, r, days: [] })}><Icon name="trash" size={13} /></button>}
-      <button className="act" title="Save the week as a picture" aria-label={`Save ${w.name}'s week as a picture`} onClick={() => setShot({ kind: 'worker', sid, r })}><Icon name="camera" size={13} /></button>
-    </span>
-  );
+  // Row and location actions live behind one "more" button that shows on hover (always on touch screens).
+  const canCopy = wk >= 0 && wk < MAXWK;
+  const moreBtn = (title, items) => <button className={'more-btn' + (menu.isOpen(title) ? ' open' : '')} aria-haspopup="menu" aria-label={`Actions for ${title}`} title="Actions" onClick={(e) => menu.open(e, title, items)}><Icon name="more" size={16} /></button>;
+  const rowActs = (sid, r, w) => moreBtn(w.name, [
+    canCopy && { icon: 'copy', label: 'Copy week forward', sub: 'Into the coming weeks', on: () => openCopy(wk + 1, { from: wk, sites: sid === 'pool' ? [] : [sid], workers: [w.id], stay: true }) },
+    { icon: 'camera', label: 'Save week as picture', sub: 'To share on WhatsApp', on: () => setShot({ kind: 'worker', sid, r }) },
+    { icon: 'person', label: 'Open profile', on: () => go('workforce', { worker: w.id }) },
+    wk >= 0 && { icon: 'trash', label: 'Clear days…', sub: 'Pick days to empty', danger: true, on: () => setClr({ g: sid, r, days: [] }) },
+  ]);
+  const locActs = (s) => moreBtn(s.name, [
+    canCopy && { icon: 'copy', label: 'Copy week forward', sub: `Everyone at ${s.name.replace(/^(Spinneys|Carrefour) /, '')}`, on: () => openCopy(wk + 1, { from: wk, sites: [s.id], stay: true }) },
+    { icon: 'camera', label: 'Save week as picture', sub: 'To share on WhatsApp', on: () => setShot({ kind: 'loc', sid: s.id }) },
+  ]);
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
     const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay;
@@ -385,10 +391,7 @@ export function Scheduling({ go }) {
                     <td className="rg-name mq-host" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
                       <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b><Marquee>{s.name}</Marquee></b><span className="muted small"><Marquee>{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</Marquee></span>
                     </button>
-                    <span className="rg-acts">
-                      {wk >= 0 && wk < MAXWK && <button className="act" title={`Copy ${s.name}'s week forward`} aria-label={`Copy ${s.name}'s week forward`} onClick={() => openCopy(wk + 1, { from: wk, sites: [s.id], stay: true })}><Icon name="copy" size={14} /></button>}
-                      <button className="act" title={`Save ${s.name}'s week as a picture`} aria-label={`Save ${s.name}'s week as a picture`} onClick={() => setShot({ kind: 'loc', sid: s.id })}><Icon name="camera" size={14} /></button>
-                    </span></td>
+                    {locActs(s)}</td>
                     {days.map((d, ci) => { const offs = g.people.filter((id, r) => g.cells[r][ci] === 'O').length; const over = !fixedMode && offs > OFF_RULES.sameDay; if (fixedMode && OFF_RULES.days.includes(ci)) return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}><span className="rg-off">Everyone off</span></td>; return (
                       <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}>
                         {offs > 0 && <span className={'rg-off' + (over ? ' over' : '')} title={over ? `${offs} people off on the same day here; the limit is ${OFF_RULES.sameDay}` : `${offs} on weekly off`}>{over && <Icon name="alert" size={11} />}{offs} off</span>}
@@ -725,6 +728,7 @@ export function Scheduling({ go }) {
           <tbody>{shotRows().map((x) => <tr key={x.w.id + (x.key || '') + (x.visiting ? 'v' : '')}>{shot.kind === 'loc' ? <td className="shot-who"><b>{x.w.name}</b><span>{x.visiting ? 'From another location' : x.w.role}</span></td> : <td className="shot-who"><b>{x.label}</b>{x.home === shot.sid && shot.sid !== 'pool' && <span>Their location</span>}</td>}{x.cells.map((c, i) => <td key={i} className={c === 'O' || c === 'L' ? 'shot-off' : ''}>{shotText(c, x.home).map((t, k) => <div key={k}>{t}</div>)}</td>)}</tr>)}</tbody></table>
         <div className="shot-foot">OpsPro · {pub[wk] === 'published' ? 'published roster' : 'draft, not yet published'}</div>
       </div></div>}
+      {menu.el}
       <CoverDrawer open={!!cover} onClose={() => setCover(null)} onAssign={assign}
         ctx={cover && { site: cover.site, ci: cover.ci, absent: cover.absent, sh: cover.sh, dayLabel: days[cover.ci], groups, why: cover.why || 'Absent' }} />
     </>

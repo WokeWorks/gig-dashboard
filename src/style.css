@@ -1,3 +1,4 @@
+@property --side-w { syntax: '<length>'; inherits: true; initial-value: 232px; }
 /* Layout: ops console — top persona bar, left module rail, dense working canvas; mobile personas on a phone stage with notes beside it.
    Palette: GrowHub, shared with the OpsPro picker app (brand #1B5746 on warm neutrals). Type: Plus Jakarta Sans + DM Mono, as the dashboard. */
 :root {
@@ -47,7 +48,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .personas button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; white-space: nowrap; color: var(--muted); font-weight: 550; }
 .personas button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
 .topbar .legend { margin-left: auto; }
-.body { display: grid; grid-template-columns: 232px minmax(0, 1fr); flex: 1; min-height: 0; }
+.body { --side-w: 232px; position: relative; display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); flex: 1; min-height: 0; }
 .side { border-right: 1px solid var(--line); background: var(--surface); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; }
 .side-group { display: flex; flex-direction: column; gap: 2px; }
 .side-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 8px 4px; font-weight: 600; }
@@ -726,17 +727,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 820px) { .dv-head { top: calc(var(--tb, 0px) + 50px); } }
 
 /* collapsible sidebar */
-.body { transition: grid-template-columns .18s ease; }
-.body.slim { grid-template-columns: 64px minmax(0, 1fr); }
+.body { transition: --side-w .18s ease; }
+.body.slim { --side-w: 64px; grid-template-columns: var(--side-w) minmax(0, 1fr); }
 .side-item { gap: 10px; justify-content: flex-start; }
 .side-item .phase, .side-item .ph { margin-left: auto; }
 .side-ic { display: inline-flex; flex: none; color: var(--muted); }
 .side-item.on .side-ic { color: var(--accent); }
 .side-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The sidebar's right border is the collapse control: hover it to see it, click to collapse or expand. */
-.side-edge { position: fixed; top: var(--tb, 60px); bottom: 0; left: 226px; width: 12px; border: 0; background: transparent; cursor: ew-resize; z-index: 30; padding: 0; transition: left .18s ease; }
-.body.slim .side-edge { left: 58px; }
-.side-edge::before { content: ''; position: absolute; top: 0; bottom: 0; left: 5px; width: 2px; background: transparent; transition: background .12s; }
+.side-edge { position: absolute; top: 0; bottom: 0; left: calc(var(--side-w) - 7px); width: 12px; border: 0; background: transparent; cursor: ew-resize; z-index: 30; padding: 0; transition: left .18s ease; }
+.side-edge::before { content: ''; position: absolute; top: 0; bottom: 0; left: 6px; width: 2px; background: transparent; transition: background .12s; }
 .side-edge:hover::before, .side-edge:focus-visible::before { background: var(--accent); }
 .side-knob { position: absolute; top: 18px; left: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line-strong); display: grid; place-items: center; color: var(--muted); opacity: 0; transition: opacity .12s, transform .18s; }
 .side:hover .side-knob, .side-edge:focus-visible .side-knob { opacity: 1; }
@@ -1385,16 +1385,24 @@ label.btn { cursor: pointer; }
 .lm-fit { margin: 0 10px 8px 0; font: 600 12px var(--body); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
 .lm-fit:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Roster: per-row and per-location actions (copy forward, clear days, save as picture) */
-.act { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; padding: 0; }
-.act:hover, .act:focus-visible { color: var(--fg); background: var(--surface-2); border-color: var(--line); }
-.row-acts { display: none; gap: 1px; margin-left: auto; }
-.roster tr:hover .row-acts, .row-acts:focus-within { display: inline-flex; }
-@media (hover: none) { .row-acts { display: inline-flex; } }
-.roster td .namerow { min-width: 0; }
-.rg-acts { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 1px; background: var(--surface-2); opacity: 0; transition: opacity .12s; }
-.roster tr.rg-head:hover .rg-acts, .rg-acts:focus-within { opacity: 1; }
-@media (hover: none) { .rg-acts { opacity: 1; } }
+/* Roster: one "more" button per row and per location, opening a menu of labelled actions */
+.more-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; display: none; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-mid); cursor: pointer; padding: 0; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.more-btn:hover, .more-btn.open { color: var(--fg); border-color: var(--line-strong); background: var(--surface-2); }
+.roster tr:hover .more-btn, .more-btn:focus-visible, .more-btn.open { display: grid; }
+@media (hover: none) { .more-btn { display: grid; } }
+.roster tr:hover td.mq-host .namerow, .roster td.mq-host:focus-within .namerow { padding-right: 32px; }
+.rg-head .more-btn { background: var(--surface-2); }
+.rg-head .more-btn:hover, .rg-head .more-btn.open { background: var(--surface); }
+.pop-menu { position: fixed; z-index: 300; width: 260px; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.08); animation: pm-in .12s ease-out; }
+@keyframes pm-in { from { opacity: 0; transform: translateY(-4px); } }
+.pm-title { padding: 6px 10px 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.pm-item { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--fg); text-align: left; font: inherit; font-size: 13.5px; cursor: pointer; }
+.pm-item .icon { margin-top: 1px; color: var(--muted); }
+.pm-item > span { display: grid; gap: 1px; } .pm-item b { font-weight: 600; }
+.pm-item:hover, .pm-item:focus-visible { background: var(--surface-2); outline: none; }
+.pm-item.danger, .pm-item.danger .icon { color: var(--crit); }
+.pm-item.danger + .pm-item, .pm-item:not(.danger) + .pm-item.danger { margin-top: 4px; position: relative; }
+.pm-item:not(.danger) + .pm-item.danger::before { content: ''; position: absolute; left: 6px; right: 6px; top: -3px; border-top: 1px solid var(--line); }
 
 /* Roster day drawer: per-shift actions and inline edit */
 .dayshift-wrap { border-bottom: 1px solid var(--line); }
@@ -1431,11 +1439,10 @@ label.btn { cursor: pointer; }
 .roster td.mq-host { overflow: hidden; }
 .roster td.mq-host .namerow { display: flex; min-width: 0; }
 .roster td.mq-host .namelink { display: block; min-width: 0; flex: 0 1 auto; max-width: 100%; }
-.roster td.mq-host .namelink + .unack, .roster td.mq-host .row-acts { flex: none; }
 /* Location headers: one line each, caret then name, with room for the actions on the right */
 .roster tbody tr.rg-head > td.rg-name { overflow: hidden; }
 .roster tbody tr.rg-head > td.rg-name .rg-toggle { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; white-space: nowrap; }
-.roster tbody tr.rg-head:hover > td.rg-name .rg-toggle, .roster tbody tr.rg-head > td.rg-name:focus-within .rg-toggle { padding-right: 52px; }
-@media (hover: none) { .roster tbody tr.rg-head > td.rg-name .rg-toggle { padding-right: 52px; } }
+.roster tbody tr.rg-head:hover > td.rg-name .rg-toggle, .roster tbody tr.rg-head > td.rg-name:focus-within .rg-toggle { padding-right: 34px; }
+@media (hover: none) { .roster tbody tr.rg-head > td.rg-name .rg-toggle { padding-right: 34px; } .roster td.mq-host .namerow { padding-right: 32px; } }
 .roster tbody tr.rg-head > td.rg-name .rg-toggle > b, .roster tbody tr.rg-head > td.rg-name .rg-toggle > .muted.small { min-width: 0; display: block; }
 .cell.today-in, .dv-shift.today-in { border: 2px dotted var(--good) !important; }

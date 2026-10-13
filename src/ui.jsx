@@ -194,6 +194,7 @@ const GLYPHS = {
   grid: <><rect x="3" y="3" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="2" /><rect x="3" y="13.5" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" /></>,
   finger: <><path d="M18.9 7a8 8 0 0 1 1.1 5v1a6 6 0 0 0 .8 3" /><path d="M8 11a4 4 0 0 1 8 0v1a10 10 0 0 0 2 6" /><path d="M12 11v2a14 14 0 0 0 2.5 8" /><path d="M8 15a18 18 0 0 0 1.8 6" /><path d="M4.9 19a22 22 0 0 1-.9-7v-1a8 8 0 0 1 12-6.95" /></>,
   lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7.5a4 4 0 0 1 8 0V11" /></>,
+  more: <><circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none" /></>,
   star: <path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.8l-5.1 2.6 1-5.6-4.1-4 5.7-.8z" />,
 };
 export function Icon({ name, size = 20, stroke = 1.9, className = '' }) {
@@ -214,4 +215,39 @@ export function Marquee({ children, className = '' }) {
     set(); const ro = new ResizeObserver(set); ro.observe(b); ro.observe(i); return () => ro.disconnect();
   }, []);
   return <span ref={box} className={'mq ' + className}><span ref={inner} className="mq-in">{children}</span></span>;
+}
+
+// A small menu of labelled actions, opened from a "more" button. items: [{ icon, label, sub, on, danger }]
+export function useMenu() {
+  const [m, setM] = useState(null);
+  useEffect(() => {
+    if (!m) return;
+    const close = () => setM(null);
+    const down = (e) => { if (!e.target.closest('.pop-menu')) close(); };
+    const key = (e) => { if (e.key === 'Escape') { close(); m.from && m.from.focus(); } };
+    document.addEventListener('mousedown', down); document.addEventListener('keydown', key); window.addEventListener('scroll', close, true); window.addEventListener('resize', close);
+    requestAnimationFrame(() => { const f = document.querySelector('.pop-menu [role="menuitem"]'); f && f.focus(); });
+    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
+  }, [m]);
+  const open = (e, title, items) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect(); const W = 260;
+    setM({ title, items: items.filter(Boolean), from: e.currentTarget, x: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), y: r.bottom + 4, up: r.bottom + 240 > window.innerHeight, top: r.top - 4 });
+  };
+  const nav = (e) => {
+    const l = [...e.currentTarget.querySelectorAll('[role="menuitem"]')]; const i = l.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); l[(i + 1) % l.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); l[(i - 1 + l.length) % l.length].focus(); }
+  };
+  const el = m && (
+    <div className="pop-menu" role="menu" aria-label={m.title} onKeyDown={nav} style={m.up ? { left: m.x, bottom: window.innerHeight - m.top } : { left: m.x, top: m.y }}>
+      <div className="pm-title">{m.title}</div>
+      {m.items.map((x, i) => (
+        <button key={i} role="menuitem" className={'pm-item' + (x.danger ? ' danger' : '')} onClick={() => { setM(null); x.on(); }}>
+          <Icon name={x.icon} size={16} /><span><b>{x.label}</b>{x.sub && <span className="small muted">{x.sub}</span>}</span>
+        </button>
+      ))}
+    </div>
+  );
+  return { open, el, isOpen: (t) => !!m && m.title === t };
 }
