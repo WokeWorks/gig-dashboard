@@ -1,5 +1,5 @@
 import { WORKERS, DAYS, ROSTER, SHIFT_TEMPLATES, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf, spanOf, MAX_ON_SITE } from '../../data.js';
-import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Field, Toggle, Note, useToast } from '../../ui.jsx';
+import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Field, Toggle, Note, useToast, Select } from '../../ui.jsx';
 import { FULL_DAYS, fmtRange } from '../../lib/dates.js';
 import { LEAVE_TYPES, UAE_HOL, ltRule } from '../../lib/leave.js';
 import { OFF_RULES } from '../../lib/offs.js';
@@ -131,7 +131,7 @@ export function Settings({ params }) {
             </tbody></table>
             {clashes.length > 0 && <div className="row-line"><Pill tone="crit">{clashes.length} {clashes.length === 1 ? 'overlap' : 'overlaps'}</Pill><span className="small">The new length makes a shift overlap another one for the people marked below. Fix them on the roster after applying.</span></div>}
             {renderAffected({ withClash: true })}
-            <Field label="Apply from"><select id="ed-from" className="input" value={ed.from} onChange={(e) => setEd({ ...ed, from: e.target.value })}><option value="next">Next week (Mon 12 Oct), this week stays as it is</option><option value="tomorrow">Tomorrow (Thu 8 Oct), including the rest of this week</option></select></Field>
+            <Field label="Apply from"><Select id="ed-from" className="input" value={ed.from} onChange={(e) => setEd({ ...ed, from: e.target.value })}><option value="next">Next week (Mon 12 Oct), this week stays as it is</option><option value="tomorrow">Tomorrow (Thu 8 Oct), including the rest of this week</option></Select></Field>
             <Toggle id="ed-notify" checked={ed.notify} onChange={(v) => setEd({ ...ed, notify: v })} label={`Notify the ${edOrig.used} affected ${edOrig.used === 1 ? 'employee' : 'employees'} in the app`} />
             <div className="drawer-actions">
               <button className="btn ghost" onClick={() => setEd({ ...ed, step: 'edit' })}>Back</button>
@@ -159,12 +159,12 @@ export function Settings({ params }) {
               <Field label="Grace period"><div className="unit-in"><input id="pol-grace" className="input" type="number" value={rp.grace} onChange={(e) => setR('grace', +e.target.value)} /><span>min</span></div></Field>
               <Field label="No-show after"><div className="unit-in"><input id="pol-noshow" className="input" type="number" value={rp.noshow} onChange={(e) => setR('noshow', +e.target.value)} /><span>min</span></div></Field>
 {role !== 'Floater' &&               <Field label="Earliest clock-in"><div className="unit-in"><input id="pol-early" className="input" type="number" value={rp.early} onChange={(e) => setR('early', +e.target.value)} /><span>min before</span></div></Field>}
-              <Field label="Rounding"><select id="pol-round" className="input" value={rp.rounding} onChange={(e) => setR('rounding', e.target.value)}><option value="0">None</option><option value="5">Nearest 5 min</option><option value="15">Nearest 15 min</option></select></Field>
+              <Field label="Rounding"><Select id="pol-round" className="input" value={rp.rounding} onChange={(e) => setR('rounding', e.target.value)}><option value="0">None</option><option value="5">Nearest 5 min</option><option value="15">Nearest 15 min</option></Select></Field>
             </div>
-            <Field label="A shift counts as a full day when the worker works"><select id="pol-full" className="input" value={rp.full} onChange={(e) => setR('full', e.target.value)}>
-              <option value="all">All of the base hours</option><option value="base1">All but 1 hour of the base hours</option><option value="base2">All but 2 hours of the base hours</option><option value="pct90">At least 90% of the base hours</option></select></Field>
-            <Field label="It counts as a half day when the worker works"><select id="pol-half" className="input" value={rp.half} onChange={(e) => setR('half', e.target.value)}>
-              <option value="half">At least half of the base hours</option><option value="4h">At least 4 hours</option><option value="none">No half days: less than a full day is absent</option></select></Field>
+            <Field label="A shift counts as a full day when the worker works"><Select id="pol-full" className="input" value={rp.full} onChange={(e) => setR('full', e.target.value)}>
+              <option value="all">All of the base hours</option><option value="base1">All but 1 hour of the base hours</option><option value="base2">All but 2 hours of the base hours</option><option value="pct90">At least 90% of the base hours</option></Select></Field>
+            <Field label="It counts as a half day when the worker works"><Select id="pol-half" className="input" value={rp.half} onChange={(e) => setR('half', e.target.value)}>
+              <option value="half">At least half of the base hours</option><option value="4h">At least 4 hours</option><option value="none">No half days: less than a full day is absent</option></Select></Field>
             <div className="small muted">Example for an 11+1 shift: full day from {{ all: '11 h', base1: '10 h', base2: '9 h', pct90: '9 h 54 m' }[rp.full]} worked{rp.half !== 'none' && `, half day from ${rp.half === 'half' ? '5 h 30 m' : '4 h'}`}. The optional hour never counts towards this.</div>
           </section>
           {role === 'Floater' && <section className="card form">
@@ -192,7 +192,7 @@ export function Settings({ params }) {
             </div>}
             <div className="form-grid">
               <Field label="Most working days in a row"><div className="unit-in"><input id="pol-run" className="input" type="number" min="1" max="13" value={p.maxRun} onChange={(e) => { set('maxRun', +e.target.value); OFF_RULES.maxRun = +e.target.value; }} /><span>days</span></div></Field>
-              <Field label="Working on a weekly off"><select id="pol-offwork" className="input" value={p.offWork} onChange={(e) => set('offWork', e.target.value)}><option value="ot">Allowed, paid at the rest-day rate</option><option value="swap">Allowed, with a replacement day off</option><option value="none">Not allowed</option></select></Field>
+              <Field label="Working on a weekly off"><Select id="pol-offwork" className="input" value={p.offWork} onChange={(e) => set('offWork', e.target.value)}><option value="ot">Allowed, paid at the rest-day rate</option><option value="swap">Allowed, with a replacement day off</option><option value="none">Not allowed</option></Select></Field>
             </div>
             <div className="small muted">Set once for the organisation and applies to every role. A weekly off is never counted as absent.</div>
           </section>
@@ -201,7 +201,7 @@ export function Settings({ params }) {
             <Toggle id="pol-brk" checked={rp.breaks} onChange={(v) => setR('breaks', v)} label="Workers take breaks during the shift" />
             {rp.breaks && <>
               <Field label="Break allowance per shift" hint="Workers can split it into as many breaks as they need, for prayer, food or a smoke."><div className="unit-in"><input id="pol-brkmin" className="input" type="number" value={rp.brkMin} onChange={(e) => setR('brkMin', +e.target.value)} /><span>min</span></div></Field>
-              <Field label="Break time is"><select id="pol-brkpaid" className="input" value={rp.brkPaid} onChange={(e) => setR('brkPaid', e.target.value)}><option value="unpaid">Unpaid (taken off worked hours)</option><option value="paid">Paid</option></select></Field>
+              <Field label="Break time is"><Select id="pol-brkpaid" className="input" value={rp.brkPaid} onChange={(e) => setR('brkPaid', e.target.value)}><option value="unpaid">Unpaid (taken off worked hours)</option><option value="paid">Paid</option></Select></Field>
               <div className="small muted">Time past the allowance is flagged to the supervisor.</div>
             </>}
           </section>
@@ -218,8 +218,8 @@ export function Settings({ params }) {
               <div><span className="tpl-chip mono extra">beyond</span><b>Unplanned overtime</b><span className="small muted">Anything after the optional hour.</span></div>
             </div>
             <div className="form-grid">
-              <Field label="Unplanned overtime"><select id="pol-beyond" className="input" value={p.beyond} onChange={(e) => set('beyond', e.target.value)}><option value="approval">Allowed if a supervisor approves it</option><option value="allow">Always allowed</option><option value="none">Not allowed: clock the worker out</option></select></Field>
-              <Field label="Public holidays"><select id="pol-hol" className="input" value={p.hol ? 'y' : 'n'} onChange={(e) => set('hol', e.target.value === 'y')}><option value="y">Every hour counts as overtime</option><option value="n">Treated like any other day</option></select></Field>
+              <Field label="Unplanned overtime"><Select id="pol-beyond" className="input" value={p.beyond} onChange={(e) => set('beyond', e.target.value)}><option value="approval">Allowed if a supervisor approves it</option><option value="allow">Always allowed</option><option value="none">Not allowed: clock the worker out</option></Select></Field>
+              <Field label="Public holidays"><Select id="pol-hol" className="input" value={p.hol ? 'y' : 'n'} onChange={(e) => set('hol', e.target.value === 'y')}><option value="y">Every hour counts as overtime</option><option value="n">Treated like any other day</option></Select></Field>
             </div>
             <div className="small muted">How much overtime costs comes from each vendor's rate card, under Vendor costs.</div>
           </section>
@@ -243,7 +243,7 @@ export function Settings({ params }) {
           <div className="card-head"><h3>Across all leave</h3></div>
           <div className="form-grid">
             <Field label="Most people off at one location on the same day"><div className="unit-in"><input id="lv-maxoff" className="input" type="number" min="1" value={p.maxOff} onChange={(e) => set('maxOff', +e.target.value)} /><span>people</span></div></Field>
-            <Field label="Public holidays"><select id="lv-hol" className="input" value={p.holCal} onChange={(e) => set('holCal', e.target.value)}><option value="uae">UAE calendar</option><option value="none">None</option></select></Field>
+            <Field label="Public holidays"><Select id="lv-hol" className="input" value={p.holCal} onChange={(e) => set('holCal', e.target.value)}><option value="uae">UAE calendar</option><option value="none">None</option></Select></Field>
           </div>
           {p.holCal === 'uae' && <div className="hol-list">
             <div className="hol-head small"><b>UAE public holidays 2026</b><span className="muted">{UAE_HOL.filter((h) => (h.to || h.from) >= '2026-10-07').length} still to come</span></div>
@@ -262,7 +262,7 @@ export function Settings({ params }) {
           {led && <>
             <div className="form-grid">
               <Field label="Name"><input id="lt-name" className="input" value={led.name} onChange={(e) => setLed({ ...led, name: e.target.value })} /></Field>
-              <Field label="Pay"><select id="lt-paid" className="input" value={led.paid ? 'y' : 'n'} onChange={(e) => setLed({ ...led, paid: e.target.value === 'y' })}><option value="y">Paid</option><option value="n">Unpaid</option></select></Field>
+              <Field label="Pay"><Select id="lt-paid" className="input" value={led.paid ? 'y' : 'n'} onChange={(e) => setLed({ ...led, paid: e.target.value === 'y' })}><option value="y">Paid</option><option value="n">Unpaid</option></Select></Field>
               <Field label="Days a year" hint="Leave blank for no yearly limit."><div className="unit-in"><input id="lt-year" className="input" type="number" min="0" value={led.perYear ?? ''} onChange={(e) => setLed({ ...led, perYear: e.target.value === '' ? null : +e.target.value })} /><span>days</span></div></Field>
               <Field label="Carry over to next year"><div className="unit-in"><input id="lt-carry" className="input" type="number" min="0" value={led.carry} onChange={(e) => setLed({ ...led, carry: +e.target.value })} /><span>days</span></div></Field>
               <Field label="Most days per request" hint="Blank for no limit."><div className="unit-in"><input id="lt-max" className="input" type="number" min="0" value={led.maxReq ?? ''} onChange={(e) => setLed({ ...led, maxReq: e.target.value === '' ? null : +e.target.value })} /><span>days</span></div></Field>
@@ -303,7 +303,7 @@ export function Settings({ params }) {
             <tbody>{desig.map((d, i) => (
               <tr key={d.name}>
                 <td><b>{d.name}</b></td>
-                <td><select id={'rb-' + i} className="input sm" disabled={d.n > 0} title={d.n > 0 ? `Locked: ${d.n} ${d.n === 1 ? 'person holds' : 'people hold'} this designation. Move them to another designation first.` : undefined} value={d.role} onChange={(e) => { DESIG_ACCESS[d.name] = e.target.value; setDesig(desig.map((x, j) => (j === i ? { ...x, role: e.target.value } : x))); toast(`${d.name} now has ${e.target.value} access`); }}><option>Employee</option><option>Floater</option><option>Manager</option><option>Admin</option></select></td>
+                <td><Select id={'rb-' + i} className="input sm" disabled={d.n > 0} title={d.n > 0 ? `Locked: ${d.n} ${d.n === 1 ? 'person holds' : 'people hold'} this designation. Move them to another designation first.` : undefined} value={d.role} onChange={(e) => { DESIG_ACCESS[d.name] = e.target.value; setDesig(desig.map((x, j) => (j === i ? { ...x, role: e.target.value } : x))); toast(`${d.name} now has ${e.target.value} access`); }}><option>Employee</option><option>Floater</option><option>Manager</option><option>Admin</option></Select></td>
                 <td className="num mono">{d.n}</td>
               </tr>
             ))}</tbody>

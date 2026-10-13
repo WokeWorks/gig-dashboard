@@ -159,6 +159,8 @@ const GLYPHS = {
   userPlus: <><circle cx="10" cy="8" r="3.5" /><path d="M3.5 20a6.5 6.5 0 0 1 13 0" /><path d="M19 8v6M16 11h6" /></>,
   umbrella: <><path d="M3 12a9 9 0 0 1 18 0z" /><path d="M12 12v6.5a2 2 0 0 1-4 0" /></>,
   chevronLeft: <path d="M15 5l-7 7 7 7" />,
+  chevronRight: <path d="M9 5l7 7-7 7" />,
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>,
   check: <path d="M4.5 12.5l5 5 10-11" />,
   checkCircle: <><circle cx="12" cy="12" r="9" /><path d="M8 12.2l2.8 2.8L16 9.5" /></>,
   alert: <><path d="M12 3.5L21 19.5H3z" /><path d="M12 9.5v4M12 16.8h.01" /></>,
@@ -261,4 +263,54 @@ export function Logo({ size = 26 }) {
       <circle cx="8.2" cy="12" r="5.9" stroke="var(--accent)" strokeWidth="2.8" fill="none" />
     </svg>
   );
+}
+
+// A dropdown that looks like the rest of the app (the native one doesn't), used like <select>:
+// <Select value={v} onChange={(e) => set(e.target.value)}><option value="a">A</option>…</Select>
+const textOf = (n) => (n == null || n === false ? '' : Array.isArray(n) ? n.map(textOf).join('') : typeof n === 'object' ? textOf(n.props && n.props.children) : String(n));
+export function Select({ value: given, defaultValue, onChange, children, className = '', id, disabled, style, ...rest }) {
+  const [inner, setInner] = useState(defaultValue);
+  const value = given !== undefined ? given : inner;
+  const [open, setOpen] = useState(false);
+  const [act, setAct] = useState(0);
+  const btn = React.useRef(null), list = React.useRef(null), typed = React.useRef({ s: '', t: 0 });
+  const opts = React.Children.toArray(children).filter((c) => c && c.type === 'option').map((c) => ({ value: String(c.props.value ?? textOf(c.props.children)), label: textOf(c.props.children), disabled: !!c.props.disabled }));
+  const cur = Math.max(0, opts.findIndex((o) => o.value === String(value)));
+  const [pos, setPos] = useState(null);
+  const place = () => { const r = btn.current.getBoundingClientRect(); const below = window.innerHeight - r.bottom; const up = below < 260 && r.top > below; setPos({ left: r.left, width: r.width, top: up ? undefined : r.bottom + 4, bottom: up ? window.innerHeight - r.top + 4 : undefined, maxH: Math.min(320, (up ? r.top : below) - 12) }); };
+  const show = () => { if (disabled) return; place(); setAct(cur); setOpen(true); };
+  const pick = (i) => { const o = opts[i]; if (!o || o.disabled) return; setOpen(false); btn.current && btn.current.focus(); if (o.value !== String(value)) { if (given === undefined) setInner(o.value); onChange && onChange({ target: { value: o.value } }); } };
+  useEffect(() => {
+    if (!open) return;
+    const down = (e) => { if (!btn.current.contains(e.target) && !(list.current && list.current.contains(e.target))) setOpen(false); };
+    const away = (e) => { if (!(list.current && list.current.contains(e.target))) setOpen(false); };
+    document.addEventListener('mousedown', down); window.addEventListener('scroll', away, true); window.addEventListener('resize', away);
+    return () => { document.removeEventListener('mousedown', down); window.removeEventListener('scroll', away, true); window.removeEventListener('resize', away); };
+  }, [open]);
+  useEffect(() => { if (open && list.current) { const el = list.current.children[act]; el && el.scrollIntoView({ block: 'nearest' }); } }, [open, act]);
+  const step = (d) => { let i = act; for (let k = 0; k < opts.length; k++) { i = (i + d + opts.length) % opts.length; if (!opts[i].disabled) break; } setAct(i); };
+  const key = (e) => {
+    if (!open) { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); show(); } return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); setAct(0); }
+    else if (e.key === 'End') { e.preventDefault(); setAct(opts.length - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(act); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { setOpen(false); }
+    else if (e.key.length === 1) { const t = typed.current; const now = Date.now(); t.s = (now - t.t < 600 ? t.s : '') + e.key.toLowerCase(); t.t = now; const i = opts.findIndex((o) => o.label.toLowerCase().startsWith(t.s)); if (i >= 0) setAct(i); }
+  };
+  const lid = (id || 'sel') + '-list';
+  return <>
+    <button ref={btn} type="button" id={id} className={'select ' + className + (open ? ' open' : '')} style={style} disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? lid : undefined} onClick={() => (open ? setOpen(false) : show())} onKeyDown={key} {...rest}>
+      <span className="select-val">{opts[cur] ? opts[cur].label : ''}</span><Icon name="down" size={15} className="select-chev" />
+    </button>
+    {open && pos && ReactDOM.createPortal(
+      <div ref={list} id={lid} role="listbox" className="select-list" style={{ left: pos.left, top: pos.top, bottom: pos.bottom, minWidth: pos.width, maxHeight: pos.maxH }} aria-activedescendant={`${lid}-${act}`}>
+        {opts.map((o, i) => (
+          <div key={o.value + i} id={`${lid}-${i}`} role="option" aria-selected={i === cur} aria-disabled={o.disabled || undefined} className={'select-opt' + (i === act ? ' act' : '') + (i === cur ? ' on' : '') + (o.disabled ? ' dis' : '')} onMouseEnter={() => setAct(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(i)}>
+            <span>{o.label}</span>{i === cur && <Icon name="check" size={14} />}
+          </div>
+        ))}
+      </div>, document.body)}
+  </>;
 }

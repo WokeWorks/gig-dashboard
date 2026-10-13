@@ -1,5 +1,5 @@
 import { WORKERS, LEAVE, ROSTER_GROUPS, tplOf, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Toggle, Note, useToast } from '../../ui.jsx';
+import { ScreenHeader, Pill, Tabs, Drawer, Avatar, Toggle, Note, useToast, Select } from '../../ui.jsx';
 import { coverCands } from '../../lib/cover.jsx';
 import { WEEK0, fmtD, fmtRange } from '../../lib/dates.js';
 import { shiftWeek } from '../../lib/roster.js';
@@ -94,10 +94,10 @@ export function Leave({ go }) {
                 <div key={iso} className={'ap-row' + (shift ? '' : ' quiet')}>
                   <div className="ap-day"><b>{fmtD(iso)}</b></div>
                   <div className="ap-now">{shift ? shift.map(([t, st, s2], k) => <div key={k}><span className="mono">{st}–{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span> <span className="small muted">{siteOf(s2 || groupOf(l.worker).site).name}</span></div>) : <span className="small muted">{c === 'O' ? 'Weekly off · nothing to change' : c === 'L' ? 'Already on leave' : 'Not rostered · nothing to change'}</span>}</div>
-                  {shift && <select className="input sm ap-pick" value={appr.plan[iso]} onChange={(e) => setAppr({ ...appr, plan: { ...appr.plan, [iso]: e.target.value } })} aria-label={`Cover for ${fmtD(iso)}`}>
+                  {shift && <Select className="input sm ap-pick" value={appr.plan[iso]} onChange={(e) => setAppr({ ...appr, plan: { ...appr.plan, [iso]: e.target.value } })} aria-label={`Cover for ${fmtD(iso)}`}>
                     <option value="none">Leave uncovered</option>
                     {candsOn(l, iso, shift[0]).slice(0, 8).map((x) => <option key={x.w.id} value={x.w.id}>{x.w.name} ({x.fl ? 'floater' : x.c === 'O' ? 'weekly off' : 'free'}, {x.km} km)</option>)}
-                  </select>}
+                  </Select>}
                 </div>
               );
             })}</div>

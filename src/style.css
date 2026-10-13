@@ -25,7 +25,7 @@
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark; }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body); }
 #root { height: 100%; }
 h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
@@ -1447,3 +1447,38 @@ label.btn { cursor: pointer; }
 .roster tbody tr.rg-head > td.rg-name .rg-toggle > b, .roster tbody tr.rg-head > td.rg-name .rg-toggle > .muted.small { min-width: 0; display: block; }
 .cell.today-in, .dv-shift.today-in { border: 2px dotted var(--good) !important; }
 .ro-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--ink-mid); }
+
+/* Custom dropdown (Select in ui.jsx) */
+.select { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; height: 36px; padding: 0 10px 0 12px; text-align: left; cursor: pointer; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.select.sm { height: 30px; padding: 0 8px 0 10px; font-size: 12.5px; }
+.select:hover { border-color: var(--line-strong); }
+.select:focus-visible, .select.open { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.select:disabled { opacity: .5; cursor: not-allowed; }
+.select-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.select-chev { flex: none; color: var(--muted); transition: transform .15s; }
+.select.open .select-chev { transform: rotate(180deg); }
+.form-grid .select, .field .select, .drawer .select { width: 100%; }
+.select-list { position: fixed; z-index: 400; overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.08); animation: pm-in .12s ease-out; }
+.select-opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; font-size: 13.5px; }
+.select-opt.act { background: var(--surface-2); }
+.select-opt.on { font-weight: 600; } .select-opt.on .icon { color: var(--accent); }
+.select-opt.dis { opacity: .45; cursor: not-allowed; }
+
+/* Buttons: icon and label centred on one line */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn .icon { flex: none; }
+.toolbar .input { height: 36px; }
+
+/* Week selector: one group, arrows either side of the dates */
+.wk-step { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--surface); }
+.wk-step button { display: grid; place-items: center; width: 34px; border: 0; background: none; color: var(--ink-mid); cursor: pointer; }
+.wk-step button:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); }
+.wk-step button:disabled { color: var(--faint); cursor: not-allowed; opacity: .5; }
+.wk-step .wk-label { border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 5px 14px; min-width: 150px; }
+.wk-step .wk-label b { font-size: 13.5px; }
+.wk-step .wk-label span { font-size: 11.5px; color: var(--muted); }
+.rg-caret { display: inline-grid; place-items: center; color: var(--muted); transition: transform .15s; }
+.toolbar .search { position: relative; display: flex; align-items: center; flex: 1 1 260px; max-width: 360px; }
+.toolbar .search .icon { position: absolute; left: 11px; color: var(--muted); pointer-events: none; }
+.toolbar .search .input { width: 100%; padding-left: 34px; border-radius: 8px; }
+.toolbar .search .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

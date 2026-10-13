@@ -1,5 +1,5 @@
 import { SITES, VENDORS, PROPOSALS, SHIFT_TEMPLATES, HOME_AREAS, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Tabs, Field, useToast, Icon } from '../../ui.jsx';
+import { ScreenHeader, Tabs, Field, useToast, Icon, Select } from '../../ui.jsx';
 import { fmtD } from '../../lib/dates.js';
 
 const { useState } = React;
@@ -41,7 +41,7 @@ export function Onboarding() {
             <Field label="First name"><input id="ob-first" className="input" value={d.first} onChange={(e) => set('first', e.target.value)} /></Field>
             <Field label="Last name"><input id="ob-last" className="input" value={d.last} onChange={(e) => set('last', e.target.value)} /></Field>
             <Field label="Mobile number" hint={d.phone && !phoneOk ? 'Enter a UAE mobile, e.g. 05XXXXXXXX' : 'Used to sign in to the app'}><input id="ob-phone" className="input mono" placeholder="05X XXX XXXX" value={d.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-            <Field label="Nationality (optional)"><select id="ob-nat" className="input" value={d.nat} onChange={(e) => set('nat', e.target.value)}><option value="">Not set</option>{['India', 'Pakistan', 'Bangladesh', 'Nigeria', 'Philippines', 'Nepal', 'Sri Lanka', 'Other'].map((x) => <option key={x}>{x}</option>)}</select></Field>
+            <Field label="Nationality (optional)"><Select id="ob-nat" className="input" value={d.nat} onChange={(e) => set('nat', e.target.value)}><option value="">Not set</option>{['India', 'Pakistan', 'Bangladesh', 'Nigeria', 'Philippines', 'Nepal', 'Sri Lanka', 'Other'].map((x) => <option key={x}>{x}</option>)}</Select></Field>
             <Field label="Start date"><input id="ob-start" type="date" className="input" value={d.start} onChange={(e) => set('start', e.target.value)} /></Field>
             <Field label="End date" hint="Contract end or last working day"><input id="ob-end" type="date" className="input" value={d.end} onChange={(e) => set('end', e.target.value)} /></Field>
           </div>}
@@ -52,12 +52,12 @@ export function Onboarding() {
               ))}</div>
             </Field>
             <div className="form-grid">
-              {d.reliever ? <Field label="Home area" hint="Where they live. Used to suggest the nearest covers."><select id="ob-home" className="input" value={d.home} onChange={(e) => set('home', e.target.value)}>{Object.keys(HOME_AREAS).map((x) => <option key={x}>{x}</option>)}</select></Field>
-              : <Field label="Location"><select id="ob-site" className="input" value={d.site} onChange={(e) => set('site', e.target.value)}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>}
-              <Field label="Designation"><select id="ob-desig" className="input" value={d.desig} onChange={(e) => set('desig', e.target.value)}>{Object.keys(DESIG_ACCESS).filter((k) => DESIG_ACCESS[k] === (d.reliever ? 'Floater' : 'Employee')).map((x) => <option key={x}>{x}</option>)}</select></Field>
-              {!d.reliever && <Field label="Usual shift"><select id="ob-shift" className="input" value={d.shift} onChange={(e) => set('shift', e.target.value)}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>}
+              {d.reliever ? <Field label="Home area" hint="Where they live. Used to suggest the nearest covers."><Select id="ob-home" className="input" value={d.home} onChange={(e) => set('home', e.target.value)}>{Object.keys(HOME_AREAS).map((x) => <option key={x}>{x}</option>)}</Select></Field>
+              : <Field label="Location"><Select id="ob-site" className="input" value={d.site} onChange={(e) => set('site', e.target.value)}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></Field>}
+              <Field label="Designation"><Select id="ob-desig" className="input" value={d.desig} onChange={(e) => set('desig', e.target.value)}>{Object.keys(DESIG_ACCESS).filter((k) => DESIG_ACCESS[k] === (d.reliever ? 'Floater' : 'Employee')).map((x) => <option key={x}>{x}</option>)}</Select></Field>
+              {!d.reliever && <Field label="Usual shift"><Select id="ob-shift" className="input" value={d.shift} onChange={(e) => set('shift', e.target.value)}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>}
               {!d.reliever && <Field label="Usually starts at" hint={`Ends ${endOf(d.shiftStart, T.base + (T.brk || 0)).time}`}><input id="ob-shiftst" type="time" className="input mono" value={d.shiftStart} onChange={(e) => set('shiftStart', e.target.value || d.shiftStart)} /></Field>}
-              <Field label="Vendor"><select id="ob-vendor" className="input" value={d.vendor} onChange={(e) => set('vendor', e.target.value)}>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></Field>
+              <Field label="Vendor"><Select id="ob-vendor" className="input" value={d.vendor} onChange={(e) => set('vendor', e.target.value)}>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></Field>
             </div>
           </>}
           {step === 2 && <>

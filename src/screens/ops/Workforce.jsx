@@ -1,5 +1,5 @@
 import { SITES, VENDORS, WORKERS, ROSTER_GROUPS, KPIS, DESIG_ACCESS, tplOf, tplLabel, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Pill, Tabs, Drawer, Bar, statusTone, Note, useToast, Icon } from '../../ui.jsx';
+import { ScreenHeader, Pill, Tabs, Drawer, Bar, statusTone, Note, useToast, Icon, Select } from '../../ui.jsx';
 import { FULL_DAYS, fmtD } from '../../lib/dates.js';
 import { todayOf } from '../../lib/live.js';
 import { offDaysOf, timesheetOf } from '../../lib/roster.js';
@@ -28,9 +28,9 @@ export function Workforce({ params, go }) {
       </>} />
       <div className="toolbar">
         <input id="wf-search" className="input" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select id="wf-site" className="input" value={site} onChange={(e) => setSite(e.target.value)} aria-label="Location"><option value="all">All locations</option>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}<option value="pool">Floaters (no location)</option></select>
-        <select id="wf-vendor" className="input" value={vendor} onChange={(e) => setVendor(e.target.value)} aria-label="Vendor"><option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>
-        <select id="wf-role" className="input" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Designation"><option value="all">All designations</option>{roles.map((r) => <option key={r}>{r}</option>)}</select>
+        <Select id="wf-site" className="input" value={site} onChange={(e) => setSite(e.target.value)} aria-label="Location"><option value="all">All locations</option>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}<option value="pool">Floaters (no location)</option></Select>
+        <Select id="wf-vendor" className="input" value={vendor} onChange={(e) => setVendor(e.target.value)} aria-label="Vendor"><option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select>
+        <Select id="wf-role" className="input" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Designation"><option value="all">All designations</option>{roles.map((r) => <option key={r}>{r}</option>)}</Select>
       </div>
       <div className="seg" role="tablist" aria-label="Show">
         {[['all', 'Everyone'], ['in', 'Working now'], ['notin', 'Not in'], ['off', 'Off today'], ['docs', 'Document issues']].map(([k, label]) => (
@@ -73,7 +73,7 @@ export function Workforce({ params, go }) {
             <dt>Status</dt><dd><Pill tone={statusTone(sel.status)}>{sel.status}</Pill></dd>
           </dl>}
           {tab === 'Timesheet' && (() => { const ts = timesheetOf(sel); return <>
-            <div className="ts-head"><select id="ts-per" className="input sm" defaultValue="oct"><option value="oct">October 2026 · in progress</option><option value="sep">September 2026 · closed</option></select><span className="small muted">Closes with the vendor statements</span></div>
+            <div className="ts-head"><Select id="ts-per" className="input sm" defaultValue="oct"><option value="oct">October 2026 · in progress</option><option value="sep">September 2026 · closed</option></Select><span className="small muted">Closes with the vendor statements</span></div>
             <div className="ts-sum">
               <div><span className="stat-value">{ts.sum.full}</span><span className="small muted">full days</span></div>
               <div><span className={'stat-value' + (ts.sum.absent ? ' neg' : '')}>{ts.sum.absent}</span><span className="small muted">absent</span></div>

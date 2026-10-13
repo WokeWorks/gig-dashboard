@@ -1,5 +1,5 @@
 import { SITES, WORKERS, MANAGERS, siteOf, vendorOf } from './data.js';
-import { ScreenHeader, Pill, Tabs, Drawer, Modal, Field, Toggle, Note, useToast, Icon } from './ui.jsx';
+import { ScreenHeader, Pill, Tabs, Drawer, Modal, Field, Toggle, Note, useToast, Icon, Select } from './ui.jsx';
 
 const { useState, useMemo } = React;
 
@@ -172,10 +172,10 @@ function Builder({ form, onBack, onSave }) {
           <section className="card fb-when">
             <div className="card-head"><h3>When and who</h3></div>
             <div className="form-grid">
-              <Field label="Comes up"><select className="input" value={f.trigger} onChange={(e) => setF({ ...f, trigger: e.target.value })}>{Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+              <Field label="Comes up"><Select className="input" value={f.trigger} onChange={(e) => setF({ ...f, trigger: e.target.value })}>{Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
               {f.trigger === 'schedule' ? <Field label="Every"><div className="unit-in"><input className="input" type="number" min="1" max="12" value={f.every || 4} onChange={(e) => setF({ ...f, every: +e.target.value })} /><span>hours on shift</span></div></Field> : null}
-              <Field label="Filled in by"><select className="input" value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })}>{WHO.map((x) => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="At"><select className="input" value={f.sites === 'all' ? 'all' : 'some'} onChange={(e) => setF({ ...f, sites: e.target.value === 'all' ? 'all' : ['s3'] })}><option value="all">All locations</option><option value="some">Chosen locations</option></select></Field>
+              <Field label="Filled in by"><Select className="input" value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })}>{WHO.map((x) => <option key={x}>{x}</option>)}</Select></Field>
+              <Field label="At"><Select className="input" value={f.sites === 'all' ? 'all' : 'some'} onChange={(e) => setF({ ...f, sites: e.target.value === 'all' ? 'all' : ['s3'] })}><option value="all">All locations</option><option value="some">Chosen locations</option></Select></Field>
             </div>
             {f.trigger === 'clockin' && <Toggle id="fb-block" checked={!!f.block} onChange={(v) => setF({ ...f, block: v })} label="Must be done before they can clock in" />}
             <div className="small muted">Every answer is stamped with who sent it, their shift, location and the time.</div>
@@ -196,8 +196,8 @@ function Builder({ form, onBack, onSave }) {
               </div>
               {on && <div className="fb-qedit">
                 <div className="form-grid">
-                  <Field label="Type"><select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
-                  <Field label="Answer"><select className="input" value={q.req ? 'req' : 'opt'} onChange={(e) => setQ(q.id, { req: e.target.value === 'req' })}><option value="req">Required</option><option value="opt">Optional</option></select></Field>
+                  <Field label="Type"><Select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
+                  <Field label="Answer"><Select className="input" value={q.req ? 'req' : 'opt'} onChange={(e) => setQ(q.id, { req: e.target.value === 'req' })}><option value="req">Required</option><option value="opt">Optional</option></Select></Field>
                 </div>
                 {(q.type === 'check' || q.type === 'choice') && <Field label={q.type === 'check' ? 'Items to tick' : 'Options'}>
                   <div className="fb-opts">{(q.opts || []).map((o, k) => (
@@ -212,7 +212,7 @@ function Builder({ form, onBack, onSave }) {
                 {['yesno', 'check', 'number', 'choice'].includes(q.type) && (() => {
                   const opts = q.type === 'yesno' ? [['no', 'the answer is No'], ['yes', 'the answer is Yes']] : q.type === 'check' ? [['unticked', 'anything is left unticked']] : q.type === 'number' ? [['out', 'it is outside the expected range']] : (q.opts || []).map((o) => ['opt:' + o, `they pick "${o}"`]);
                   const cur = !q.flag ? '' : q.flag.when === 'opt' ? 'opt:' + q.flag.value : q.flag.when;
-                  return <Field label="Tell the manager when"><select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }}><option value="">Never</option>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>;
+                  return <Field label="Tell the manager when"><Select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }}><option value="">Never</option>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>;
                 })()}
                 {q.flag && <div className="small muted fb-flagnote"><Icon name="flag" size={12} /> Raises a notification for the location's manager, with the photo and answers attached.</div>}
               </div>}

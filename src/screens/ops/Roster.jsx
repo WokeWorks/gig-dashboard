@@ -1,5 +1,5 @@
 import { MANAGERS, SITES, VENDORS, WORKERS, LEAVE, ROSTER_GROUPS, SHIFT_TEMPLATES, TRAVEL, tplOf, tplLabel, spanOf, MAX_ON_SITE, endOf, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon, Marquee, useMenu } from '../../ui.jsx';
+import { ScreenHeader, Pill, Drawer, Field, Toggle, Note, useToast, Icon, Marquee, useMenu, Select } from '../../ui.jsx';
 import { isFloat, coverOf, coverCell, undoCell, CoverDrawer } from '../../lib/cover.jsx';
 import { FULL_DAYS, hm, toMin, TODAY, weekDays, weekLabel } from '../../lib/dates.js';
 import { OFF_RULES, fixedOff, offErrors, errText, offPerWeek, offClashes, badUpload } from '../../lib/offs.js';
@@ -151,6 +151,9 @@ export function Scheduling({ go }) {
   const locsIn = (c, home) => (Array.isArray(c) ? [...new Set(c.map((x) => x[2] || home))] : []);
   const match = (w) => (!q || w.name.toLowerCase().includes(q.toLowerCase())) && (ven === 'all' || w.vendor === ven);
   const mine = SITES.filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
+  // The search box matches worker names and location names; a matching location shows everyone there.
+  const siteHit = (sid) => !!q.trim() && sid !== 'pool' && siteOf(sid).name.toLowerCase().includes(q.trim().toLowerCase());
+  const matchAt = (sid) => (w) => (siteHit(sid) ? ven === 'all' || w.vendor === ven : match(w));
   const shown = mine.filter((s) => loc === 'all' || s.id === loc);
   // The floaters band: floaters in this manager's pool, plus anyone from the pool covering at these locations this week.
   const PG = groups.find((g) => g.float);
@@ -237,8 +240,8 @@ export function Scheduling({ go }) {
       const homeRow = { w, key: home, label: home === 'pool' ? 'Floater' : siteOf(home).name, home, cells: row.map((c) => (Array.isArray(c) ? (at(c, home).length ? at(c, home) : 'X') : c)) };
       return [homeRow, ...others.map((loc) => ({ w, key: loc, label: siteOf(loc).name, home: loc, cells: row.map((c) => (at(c, loc).length ? at(c, loc) : 'X')) }))];
     }
-    return [...g.people.map((id, r) => ({ w: W(id), cells: g.cells[r], home: shot.sid })).filter((x) => match(x.w)),
-      ...visitorsOf(shot.sid).filter((v) => match(v.w)).map((v) => ({ w: v.w, cells: v.days.map((d) => (d.length ? d : 'X')), home: shot.sid, visiting: true }))];
+    return [...g.people.map((id, r) => ({ w: W(id), cells: g.cells[r], home: shot.sid })).filter((x) => matchAt(shot.sid)(x.w)),
+      ...visitorsOf(shot.sid).filter((v) => matchAt(shot.sid)(v.w)).map((v) => ({ w: v.w, cells: v.days.map((d) => (d.length ? d : 'X')), home: shot.sid, visiting: true }))];
   };
   const HOW = [['What to type in a day', 'Means'], ['07:00-19:00', 'One shift, 07:00 to 19:00 on site (11 h worked + 1 h break)'], ['7-7  or  7am to 7pm', 'Same thing'], ['07:00 11h', 'Starts 07:00, 11 hours worked'], ['07:00-11:00 + 17:00-21:00', 'Two shifts in one day'], ['07:00-19:00 @ Barsha Heights', 'A shift at another location'], ['OFF', 'Weekly off'], ['LEAVE', 'On leave'], ['(empty)', 'Not rostered'], [], ['Shifts allowed', SHIFT_TEMPLATES.map((x) => `${x.base}${x.brk ? '+' + x.brk : ''} (${x.base + (x.brk || 0)} h on site)`).join(', ')], ['Weekly off', fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} for everyone` : `At least ${OFF_RULES.perWeek} per worker per week`]];
   const downloadTemplate = (w) => saveXlsx(templateRows(sourceFor(w), shown.map((x) => x.id), w), `roster-${fileWeek(w)}.xlsx`, HOW);
@@ -292,24 +295,26 @@ export function Scheduling({ go }) {
         <button className="btn ghost" onClick={() => go('settings')}>Shifts and rules</button>
       </>} />
       <div className="toolbar">
-        <select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
+        <label className="search"><Icon name="search" size={16} /><input id="sch-q" className="input" type="search" placeholder="Search employees or locations…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search employees or locations" /></label>
+        <Select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
           <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.sites.length} locations</option>)}
-        </select>
-        <select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
+        </Select>
+        <Select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
           <option value="all">All locations</option>{mine.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <select id="sch-ven" className="input" value={ven} onChange={(e) => setVen(e.target.value)} aria-label="Vendor">
+        </Select>
+        <Select id="sch-ven" className="input" value={ven} onChange={(e) => setVen(e.target.value)} aria-label="Vendor">
           <option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-        </select>
-        <input id="sch-q" className="input" placeholder="Find a worker" value={q} onChange={(e) => setQ(e.target.value)} />
+        </Select>
       </div>
       <div className="weekbar">
         <div className="wk-nav">
-          <button className="btn ghost sm icon" disabled={wk <= -1} onClick={() => setWk(wk - 1)} aria-label="Previous week">‹</button>
-          <div className="wk-label"><b>{weekLabel(wk)}</b><span className="small muted">{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : wk < 0 ? 'Last week' : `In ${wk} weeks`}</span></div>
-          <button className="btn ghost sm icon" disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week">›</button>
-          {wk !== 0 && <button className="btn ghost sm" onClick={() => setWk(0)}>This week</button>}
-          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? <Pill tone="warn">Draft · not visible to workers</Pill> : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : <Pill tone="good">Published</Pill>}
+          <div className="wk-step">
+            <button disabled={wk <= -1} onClick={() => setWk(wk - 1)} aria-label="Previous week"><Icon name="chevronLeft" size={16} stroke={2.2} /></button>
+            <div className="wk-label"><b>{weekLabel(wk)}</b><span>{wk === 0 ? 'This week' : wk === 1 ? 'Next week' : wk < 0 ? 'Last week' : `In ${wk} weeks`}</span></div>
+            <button disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
+          </div>
+          {wk !== 0 && <button className="btn ghost sm" onClick={() => setWk(0)}>Back to this week</button>}
+          {empty ? <Pill>No roster yet</Pill> : pub[wk] === 'draft' ? <Pill tone="warn">Draft · not visible to workers</Pill> : dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
         </div>
         <div className="wk-actions">
           {wk >= 1 && !empty && <button className="btn ghost sm" onClick={() => openCopy(wk)}>Copy a week…</button>}
@@ -327,14 +332,14 @@ export function Scheduling({ go }) {
         </div>
       </section> : narrow ? <div className="dayview">
         <div className="dv-step">
-          <button className="btn ghost sm icon" disabled={dIdx <= 0} onClick={() => setDIdx(dIdx - 1)} aria-label="Previous day">‹</button>
+          <button className="btn ghost sm icon" disabled={dIdx <= 0} onClick={() => setDIdx(dIdx - 1)} aria-label="Previous day"><Icon name="chevronLeft" size={16} stroke={2.2} /></button>
           <div className="dv-day"><b>{days[dIdx]}</b>{wk === 0 && dIdx === TODAY && <span className="today-tag">Today</span>}</div>
-          <button className="btn ghost sm icon" disabled={dIdx >= 6} onClick={() => setDIdx(dIdx + 1)} aria-label="Next day">›</button>
+          <button className="btn ghost sm icon" disabled={dIdx >= 6} onClick={() => setDIdx(dIdx + 1)} aria-label="Next day"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
         </div>
         {shown.map((s) => {
           const g = G(s.id);
-          const rows = g.people.map((id, r) => ({ w: W(id), r, c: g.cells[r][dIdx], g: s.id })).filter((x) => match(x.w));
-          const vis = visitorsOf(s.id).filter((v) => match(v.w) && v.days[dIdx].length).map((v) => ({ w: v.w, r: v.r, c: v.days[dIdx], g: v.g, visiting: true }));
+          const rows = g.people.map((id, r) => ({ w: W(id), r, c: g.cells[r][dIdx], g: s.id })).filter((x) => matchAt(s.id)(x.w));
+          const vis = visitorsOf(s.id).filter((v) => matchAt(s.id)(v.w) && v.days[dIdx].length).map((v) => ({ w: v.w, r: v.r, c: v.days[dIdx], g: v.g, visiting: true }));
           const all = [...rows, ...vis];
           if (!all.length) return null;
           const on = all.filter((x) => Array.isArray(x.c) && x.c.some((y) => !y[2] || y[2] === s.id)).length;
@@ -380,8 +385,8 @@ export function Scheduling({ go }) {
             <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
             {shown.map((s, si) => {
               const g = G(s.id);
-              const rows = g.people.map((id, r) => ({ w: W(id), r })).filter((x) => match(x.w));
-              const vis = visitorsOf(s.id).filter((v) => match(v.w));
+              const rows = g.people.map((id, r) => ({ w: W(id), r })).filter((x) => matchAt(s.id)(x.w));
+              const vis = visitorsOf(s.id).filter((v) => matchAt(s.id)(v.w));
               if ((q || ven !== 'all') && !rows.length && !vis.length) return null;
               const hrs = g.cells.flat().reduce((a, c) => a + (Array.isArray(c) ? c.filter((x) => !x[2] || x[2] === s.id).reduce((b, [t]) => b + tplOf(t).base, 0) : 0), 0)
                 + vis.reduce((a, v) => a + v.days.flat().reduce((b, [t]) => b + tplOf(t).base, 0), 0);
@@ -390,7 +395,7 @@ export function Scheduling({ go }) {
                 <tbody key={s.id} className="rgroup">
                   <tr className="rg-head">
                     <td className="rg-name mq-host" style={{ zIndex: 11 + si * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
-                      <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b><Marquee>{s.name}</Marquee></b><span className="muted small"><Marquee>{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</Marquee></span>
+                      <span className={'rg-caret' + (isCol ? ' col' : '')}><Icon name="down" size={14} stroke={2.2} /></span><b><Marquee>{s.name}</Marquee></b><span className="muted small"><Marquee>{MANAGERS.find((m) => m.sites.includes(s.id)).name}{isCol ? ` · ${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}` : ''}</Marquee></span>
                     </button>
                     {locActs(s)}</td>
                     {days.map((d, ci) => { const offs = g.people.filter((id, r) => g.cells[r][ci] === 'O').length; const over = !fixedMode && offs > OFF_RULES.sameDay; if (fixedMode && OFF_RULES.days.includes(ci)) return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + si * 2 }}><span className="rg-off">Everyone off</span></td>; return (
@@ -436,7 +441,7 @@ export function Scheduling({ go }) {
               <tbody className="rgroup pool">
                 <tr className="rg-head">
                   <td className="rg-name mq-host" style={{ zIndex: 11 + zi * 2 }}><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, pool: !collapsed.pool })} aria-expanded={!isCol}>
-                    <span className={'rg-caret' + (isCol ? ' col' : '')}>▾</span><b><Marquee>Floaters</Marquee></b>{isCol && <span className="muted small"><Marquee>{poolRows.length} {poolRows.length === 1 ? 'employee' : 'employees'}</Marquee></span>}
+                    <span className={'rg-caret' + (isCol ? ' col' : '')}><Icon name="down" size={14} stroke={2.2} /></span><b><Marquee>Floaters</Marquee></b>{isCol && <span className="muted small"><Marquee>{poolRows.length} {poolRows.length === 1 ? 'employee' : 'employees'}</Marquee></span>}
                   </button></td>
                   {days.map((d, ci) => { const offs = poolRows.filter(({ r }) => PG.cells[r][ci] === 'O').length; return <td key={ci} className={'rg-rest rg-day' + (wk === 0 && ci === TODAY ? ' today' : '')} style={{ zIndex: 10 + zi * 2 }}>{offs > 0 && <span className="rg-off">{offs} off</span>}</td>; })}
                 </tr>
@@ -512,12 +517,12 @@ export function Scheduling({ go }) {
           const shifts = result.filter(inGroup).flatMap((g) => rowsOf(g).flat()).filter(Array.isArray).length;
           return <>
             <div className="form-grid">
-              <Field label="Copy from"><select id="cp-from" className="input" value={cp.from} onChange={(e) => setCp({ ...cp, from: +e.target.value })}>
+              <Field label="Copy from"><Select id="cp-from" className="input" value={cp.from} onChange={(e) => setCp({ ...cp, from: +e.target.value })}>
                 {Array.from({ length: MAXWK + 2 }, (_, i) => i - 1).filter((k) => has(k) && k !== cp.to).map((k) => <option key={k} value={k}>{weekLabel(k)}{k === 0 ? ' · this week' : k === -1 ? ' · last week' : ''}</option>)}
-              </select></Field>
-              <Field label="Repeat for"><select id="cp-n" className="input" value={cp.n} onChange={(e) => setCp({ ...cp, n: +e.target.value })}>
+              </Select></Field>
+              <Field label="Repeat for"><Select id="cp-n" className="input" value={cp.n} onChange={(e) => setCp({ ...cp, n: +e.target.value })}>
                 {Array.from({ length: MAXWK - cp.to + 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? `Just ${weekLabel(cp.to, true)}` : `${n} weeks, to ${weekLabel(cp.to + n - 1, true)}`}</option>)}
-              </select></Field>
+              </Select></Field>
             </div>
             {!cp.workers && <Field label="Locations">
               <div className="cp-sites">{shown.map((x) => <label key={x.id} className="cp-site"><input type="checkbox" checked={cp.sites.includes(x.id)} onChange={(e) => setCp({ ...cp, sites: e.target.checked ? [...cp.sites, x.id] : cp.sites.filter((y) => y !== x.id) })} />{x.name}</label>)}</div>
@@ -544,9 +549,9 @@ export function Scheduling({ go }) {
       </Drawer>
       <Drawer open={!!up} onClose={() => setUp(null)} title="Upload a roster" sub={up && `${weekLabel(up.wk)} · ${shown.length === SITES.length ? 'all locations' : shown.map((x) => x.name).join(', ')}`}>
         {up && up.step === 'pick' && <>
-          <Field label="Week"><select id="up-wk" className="input" value={up.wk} onChange={(e) => setUp({ ...up, wk: +e.target.value })}>
+          <Field label="Week"><Select id="up-wk" className="input" value={up.wk} onChange={(e) => setUp({ ...up, wk: +e.target.value })}>
             {Array.from({ length: MAXWK + 1 }, (_, k) => k).map((k) => <option key={k} value={k}>{weekLabel(k)}{k === 0 ? ' · this week' : k === 1 ? ' · next week' : ''}{!has(k) ? ' · no roster yet' : pub[k] === 'draft' ? ' · draft' : ' · published'}</option>)}
-          </select></Field>
+          </Select></Field>
           <ol className="up-steps">
             <li><b>Download the template.</b> <span className="muted">It lists your workers and is already filled in with {has(up.wk) ? 'this week' : weekLabel(latestBefore(up.wk), true)}, so you only change what's different.</span>
               <div><button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} /> roster-{fileWeek(up.wk)}.xlsx</button></div></li>
@@ -582,7 +587,7 @@ export function Scheduling({ go }) {
             <details className="up-map" open={res.missing.length > 0}>
               <summary className="small">{res.missing.length ? <span className="neg">Couldn't find {res.missing.join(', ')}. Pick the right columns:</span> : <>Columns matched: {FIELDS.filter(([k]) => getM(k) >= 0).map(([k, l]) => l).join(', ')}. <span className="muted">Change</span></>}</summary>
               <div className="up-map-grid">{FIELDS.map(([k, l]) => (
-                <label key={k} className="small"><span>{l}</span><select className="input sm" value={getM(k)} onChange={(e) => setM(k, +e.target.value)}><option value={-1}>Not in the file</option>{headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}</select></label>
+                <label key={k} className="small"><span>{l}</span><Select className="input sm" value={getM(k)} onChange={(e) => setM(k, +e.target.value)}><option value={-1}>Not in the file</option>{headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}</Select></label>
               ))}</div>
             </details>
             {res.missing.length > 0 ? null : errors.length ? <div className="up-block">
@@ -687,9 +692,9 @@ export function Scheduling({ go }) {
                 </div>
                 {editing && <div className="ds-edit">
                   <div className="form-grid">
-                    <Field label="Shift"><select id="ed-t" className="input" value={ed.t} onChange={(e) => setEd({ ...ed, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>
+                    <Field label="Shift"><Select id="ed-t" className="input" value={ed.t} onChange={(e) => setEd({ ...ed, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>
                     <Field label="Starts" hint={`Ends ${endOf(ed.st, spanOf(tplOf(ed.t))).time}${endOf(ed.st, spanOf(tplOf(ed.t))).nextDay ? ', after midnight' : ''}`}><input id="ed-st" type="time" className="input mono" value={ed.st} onChange={(e) => setEd({ ...ed, st: e.target.value || ed.st })} /></Field>
-                    <Field label="Location"><select id="ed-site" className="input" value={ed.site} onChange={(e) => setEd({ ...ed, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (their location)' : ''}</option>)}</select></Field>
+                    <Field label="Location"><Select id="ed-site" className="input" value={ed.site} onChange={(e) => setEd({ ...ed, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (their location)' : ''}</option>)}</Select></Field>
                   </div>
                   {eChecks.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>)}
                   {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
@@ -714,9 +719,9 @@ export function Scheduling({ go }) {
           {cur !== 'L' && <section className="addshift">
             <h3>{list.length ? 'Add another shift' : 'Add a shift'}</h3>
             <div className="form-grid">
-              <Field label="Shift"><select id="as-t" className="input" value={add.t} onChange={(e) => setAdd({ ...add, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</select></Field>
+              <Field label="Shift"><Select id="as-t" className="input" value={add.t} onChange={(e) => setAdd({ ...add, t: e.target.value })}>{SHIFT_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}</Select></Field>
               <Field label="Starts" hint={`Ends ${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).time}${endOf(add.st, tplOf(add.t).base + (tplOf(add.t).brk || 0)).nextDay ? ', after midnight' : ''}`}><input id="as-st" type="time" className="input mono" value={add.st} onChange={(e) => setAdd({ ...add, st: e.target.value || add.st })} /></Field>
-              <Field label="Location"><select id="as-site" className="input" value={add.site} onChange={(e) => setAdd({ ...add, site: e.target.value })}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}{x.id === site ? ' (their location)' : ''}</option>)}</select></Field>
+              <Field label="Location"><Select id="as-site" className="input" value={add.site} onChange={(e) => setAdd({ ...add, site: e.target.value })}>{SITES.map((x) => <option key={x.id} value={x.id}>{x.name}{x.id === site ? ' (their location)' : ''}</option>)}</Select></Field>
             </div>
             <DayTimeline list={preview.map(norm)} home={site} />
             {checks.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>)}

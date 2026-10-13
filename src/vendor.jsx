@@ -1,7 +1,7 @@
 import { WORKERS, PROPOSALS, DAYS, SITES, ROSTER_GROUPS, tplOf, endOf, siteOf, vendorOf } from './data.js';
 import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
-import { ScreenHeader, Stat, Pill, Bar, Spark, Avatar, statusTone, aed, Field, Note, useToast, Icon } from './ui.jsx';
+import { ScreenHeader, Stat, Pill, Bar, Spark, Avatar, statusTone, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
 
 const { useState } = React;
 const ME = 'v4';
@@ -132,9 +132,9 @@ export function VendorProposals() {
             <Field label="Full name (as on passport)"><input id="pr-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
             <Field label="Mobile number"><input id="pr-phone" className="input mono" placeholder="+971 5…" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
             <Field label="Emirates ID or passport no."><input id="pr-id" className="input mono" value={form.idno} onChange={(e) => setForm({ ...form, idno: e.target.value })} /></Field>
-            <Field label="Role"><select id="pr-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option>Picker</option><option>Reliever</option><option>Shift lead</option></select></Field>
-            <Field label="Preferred location"><select id="pr-site" className="input" value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-            <Field label="Replaces (optional)"><select id="pr-rep" className="input"><option>New headcount</option><option>Rizwan Khan (no-show 3×)</option></select></Field>
+            <Field label="Role"><Select id="pr-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option>Picker</option><option>Reliever</option><option>Shift lead</option></Select></Field>
+            <Field label="Preferred location"><Select id="pr-site" className="input" value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
+            <Field label="Replaces (optional)"><Select id="pr-rep" className="input"><option>New headcount</option><option>Rizwan Khan (no-show 3×)</option></Select></Field>
           </div>
           <div className="uploads">{['Passport', 'Visa', 'Emirates ID', 'Photo'].map((d) => <label key={d} className="upload"><input type="file" id={'up-' + d} /><span>{d}</span></label>)}</div>
           <button className="btn" type="submit">Send proposal</button>

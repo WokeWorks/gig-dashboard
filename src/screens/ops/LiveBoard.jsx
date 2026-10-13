@@ -1,5 +1,5 @@
 import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
-import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon } from '../../ui.jsx';
+import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon, Select } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
 import { GEO, LEFT, loadGoogleMaps, MAP_STYLES } from '../../lib/geo.js';
@@ -107,7 +107,7 @@ export function LiveBoard({ go }) {
       <section className="card flush lm-wrap">
         <LiveMap data={shown} pick={pick} onPick={setPick} />
         <div className="lm-over lm-filters">
-          <label className="lm-sel"><Icon name="users" size={15} /><select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+          <label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label>
           <div className="lm-chips" role="tablist" aria-label="Show">
             {[['all', 'All', null, data.length], ['noshow', 'No-show', 'crit', data.filter((d) => d.bad).length], ['late', 'Late', 'warn', data.filter((d) => d.late).length], ['ok', 'All in', 'good', data.filter((d) => !d.bad && !d.late).length]].map(([k, l, tone, n]) => (
               <button key={k} role="tab" aria-selected={only === k} className={'lm-chip' + (only === k ? ' on' : '')} onClick={() => { setOnly(k); setPick(null); }}>{tone && <span className={'lm-k ' + tone} />}{l}<span className="lm-n">{n}</span></button>
@@ -184,7 +184,7 @@ export function LiveBoard({ go }) {
           </div>
           {mark.how === 'here' ? <div className="form-grid">
             <Field label="Arrived at"><input type="time" className="input" value={mark.at} onChange={(e) => setMark({ ...mark, at: e.target.value })} /></Field>
-            <Field label="Why they couldn't clock in"><select className="input" value={mark.why} onChange={(e) => setMark({ ...mark, why: e.target.value })}>{['Phone not working', 'Face check failing', 'Location not detected', 'No phone with them', 'Other'].map((x) => <option key={x}>{x}</option>)}</select></Field>
+            <Field label="Why they couldn't clock in"><Select className="input" value={mark.why} onChange={(e) => setMark({ ...mark, why: e.target.value })}>{['Phone not working', 'Face check failing', 'Location not detected', 'No phone with them', 'Other'].map((x) => <option key={x}>{x}</option>)}</Select></Field>
           </div> : <Toggle id="ma-exc" checked={mark.excused} onChange={(v) => setMark({ ...mark, excused: v })} label="Excused (they called in, emergency)" />}
           <div className="small muted">Shows on their timesheet as marked by you, with the reason, so it can be told apart from a real clock-in.</div>
           <div className="drawer-actions"><button className="btn ghost" onClick={() => setMark(null)}>Cancel</button><span className="grow" /><button className="btn" onClick={() => { const n = mark.p.w.name.split(' ')[0]; setHandled({ ...handled, [mark.p.w.id]: mark.how === 'here' ? 'in' : 'absent' }); toast(mark.how === 'here' ? `${n} marked in at ${mark.at} · ${mark.why.toLowerCase()}` : `${n} marked absent${mark.excused ? ' (excused)' : ''}`); setMark(null); }}>{mark.how === 'here' ? 'Mark as here' : 'Mark as absent'}</button></div>

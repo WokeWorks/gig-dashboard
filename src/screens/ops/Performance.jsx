@@ -1,5 +1,5 @@
 import { VENDORS, WORKERS, METRICS, WORKER_METRICS, vendorOf, siteOf } from '../../data.js';
-import { ScreenHeader, Stat, Pill, Tabs, Drawer, Bar, Avatar, Note } from '../../ui.jsx';
+import { ScreenHeader, Stat, Pill, Tabs, Drawer, Bar, Avatar, Note, Select } from '../../ui.jsx';
 
 const { useState } = React;
 
@@ -99,7 +99,7 @@ export function Performance() {
             <div><h3>{showAll ? `All workers by ${m.name.toLowerCase()}` : `${rows.length} ${rows.length === 1 ? 'worker' : 'workers'} ${word(m)} ${fmtM(m, th[m.id])} on ${m.name.toLowerCase()}`}</h3><div className="small muted">Worst first · {m.desc}</div></div>
             <div className="toolbar">
               <input id="pf-q" className="input sm" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
-              <select id="pf-v" className="input sm" value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>
+              <Select id="pf-v" className="input sm" value={vendor} onChange={(e) => setVendor(e.target.value)}><option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select>
               <div className="seg"><button className={!showAll ? 'on' : ''} onClick={() => setShowAll(false)}>Flagged</button><button className={showAll ? 'on' : ''} onClick={() => setShowAll(true)}>Everyone</button></div>
             </div>
           </div>
