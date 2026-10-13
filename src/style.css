@@ -1586,3 +1586,9 @@ label.btn { cursor: pointer; }
 
 .nt-tile .nt-n.crit { color: var(--crit); } .nt-tile .nt-n.mustard { color: var(--mustard); }
 .nt-l { white-space: nowrap; }
+
+/* Vendor portal: client picker in the sidebar, client tag in tables */
+.vc-pick { display: grid; gap: 6px; padding: 2px 0 6px; }
+.vc-pick .select { width: 100%; }
+.body.slim .vc-pick { display: none; }
+.vc-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
