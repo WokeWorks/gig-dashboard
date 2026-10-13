@@ -43,32 +43,36 @@ export function MiniBar({ list, home }) {
   );
 }
 
-export function DayTimeline({ list, home, ghost }) {
-  const W = 460, H = 96, L = 8, R = 8, top = 22, bh = 30;
-  const X = (min) => L + pos(min) * (W - L - R);
-  const ticks = [6, 9, 12, 15, 18, 21, 0, 3];
-  const sorted = [...list, ...(ghost ? [Object.assign([...ghost], { ghost: true })] : [])].sort((a, b) => toMin(a[1]) - toMin(b[1]));
+// The day as a vertical calendar: hours down the left, one block per shift. Only the hours around the
+// day's shifts are shown (at least 8). Times after midnight count as the same working day.
+export function DayTimeline({ list, home, ghost, acts, note }) {
+  const H = 24; // px per hour
+  const abs = (st) => { const m = toMin(st); return m < DAY0 ? m + 1440 : m; };
+  const items = [...list.map((x) => ({ x, ghost: false })), ...(ghost ? [{ x: ghost, ghost: true }] : [])]
+    .map((it) => { const s0 = abs(it.x[1]); return { ...it, s0, e0: s0 + spanOf(tplOf(it.x[0])) * 60 }; })
+    .sort((a, b) => a.s0 - b.s0);
+  if (!items.length) return null;
+  let from = Math.floor(Math.min(...items.map((i) => i.s0)) / 60) - 1, to = Math.ceil(Math.max(...items.map((i) => i.e0)) / 60) + 1;
+  if (to - from < 8) { const pad = 8 - (to - from); from -= Math.floor(pad / 2); to += Math.ceil(pad / 2); }
+  const y = (m) => (m / 60 - from) * H;
+  const hours = Array.from({ length: to - from + 1 }, (_, k) => from + k);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="daytl" role="img" aria-label="Shifts across the day">
-      {ticks.map((h) => <g key={h}><line x1={X(h * 60)} x2={X(h * 60)} y1={top - 4} y2={top + bh + 4} className="tl-grid" /><text x={X(h * 60)} y={H - 6} textAnchor={h === 3 ? "end" : h === 6 ? "start" : "middle"} className="tl-tick">{String(h).padStart(2, '0')}:00</text></g>)}
-      {sorted.map(([t, st, s2], k) => {
-        const T = tplOf(t), s0 = toMin(st), site = s2 || home;
-        const x0 = X(s0), x1 = X(s0 + spanOf(T) * 60);
+    <div className="vday" style={{ height: (to - from) * H }} role="img" aria-label="Shifts across the day">
+      {hours.map((h) => <div key={h} className="vday-hr" style={{ top: y(h * 60) }}><span>{String(h % 24).padStart(2, '0')}:00</span></div>)}
+      {items.slice(1).map((b, k) => { const a = items[k]; const gap = b.s0 - a.e0; if (gap <= 0) return null; const sa = a.x[2] || home, sb = b.x[2] || home; const tr = sa !== sb ? (TRAVEL[sa + '|' + sb] || 30) : 0;
+        return <div key={'g' + k} className="vday-gap" style={{ top: y(a.e0), height: y(b.s0) - y(a.e0) }}><span>{Math.floor(gap / 60) ? `${Math.floor(gap / 60)} h` : ''}{gap % 60 ? ` ${gap % 60} min` : ''} gap{tr ? ` · ${tr} min travel` : ''}</span></div>; })}
+      {items.map((it, k) => { const site = it.x[2] || home; const T = tplOf(it.x[0]); const e = endOf(it.x[1], spanOf(T));
         return (
-          <g key={k}>
-            <rect x={x0} y={top} width={Math.max(2, x1 - x0)} height={bh} rx="5" className={'tl-seg' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')} />
-            <text x={x0 + 6} y={top + 13} className={'tl-lab' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')}>{siteOf(site).name}</text>
-            <text x={x0 + 6} y={top + 25} className={'tl-sub' + (site !== home ? ' away' : '') + (sorted[k].ghost ? ' ghost' : '')}>{st} · {tplLabel(T)}</text>
-          </g>
-        );
-      })}
-      {sorted.slice(1).map((b, k) => {
-        const a = sorted[k]; const ea = toMin(a[1]) + spanOf(tplOf(a[0])) * 60; const sb = toMin(b[1]); const gap = sb - ea;
-        const sa = a[2] || home, sb2 = b[2] || home; const tr = sa !== sb2 ? (TRAVEL[sa + '|' + sb2] || 30) : 0;
-        if (gap <= 0) return null;
-        return <text key={'g' + k} x={(X(ea) + X(sb)) / 2} y={top - 8} textAnchor="middle" className="tl-gap">{Math.floor(gap / 60)}h{gap % 60 ? ` ${gap % 60}m` : ''} gap{tr ? ` · ${tr} min travel` : ''}</text>;
-      })}
-    </svg>
+          <div key={k} className={'vday-blk' + (site !== home ? ' away' : '') + (it.ghost ? ' ghost' : '')} style={{ top: y(it.s0), height: Math.max(40, y(it.e0) - y(it.s0) - 2) }}>
+            <div className="vday-txt">
+              <b className="mono">{it.x[1]} – {e.time}{e.nextDay ? ' (+1)' : ''}</b>
+              <span>{tplLabel(T)} · {siteOf(site).name}{it.x[3] ? ` · covering ${WORKERS.find((w) => w.id === it.x[3]).name}` : ''}</span>
+              {!it.ghost && note && note(it.x)}
+            </div>
+            {!it.ghost && acts && <div className="vday-acts">{acts(it.x)}</div>}
+          </div>
+        ); })}
+    </div>
   );
 }
 
@@ -616,20 +620,10 @@ export function Scheduling({ go }) {
           const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
           const cv = cur === 'L' && covBy(wid, day.c);
           return <>
-            <div className="small muted">{isPool ? `Floater · lives in ${dayWorker.homeArea}` : `Works from ${siteOf(site).name}`}</div>
-            {list.length > 0 && <DayTimeline list={list} home={site} />}
+            {list.length > 0 && <DayTimeline list={list} home={site} note={(x) => { const k = sorted.indexOf(x); const lv = live.find((y) => y.start === x[1]);
+              const [label, tone] = day.ro === 'past' ? (missed(day.g, wid, day.c + k * 3) ? ['Missed', 'crit'] : ['Clocked in', 'good']) : lv ? [['in', 'late', 'break'].includes(lv.status) ? `${LV[lv.status][0]} · since ${hm(lv.inAt)}` : LV[lv.status][0], LV[lv.status][1]] : ['Later today', 'muted'];
+              return <span className={'vday-status ' + tone}>{label}</span>; }} />}
             {list.length === 0 && <p className="muted">{cur === 'O' ? 'Weekly off.' : cur === 'L' ? `On annual leave${cv ? `, covered by ${cv.w.name}` : ''}.` : cur === 'A' ? 'Available, not called in.' : 'Not rostered.'}</p>}
-            {sorted.map((x, k) => {
-              const lv = live.find((y) => y.start === x[1]);
-              const [label, tone] = day.ro === 'past' ? (missed(day.g, wid, day.c + k * 3) ? ['Missed', 'crit'] : ['Clocked in', 'good']) : lv ? [lv.status === 'in' || lv.status === 'late' || lv.status === 'break' ? `${LV[lv.status][0]} · since ${hm(lv.inAt)}` : LV[lv.status][0], LV[lv.status][1]] : ['Later today', 'muted'];
-              return (
-                <div key={x.join()} className="dayshift">
-                  <span className={'locbar' + (x[2] && x[2] !== site ? ' away' : '')} />
-                  <div><b className="mono">{fmtShift(x)}</b><div className="small muted">{siteOf(x[2] || site).name} · {tplLabel(tplOf(x[0]))}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div></div>
-                  <Pill tone={tone}>{label}</Pill>
-                </div>
-              );
-            })}
             <div className="ro-note">
               <span className="small">{day.ro === 'past' ? 'This day is done, so the roster is fixed. Corrections to hours go in the timesheet.' : `${first(dayWorker.name)} has clocked in, so today's roster is fixed. Corrections go in the timesheet.`}</span>
               <button className="btn sm ghost" onClick={() => go('workforce', { worker: wid, tab: 'Timesheet' })}>Open timesheet</button>
@@ -637,7 +631,6 @@ export function Scheduling({ go }) {
           </>;
         })()}
         {day && !day.ro && (() => {
-          const sorted = [...list].sort((a, b) => toMin(a[1]) - toMin(b[1]));
           const editingX = ed && list.find((y) => y.join() === ed.key);
           const tlList = editingX ? list.filter((y) => y !== editingX) : list;
           const ghost = editingX ? mk(ed.t, ed.st, ed.site) : adding ? mk(add.t, add.st, add.site) : null;
@@ -671,39 +664,27 @@ export function Scheduling({ go }) {
               </section>
             ); })()}
             {cur === 'O' && !adding && <section className="day-state"><div><b>Weekly off</b><div className="small muted">A shift today is paid as rest-day work.</div></div><button className="btn sm ghost" onClick={() => setAdding(true)}>Add a shift anyway</button></section>}
-            {(tlList.length > 0 || ghost) && <DayTimeline list={tlList} ghost={ghost} home={site} />}
-            {sorted.length > 0 && <div className="ds-list">{sorted.map((x) => {
-              const key = x.join(); const cv = !x[3] && coverFor(dayWorker.id, day.c, x);
-              const editing = ed && ed.key === key;
-              const swapped = editing && list.map((y) => (y === x ? mk(ed.t, ed.st, ed.site) : y));
-              const eChecks = editing ? dayChecks(swapped.map(norm), site) : [];
-              const removeShift = () => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); if (cv) setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : cv ? `Shift removed · ${first(cv.w.name)}'s cover cancelled` : 'Shift removed'); };
-              const away = (x[2] || site) !== site;
-              return (
-                <div key={key} className={'ds-item' + (editing ? ' editing' : '')}>
-                  <div className="ds-row">
-                    <span className={'locbar' + (away ? ' away' : '')} />
-                    <div className="ds-main"><b className="mono">{fmtShift(x)}</b>
-                      <div className="small muted">{tplLabel(tplOf(x[0]))}{away || isPool ? ` · ${siteOf(x[2]).name}` : ''}{x[3] ? ` · covering ${W(x[3]).name}` : ''}</div>
-                      {cv && <div className="small cov-line">Covered by <b>{cv.w.name}</b></div>}</div>
-                    {!editing && <div className="ds-acts">
-                      {!x[3] && <button className="btn sm ghost" onClick={() => { setAdding(false); setEd({ key, t: x[0], st: x[1], site: x[2] || (isPool ? (shown[0] || SITES[0]).id : site) }); }}>Edit</button>}
-                      <button className="btn sm quiet icon-only" aria-label="More for this shift" onClick={(e) => menu.open(e, fmtShift(x), [
-                        !x[3] && !cv && { icon: 'users', label: 'Find cover', sub: 'Someone else works this shift', on: () => findCover(dayWorker.id, x[2] || day.g, day.c, x, 'Can\'t make this shift') },
-                        cv && { icon: 'users', label: 'Remove cover', sub: `${first(cv.w.name)} is told`, on: () => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); } },
-                        { icon: 'trash', label: x[3] ? 'Remove this cover' : 'Remove shift', danger: true, on: removeShift },
-                      ])}><Icon name="more" size={16} /></button>
-                    </div>}
-                  </div>
-                  {editing && <div className="ds-form">
-                    {fields(ed, setEd, 'ed')}
-                    {checkLines(eChecks)}
-                    {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
-                    <div className="ds-form-acts"><button className="btn ghost sm" onClick={() => setEd(null)}>Cancel</button><button className="btn sm" disabled={eChecks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, swapped.map(norm)); setEd(null); toast('Shift updated'); }}>Save</button></div>
-                  </div>}
-                </div>
-              );
-            })}</div>}
+            {(tlList.length > 0 || ghost) && <DayTimeline list={tlList} ghost={ghost} home={site}
+              note={(x) => { const cv = !x[3] && coverFor(dayWorker.id, day.c, x); return cv ? <span className="vday-note">Covered by {cv.w.name}</span> : null; }}
+              acts={(x) => { const key = x.join(); const cv = !x[3] && coverFor(dayWorker.id, day.c, x);
+                const removeShift = () => { const nl = list.filter((y) => y !== x); setCell(day.g, day.r, day.c, nl.length ? nl : x[3] ? (x[4] || 'A') : isPool ? 'A' : 'X'); if (cv) setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(x[3] ? `Cover removed · ${first(W(x[3]).name)}'s day is uncovered again` : cv ? `Shift removed · ${first(cv.w.name)}'s cover cancelled` : 'Shift removed'); };
+                return <>
+                  {!x[3] && <button className="vbtn" onClick={() => { setAdding(false); setEd({ key, t: x[0], st: x[1], site: x[2] || (isPool ? (shown[0] || SITES[0]).id : site) }); }}>Edit</button>}
+                  <button className="vbtn icon" aria-label="More for this shift" onClick={(e) => menu.open(e, fmtShift(x), [
+                    !x[3] && !cv && { icon: 'users', label: 'Find cover', sub: 'Someone else works this shift', on: () => findCover(dayWorker.id, x[2] || day.g, day.c, x, 'Can\'t make this shift') },
+                    cv && { icon: 'users', label: 'Remove cover', sub: `${first(cv.w.name)} is told`, on: () => { setCell(cv.g, cv.r, day.c, undoCell(G(cv.g).cells[cv.r][day.c], dayWorker.id)); toast(`Cover removed · ${first(cv.w.name)} notified`); } },
+                    { icon: 'trash', label: x[3] ? 'Remove this cover' : 'Remove shift', danger: true, on: removeShift },
+                  ])}><Icon name="more" size={16} /></button>
+                </>; }} />}
+            {editingX && (() => { const x = editingX; const cv = !x[3] && coverFor(dayWorker.id, day.c, x); const swapped = list.map((y) => (y === x ? mk(ed.t, ed.st, ed.site) : y)); const eChecks = dayChecks(swapped.map(norm), site); return (
+              <div className="ds-item editing ds-new"><div className="ds-form">
+                <div className="ds-form-title">Change {fmtShift(x)}</div>
+                {fields(ed, setEd, 'ed')}
+                {checkLines(eChecks)}
+                {cv && <div className="small muted">{first(cv.w.name)} keeps covering the old times. Remove the cover first if the shift moves.</div>}
+                <div className="ds-form-acts"><button className="btn ghost sm" onClick={() => setEd(null)}>Cancel</button><button className="btn sm" disabled={eChecks.some(([t]) => t === 'crit')} onClick={() => { setCell(day.g, day.r, day.c, swapped.map(norm)); setEd(null); toast('Shift updated'); }}>Save</button></div>
+              </div></div>
+            ); })()}
             {cur !== 'L' && (adding ? <div className="ds-item editing ds-new">
               <div className="ds-form">
                 <div className="ds-form-title">{list.length ? 'Another shift' : 'New shift'}</div>

@@ -1541,3 +1541,26 @@ label.btn { cursor: pointer; }
 .ds-copy-head { display: flex; align-items: baseline; justify-content: space-between; }
 .ds-copy .rep-days { align-items: center; }
 .ds-foot { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* Vertical day calendar (DayTimeline) */
+.vday { position: relative; margin: 4px 0 12px 46px; border-left: 1px solid var(--line); }
+.vday-hr { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
+.vday-hr span { position: absolute; left: -46px; top: -8px; width: 40px; text-align: right; font: 11px/1 var(--mono); color: var(--muted); }
+.vday-blk { position: absolute; left: 8px; right: 0; padding: 6px 10px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); overflow: hidden; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.vday-blk b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vday-blk span { font-size: 12px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vday-blk.away { background: var(--info); color: #fff; }
+.vday-blk.ghost { background: var(--accent-soft); color: var(--accent); border: 1.5px dashed var(--accent); }
+.vday-gap { position: absolute; left: 8px; right: 0; display: grid; place-items: center; pointer-events: none; }
+.vday-gap span { font-size: 11.5px; color: var(--muted); background: var(--surface); padding: 0 6px; border-radius: 4px; }
+.vday { flex-shrink: 0; }
+.vday-blk { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.vday-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.vday-acts { display: flex; gap: 4px; flex: none; }
+.vbtn { height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.12); color: inherit; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-grid; place-items: center; }
+.vbtn:hover { background: rgba(255,255,255,.22); }
+.vbtn.icon { width: 26px; padding: 0; }
+.vday-note { font-size: 12px; font-weight: 600; margin-top: 2px; }
+.vday-status { align-self: flex-start; margin-top: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface); }
+.vday-status.good { color: var(--good); } .vday-status.crit { color: var(--crit); } .vday-status.warn { color: var(--warn); } .vday-status.muted, .vday-status.faint, .vday-status.info { color: var(--ink-mid); }
+.ds-add { margin-top: 0; }
