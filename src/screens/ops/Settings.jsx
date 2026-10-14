@@ -202,7 +202,7 @@ export function Settings({ params }) {
             {rp.breaks && <>
               <Field label="Break allowance per shift" hint="Workers can split it into as many breaks as they need, for prayer, food or a smoke."><div className="unit-in"><input id="pol-brkmin" className="input" type="number" value={rp.brkMin} onChange={(e) => setR('brkMin', +e.target.value)} /><span>min</span></div></Field>
               <Field label="Break time is"><Select id="pol-brkpaid" className="input" value={rp.brkPaid} onChange={(e) => setR('brkPaid', e.target.value)}><option value="unpaid">Unpaid (taken off worked hours)</option><option value="paid">Paid</option></Select></Field>
-              <div className="small muted">Time past the allowance is flagged to the supervisor.</div>
+              <div className="small muted">When the allowance runs out the worker is clocked back in automatically.</div>
             </>}
           </section>
           <section className="card form">

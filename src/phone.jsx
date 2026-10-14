@@ -34,7 +34,7 @@ const LOCS = SUP_SITES.map((id) => { const s = siteOf(id); const ps = PEOPLE.fil
 const totals = () => LOCS.reduce((a, l) => ({ in: a.in + l.in, req: a.req + l.req, late: a.late + l.late, missing: a.missing + l.missing, leave: a.leave + l.leave }), { in: 0, req: 0, late: 0, missing: 0, leave: 0 });
 
 const W_ = (id) => WORKERS.find((w) => w.id === id);
-const TONE = { 'No-show': 'red', 'Face mismatch': 'amber', Late: 'amber', 'Missing clock-out': 'amber', 'Document expiry': 'amber', 'Break overrun': 'amber', 'Outside geofence': 'amber' };
+const TONE = { 'No-show': 'red', 'Face mismatch': 'amber', Late: 'amber', 'Missing clock-out': 'amber', 'Document expiry': 'amber', 'Outside geofence': 'amber' };
 const ALERTS = [
   ...OPS_ALERTS.filter((a) => a.open).map((a) => ({ id: a.id, t: a.type === 'Face mismatch' ? 'Face did not match' : a.type, who: W_(a.worker).name, loc: siteOf(a.site).name, when: /^\d/.test(a.time) ? `${a.time} today` : a.time, go: ['Face mismatch', 'Document expiry'].includes(a.type) ? (a.type === 'Face mismatch' ? 'face' : 'docs') : 'people', tone: TONE[a.type] || 'amber' })),
   ...LEAVE.filter((l) => l.status === 'Pending').slice(0, 1).map((l) => ({ id: 'lv' + l.id, t: 'Leave request waiting', who: W_(l.worker).name, loc: siteOf(W_(l.worker).site).name, when: l.asked, go: 'leave', tone: 'teal' })),

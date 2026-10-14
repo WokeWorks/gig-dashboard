@@ -73,7 +73,6 @@ export const ALERTS = [
   { id: 'a2', type: 'Face mismatch', sev: 'critical', worker: 'w15', site: 's1', time: '07:04', detail: 'Match score 0.41 (threshold 0.60). Liveness passed.', open: true },
   { id: 'a3', type: 'Late', sev: 'warning', worker: 'w4', site: 's3', time: '07:18', detail: 'Clocked in 18 min after start (grace 10 min)', open: true },
   { id: 'a4', type: 'Outside geofence', sev: 'warning', worker: 'w10', site: 's4', time: '06:57', detail: 'Punch 340 m from site, radius 100 m', open: true },
-  { id: 'a5', type: 'Break overrun', sev: 'warning', worker: 'w2', site: 's2', time: '11:41', detail: 'Break 74 min, allowed 60 + 5 grace', open: true },
   { id: 'a6', type: 'Missing clock-out', sev: 'info', worker: 'w12', site: 's6', time: '03:10', detail: 'Auto clock-out at 12 h; flagged for review', open: true },
   { id: 'a7', type: 'Document expiry', sev: 'info', worker: 'w2', site: 's2', time: 'Today', detail: 'Visa expires 19 Oct 2026', open: true },
   { id: 'a8', type: 'No-show', sev: 'critical', worker: 'w17', site: 's6', time: '07:01', detail: 'Rostered 06:00, no clock-in after 60 min', open: false, outcome: 'Excused' },

@@ -9,7 +9,7 @@ export function Alerts() {
   const [items, setItems] = useState(() => ALERTS.filter((a) => siteInScope(a.site)));
   const [sel, setSel] = useState(null);
   const toast = useToast();
-  const types = ['All', 'No-show', 'Late', 'Face mismatch', 'Outside geofence', 'Break overrun', 'Missing clock-out', 'Document expiry'];
+  const types = ['All', 'No-show', 'Late', 'Face mismatch', 'Outside geofence', 'Missing clock-out', 'Document expiry'];
   // Short names for alert types, used on the tiles and in the list.
   const label = (t) => ({ All: 'All open', 'Outside geofence': 'Off-site punch', 'Missing clock-out': 'No clock-out', 'Document expiry': 'Document issue' }[t] || t);
   const rows = items.filter((a) => type === 'All' || a.type === type);
