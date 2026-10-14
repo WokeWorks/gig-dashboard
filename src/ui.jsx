@@ -259,7 +259,8 @@ export function useMenu() {
       ))}
     </div>
   );
-  return { open, el, isOpen: (t) => !!m && m.title === t };
+  // Rendered at the top of the page, so sticky headers and other stacking layers can never cover it.
+  return { open, el: el && ReactDOM.createPortal(el, document.body), isOpen: (t) => !!m && m.title === t };
 }
 
 // The OpsPro mark: two rings side by side, the client and the vendor, overlapping where OpsPro sits.
