@@ -451,9 +451,9 @@ export function Scheduling({ go }) {
                   ))}
                   {!isCol && vis.map((v) => (
                     <tr key={'v' + v.w.id} className="visitor">
-                      <td className="mq-host"><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.w.role}</Marquee></div></td>
+                      <td className="mq-host"><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.g === 'pool' ? 'Floater' : `From ${siteOf(v.g).name.replace(/^(Spinneys|Carrefour) /, '')}`}</Marquee></div></td>
                       {v.days.map((d, ci) => (
-                        <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{ring(pastCls(s.id, v.w.id, ci, d).includes('today-in'))}{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" />}</td>
+                        <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{ring(pastCls(s.id, v.w.id, ci, d).includes('today-in'))}{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" aria-hidden="true">–</span>}</td>
                       ))}
                     </tr>
                   ))}

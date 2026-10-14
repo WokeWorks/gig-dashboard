@@ -584,7 +584,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .rg-meta { float: right; display: inline-flex; gap: 14px; align-items: center; color: var(--muted); }
 .roster tr.visitor td:first-child b { font-weight: 600; }
 .roster tr.visitor td:first-child .small svg { vertical-align: -1px; }
-.roster tr.visitor { background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--line) 35%, transparent) 8px 9px); }
+.roster tr.visitor { background: none; }
 .cell.vis-empty { display: block; min-height: 30px; border: 0; background: transparent; }
 .cell.elsewhere { background: transparent; border: 1px dashed var(--line); cursor: pointer; }
 .cell.elsewhere .cell-sub { color: var(--faint); }
@@ -1729,3 +1729,4 @@ label.btn { cursor: pointer; }
 .cell.one.cover.cov-hl { box-shadow: inset 3px 0 0 var(--good), 0 0 0 2px var(--good); }
 .cell.one.cover .cov-at { display: flex; align-items: center; gap: 3px; color: var(--ink-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .cell.one.cover .cov-link { margin-top: 3px; }
+.roster .cell.vis-empty { display: flex; flex-direction: row; align-items: center; padding: 0 9px; border: 0; background: none; color: var(--faint); cursor: default; }
