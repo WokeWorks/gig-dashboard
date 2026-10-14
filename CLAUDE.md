@@ -32,6 +32,8 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - **Admin and manager view** (temporary, `src/lib/scope.js`): the account menu's "View as admin / View as manager" sets `SCOPE.role` (saved as `ops.viewas`). Admins see everything; a manager (Omar Haddad, m1) sees only his locations plus the float pool (`siteInScope`, `workerInScope`, `scopedWorkers`) and loses the `ADMIN_ONLY` screens (Vendors, Vendor costs, Settings). Screens filter their own lists with these helpers.
 - **Headcount:** a location has 3 to 7 people (`SITES[].req`); `roles`, `in`, `late` and `noshow` on each site are derived from its workers.
 - **Location maps:** `SiteMap` in `src/lib/livemap.jsx` is a still Google map around the store with its geofence to scale; it opens Google Maps on click and shows a drawn placeholder until it loads.
+- **Cover links on the roster:** the absent person's cell ("Covered by …") and the cover's cell ("Covering …") share a `data-cov` key: hovering either lights both, clicking the line scrolls to the other (opening its section) and flashes it.
+- **Theme:** light, dark or system from the account menu (`src/lib/theme.js`, saved as `ops.theme`, sets `<html data-theme>`). Menus can hold a choice row (`seg` items in `useMenu`).
 - **Leave types** have days a year, pay, carry over, per-request limit and certificate rule.
 
 ## Gotchas

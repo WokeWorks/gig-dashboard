@@ -184,6 +184,8 @@ const GLYPHS = {
   users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0" /><path d="M15.5 5.2a3.2 3.2 0 0 1 0 6M17 14.2a5.5 5.5 0 0 1 3.5 5.3" /></>,
   flag: <><path d="M5 21V4.5" /><path d="M5 4.5h11l-2 4 2 4H5" /></>,
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  monitor: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>,
   camera: <><path d="M4 8h3l2-2.5h6L17 8h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,
   pen: <><path d="M4 20l1-4L16 5l3 3L8 19z" /><path d="M14 7l3 3" /></>,
   list: <><path d="M9 6h11M9 12h11M9 18h11" /><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" /></>,
@@ -245,7 +247,12 @@ export function useMenu() {
   const el = m && (
     <div className="pop-menu" role="menu" aria-label={m.title} onKeyDown={nav} style={m.up ? { left: m.x, bottom: window.innerHeight - m.top } : { left: m.x, top: m.y }}>
       <div className="pm-title">{m.sub ? <><b>{m.title}</b><span>{m.sub}</span></> : m.title}</div>
-      {m.items.map((x, i) => (
+      {m.items.map((x, i) => x.seg ? (
+        // A row of choices that stays open while you pick (e.g. theme): { seg: [[value, label, icon]], value, onPick, label }
+        <div key={i} className="pm-seg-row"><span className="small muted">{x.label}</span><div className="pm-seg" role="radiogroup" aria-label={x.label}>
+          {x.seg.map(([v, l, ic]) => <button key={v} role="radio" aria-checked={x.value === v} className={x.value === v ? 'on' : ''} onClick={() => { x.onPick(v); setM({ ...m, items: m.items.map((y) => (y === x ? { ...x, value: v } : y)) }); }}><Icon name={ic} size={14} />{l}</button>)}
+        </div></div>
+      ) : (
         <button key={i} role="menuitem" className={'pm-item' + (x.danger ? ' danger' : '')} onClick={() => { setM(null); x.on(); }}>
           <Icon name={x.icon} size={16} /><span><b>{x.label}</b>{x.sub && <span className="small muted">{x.sub}</span>}</span>
         </button>

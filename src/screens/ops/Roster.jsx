@@ -138,6 +138,26 @@ export function Scheduling({ go }) {
   const coverFor = (wid, ci, x) => { for (const g of groups) for (let r = 0; r < g.people.length; r++) { const c = g.cells[r][ci]; if (Array.isArray(c)) { const sh = c.find((y) => y[3] === wid && y[1] === x[1] && y[0] === x[0]); if (sh) return { w: W(g.people[r]), g: g.site, r, sh }; } } return null; };
   const covBy = (wid, ci) => coverOf(groups, wid, ci);
   const first = (n) => n.split(' ')[0];
+  // Covers are linked both ways. The absent person's cell and the cover's cell share a key: hovering either lights
+  // both, and the "Covered by …" / "Covering …" line scrolls to the other one (opening its section) and flashes it.
+  const covKey = (absentId, ci) => `${absentId}:${ci}`;
+  const covLit = (key, on) => document.querySelectorAll(`[data-cov="${key}"]`).forEach((e) => e.classList.toggle('cov-hl', on));
+  const covHover = (key) => (key ? { 'data-cov': key, onMouseEnter: () => covLit(key, true), onMouseLeave: () => covLit(key, false) } : {});
+  const groupOf = (wid) => (groups.find((g) => g.people.includes(wid)) || {}).site;
+  const covJump = (e, key, gid) => {
+    e.stopPropagation(); e.preventDefault();
+    const from = e.currentTarget.closest('[data-cov]');
+    if (gid) setCollapsed((c) => ({ ...c, [gid]: false }));
+    setTimeout(() => {
+      const t = [...document.querySelectorAll(`[data-cov="${key}"]`)].find((x) => x !== from); if (!t) return;
+      const r = t.getBoundingClientRect(); window.scrollTo({ top: window.scrollY + r.top - (window.innerHeight - r.height) / 2, behavior: 'smooth' }); t.classList.remove('cov-flash'); void t.offsetWidth; t.classList.add('cov-flash');
+      setTimeout(() => t.classList.remove('cov-flash'), 1800);
+    }, 60);
+  };
+  const covLink = (label, key, gid) => <span className="cell-sub cov cov-link" role="link" onClick={(e) => covJump(e, key, gid)}>{label}</span>;
+  // The line on a cover's own cell: who they are covering.
+  const covering = (list, ci) => { const x = list.find((y) => y[3]); return x ? covLink(`Covering ${first(W(x[3]).name)}`, covKey(x[3], ci), groupOf(x[3])) : null; };
+  const covAttrs = (list, ci) => { const x = Array.isArray(list) && list.find((y) => y[3]); return covHover(x ? covKey(x[3], ci) : null); };
   const site = day ? day.g : 's3';
   const cur = day && G(day.g).cells[day.r][day.c];
   const list = Array.isArray(cur) ? cur : [];
@@ -413,14 +433,15 @@ export function Scheduling({ go }) {
                         return (
                           <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                             {here.length > 1 ? split(here, s.id, w.id, ci, () => openDay(s.id, r, ci), `${w.name} ${days[ci]}`) :
-                            <button className={'cell ' + (Array.isArray(c) ? (away ? 'elsewhere' : 'one') + pastCls(s.id, w.id, ci, here) : c)} title={pastTitle(s.id, w.id, ci, here)} onClick={() => openDay(s.id, r, ci)} aria-label={`${w.name} ${days[ci]}`}>
+                            <button {...(c === 'L' ? covHover(covBy(w.id, ci) && covKey(w.id, ci)) : here.length && ci >= nowIdx && coverFor(w.id, ci, here[0]) ? covHover(covKey(w.id, ci)) : covAttrs(here, ci))} className={'cell ' + (Array.isArray(c) ? (away ? 'elsewhere' : 'one') + pastCls(s.id, w.id, ci, here) : c)} title={pastTitle(s.id, w.id, ci, here)} onClick={() => openDay(s.id, r, ci)} aria-label={`${w.name} ${days[ci]}`}>
                               {ring(Array.isArray(c) && pastCls(s.id, w.id, ci, here).includes('today-in'))}
                               {c === 'O' && <span className="cell-main">Weekly off</span>}
-                              {c === 'L' && (() => { const cv = covBy(w.id, ci); return <><span className="cell-main">Annual leave</span>{cv ? <span className="cell-sub cov">Covered by {first(cv.w.name)}</span> : <span className={'cell-sub' + (ci >= nowIdx ? ' uncov' : '')}>{ci >= nowIdx ? 'Not covered' : 'Approved'}</span>}</>; })()}
+                              {c === 'L' && (() => { const cv = covBy(w.id, ci); return <><span className="cell-main">Annual leave</span>{cv ? covLink(`Covered by ${first(cv.w.name)}`, covKey(w.id, ci), cv.g) : <span className={'cell-sub' + (ci >= nowIdx ? ' uncov' : '')}>{ci >= nowIdx ? 'Not covered' : 'Approved'}</span>}</>; })()}
                               {c === 'X' && <span className="cell-main">Not rostered</span>}
                               {away && <span className="cell-sub">Elsewhere</span>}
                               {here.length > 0 && here.map((x, k) => chip(x, k, s.id))}
-                              {here.length > 0 && ci >= nowIdx && (() => { const cv = coverFor(w.id, ci, here[0]); return cv ? <span className="cell-sub cov">Covered by {first(cv.w.name)}</span> : null; })()}
+                              {here.length > 0 && ci >= nowIdx && (() => { const cv = coverFor(w.id, ci, here[0]); return cv ? covLink(`Covered by ${first(cv.w.name)}`, covKey(w.id, ci), cv.g) : null; })()}
+                              {here.length > 0 && covering(here, ci)}
                             </button>}
                           </td>
                         );
@@ -451,13 +472,14 @@ export function Scheduling({ go }) {
                     {PG.cells[r].map((c, ci) => (
                       <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                         {Array.isArray(c) && c.length > 1 ? split(c, 'pool', w.id, ci, () => openDay('pool', r, ci), `${w.name} ${days[ci]}`) :
-                        <button className={'cell ' + (Array.isArray(c) ? 'one' + pastCls('pool', w.id, ci, c) : c)} title={pastTitle('pool', w.id, ci, Array.isArray(c) ? c : [])} onClick={() => openDay('pool', r, ci)} aria-label={`${w.name} ${days[ci]}`}>
+                        <button {...covAttrs(c, ci)} className={'cell ' + (Array.isArray(c) ? 'one' + pastCls('pool', w.id, ci, c) : c)} title={pastTitle('pool', w.id, ci, Array.isArray(c) ? c : [])} onClick={() => openDay('pool', r, ci)} aria-label={`${w.name} ${days[ci]}`}>
                           {ring(Array.isArray(c) && pastCls('pool', w.id, ci, c).includes('today-in'))}
                           {c === 'A' && <span className="cell-main">Available</span>}
                           {c === 'O' && <span className="cell-main">Weekly off</span>}
                           {c === 'L' && <span className="cell-main">Annual leave</span>}
                           {c === 'X' && <span className="cell-main">Not rostered</span>}
                           {Array.isArray(c) && c.map((x, k) => chip(x, k, 'pool'))}
+                          {Array.isArray(c) && covering(c, ci)}
                         </button>}
                       </td>
                     ))}
