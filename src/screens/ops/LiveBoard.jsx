@@ -5,6 +5,7 @@ import { hm, TODAY } from '../../lib/dates.js';
 import { LiveClock } from '../../lib/clock.jsx';
 import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
+import { StatFilters } from '../../lib/statfilter.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
@@ -23,7 +24,8 @@ export function LiveBoard({ go }) {
   const sites = SITES.filter(siteInScope).filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
   const data = sites.map((s) => { const ppl = liveOf(s.id).map((p) => (handled[p.w.id] ? { ...p, status: handled[p.w.id] } : p)); const due = ppl.filter((p) => p.status !== 'upcoming'); const inn = due.filter((p) => ['in', 'late', 'break'].includes(p.status)).length; const bad = ppl.filter((p) => p.status === 'noshow').length; const late = ppl.filter((p) => p.status === 'late').length; return { s, ppl, due, inn, bad, late, up: ppl.filter((p) => p.status === 'upcoming') }; });
   const tot = data.reduce((a, d) => ({ due: a.due + d.due.length, inn: a.inn + d.inn, bad: a.bad + d.bad, late: a.late + d.late, up: a.up + d.up.length }), { due: 0, inn: 0, bad: 0, late: 0, up: 0 });
-  const shown = data.filter((d) => only === 'all' || d.bad).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
+  const HAS = { in: (d) => d.inn, noshow: (d) => d.bad, late: (d) => d.late, later: (d) => d.up.length };
+  const shown = data.filter((d) => only === 'all' || HAS[only](d)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
   const actions = data.flatMap((d) => d.ppl.filter((p) => p.status === 'noshow' || p.status === 'late').map((p) => ({ ...p, site: d.s }))).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
   const loc = openLoc && data.find((d) => d.s.id === openLoc);
   const pd = panel && data.find((d) => d.s.id === panel);
@@ -37,14 +39,13 @@ export function LiveBoard({ go }) {
         <aside className="lm-side" aria-label={pd ? pd.s.name : 'Locations'}>
           {!pd ? <>
             {isAdmin() && <div className="lm-side-mgr"><label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); setPanel(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label></div>}
-            <div className="lm-side-stats">
-              <div className={tot.inn ? 'good' : ''}><b>{tot.inn}</b><span>in now</span></div>
-              <button className={'lm-stat-btn' + (tot.bad ? ' crit' : '') + (only === 'noshow' ? ' on' : '')} aria-pressed={only === 'noshow'} disabled={!tot.bad && only !== 'noshow'} onClick={() => { setOnly(only === 'noshow' ? 'all' : 'noshow'); setPick(null); }}><b>{tot.bad}</b><span>no-show</span></button>
-              <div className={tot.late ? 'warn' : ''}><b>{tot.late}</b><span>late</span></div>
-              <div><b>{tot.up}</b><span>later today</span></div>
-            </div>
+            <StatFilters only={only} setOnly={(k) => { setOnly(k); setPick(null); }} items={[
+              { k: 'in', n: tot.inn, label: 'in now', tone: 'good', desc: 'Locations with someone in' },
+              { k: 'noshow', n: tot.bad, label: 'no-show', tone: 'crit', desc: 'Locations with a no-show' },
+              { k: 'late', n: tot.late, label: 'late', tone: 'warn', desc: 'Locations with someone late' },
+              { k: 'later', n: tot.up, label: 'later today', desc: 'Locations with someone starting later' },
+            ]} />
             <div className="lm-side-body lm-locs">
-              {only === 'noshow' && <div className="lm-filtered small muted">Locations with a no-show <button className="linkbtn" onClick={() => setOnly('all')}>Show all</button></div>}
               {shown.length === 0 && <div className="small muted lm-none">No locations match.</div>}
               {shown.map((d) => (
                 <button key={d.s.id} className={'lm-loc' + (pick === d.s.id ? ' on' : '')} onClick={() => { setPick(null); setPanel(d.s.id); }} onMouseEnter={() => setPick(d.s.id)} onMouseLeave={() => setPick((x) => (x === d.s.id ? null : x))} onFocus={() => setPick(d.s.id)} onBlur={() => setPick((x) => (x === d.s.id ? null : x))}>

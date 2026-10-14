@@ -3,6 +3,7 @@ import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
 import { GEO } from './lib/geo.js';
 import { LiveMap } from './lib/livemap.jsx';
+import { StatFilters } from './lib/statfilter.jsx';
 import { ScreenHeader, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
 
 const { useState, useEffect, useRef } = React;
@@ -96,14 +97,15 @@ function ScoreTrend({ data, sub }) {
 export function VendorOverview({ go, client = 'all' }) {
   const [pick, setPick] = useState(null); // hovered in the list
   const [panel, setPanel] = useState(null); // location open in the side column
-  const [only, setOnly] = useState('all'); // 'all' | 'noshow'
+  const [only, setOnly] = useState('all'); // 'all' | 'in' | 'noshow' | 'late'
   const ps = peopleFor(client); const t = todayCounts(ps);
   const score = client === 'all' ? Math.round(VCLIENTS.reduce((a, c) => a + c.score * peopleFor(c.id).length, 0) / peopleFor('all').length) : vclient(client).score;
   // Every place your people are due today, worst first.
   const locs = [...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))]
     .map((w) => { const here = ps.filter((p) => p.where === w); return { key: w, title: w, client: here[0].client, ppl: here, g: geoOf(w), ...todayCounts(here) }; })
     .sort((a, b) => b.ns - a.ns || b.due - a.due || a.title.localeCompare(b.title));
-  const shown = locs.filter((x) => only === 'all' || x.ns);
+  const HAS = { in: (x) => x.in, noshow: (x) => x.ns, late: (x) => x.late };
+  const shown = locs.filter((x) => only === 'all' || HAS[only](x));
   const pd = panel && locs.find((x) => x.key === panel);
   const short = (w) => w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, '');
   return (
@@ -115,14 +117,13 @@ export function VendorOverview({ go, client = 'all' }) {
         </div>
         <aside className="lm-side" aria-label={pd ? pd.title : 'Locations'}>
           {!pd ? <>
-            <div className="lm-side-stats">
-              <div className={t.in ? 'good' : ''}><b>{t.in}</b><span>in now</span></div>
-              <button className={'lm-stat-btn' + (t.ns ? ' crit' : '') + (only === 'noshow' ? ' on' : '')} aria-pressed={only === 'noshow'} disabled={!t.ns && only !== 'noshow'} onClick={() => { setOnly(only === 'noshow' ? 'all' : 'noshow'); setPick(null); }}><b>{t.ns}</b><span>no-show</span></button>
-              <div className={t.late ? 'warn' : ''}><b>{t.late}</b><span>late</span></div>
-              <div className="good"><b>{score}</b><span>score</span></div>
-            </div>
+            <StatFilters only={only} setOnly={(k) => { setOnly(k); setPick(null); }} items={[
+              { k: 'in', n: t.in, label: 'in now', tone: 'good', desc: 'Locations with someone in' },
+              { k: 'noshow', n: t.ns, label: 'no-show', tone: 'crit', desc: 'Locations with a no-show' },
+              { k: 'late', n: t.late, label: 'late', tone: 'warn', desc: 'Locations with someone late' },
+              { n: score, label: 'score', tone: 'good' },
+            ]} />
             <div className="lm-side-body lm-locs">
-              {only === 'noshow' && <div className="lm-filtered small muted">Locations with a no-show <button className="linkbtn" onClick={() => setOnly('all')}>Show all</button></div>}
               {shown.length === 0 && <div className="small muted lm-none">No locations match.</div>}
               {shown.map((x) => (
                 <button key={x.key} className={'lm-loc' + (pick === x.key ? ' on' : '')} onClick={() => { setPick(null); setPanel(x.key); }} onMouseEnter={() => setPick(x.key)} onMouseLeave={() => setPick((k) => (k === x.key ? null : k))} onFocus={() => setPick(x.key)} onBlur={() => setPick((k) => (k === x.key ? null : k))}>
