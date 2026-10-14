@@ -1723,10 +1723,9 @@ label.btn { cursor: pointer; }
 /* Floaters are available by default: say so quietly, without a box; the box comes back on hover. */
 .roster .rgroup.pool .cell.A { border-color: transparent; background: none; }
 .roster .rgroup.pool .cell.A:hover { border-color: var(--line-strong); background: var(--surface); }
-/* A cover: tinted, with a green edge, and one line saying who it is for and where. */
-.cell.one.cover { background: var(--good-soft); border-color: transparent; box-shadow: inset 3px 0 0 var(--good); }
+/* A cover: tinted green, saying who it is for and where. */
+.cell.one.cover { background: var(--good-soft); border-color: transparent; }
 .cell.one.cover .cov-link { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cell.one.cover.cov-hl { box-shadow: inset 3px 0 0 var(--good), 0 0 0 2px var(--good); }
 .cell.one.cover .cov-at { display: flex; align-items: center; gap: 3px; color: var(--ink-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .cell.one.cover .cov-link { margin-top: 3px; }
 .roster .cell.vis-empty { display: flex; flex-direction: row; align-items: center; padding: 0 9px; border: 0; background: none; color: var(--faint); cursor: default; }
