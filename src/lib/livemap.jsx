@@ -1,4 +1,4 @@
-import { loadGoogleMaps, MAP_STYLES } from './geo.js';
+import { loadGoogleMaps, MAP_STYLES, staticMapUrl } from './geo.js';
 
 const { useState, useEffect, useRef } = React;
 
@@ -179,46 +179,39 @@ export function LiveMap({ points, pick, hover = null, onPick, height, inset = 0,
   return <div className="lm-leaf" ref={el} style={height ? { height } : undefined}>{msg && <div className="lm-fail small">{msg}</div>}</div>;
 }
 
-// A real map snapshot of one location: Google Maps around the store with its geofence drawn to scale.
-// Still (no pan, zoom or controls) so it reads as a picture on a card; click it to open Google Maps there.
-// Until the map loads, or if it can't, the card shows a plain drawn placeholder instead.
-export function SiteMap({ lat, lng, radius, name, height = 132 }) {
-  const el = useRef(null); const [ready, setReady] = useState(false);
+// A map snapshot of one location: a static Google map image around the store with its geofence drawn to scale and
+// the store marked. Fetched only when the card comes on screen, cheap and cacheable; follows the theme. Click it
+// to open Google Maps there. Until the image loads, or if it can't, the card shows a plain drawn placeholder.
+const useDark = () => {
+  const [d, setD] = useState(isDark);
   useEffect(() => {
-    let alive = true; let cleanup = () => {};
-    loadGoogleMaps().then((G) => {
-      if (!alive || !el.current) return;
-      const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-      const center = { lat, lng };
-      const { e: kept, fresh } = pooledMap(`site:${lat},${lng}`, el.current, G, {
-        center, zoom: 16, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false,
-        backgroundColor: tok('--surface-2') || undefined,
-      });
-      const m = kept.map;
-      if (fresh || kept.st.radius !== radius) {
-        if (kept.st.ring) { kept.st.ring.setMap(null); kept.st.dot.setMap(null); }
-        kept.st.radius = radius;
-        kept.st.ring = new G.Circle({ map: m, center, radius, strokeColor: tok('--accent'), strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: tok('--accent'), fillOpacity: 0.12, clickable: false });
-        kept.st.dot = new G.Circle({ map: m, center, radius: Math.max(6, radius / 14), strokeColor: tok('--surface') || '#fff', strokeWeight: 2, fillColor: tok('--accent'), fillOpacity: 1, clickable: false });
-        kept.retheme = () => { kept.st.ring.setOptions({ strokeColor: tok('--accent'), fillColor: tok('--accent') }); kept.st.dot.setOptions({ fillColor: tok('--accent'), strokeColor: tok('--surface') }); };
-      }
-      // Frame the geofence with some street around it.
-      const fit = () => { const b = kept.st.ring.getBounds(); if (b && el.current && el.current.clientWidth) m.fitBounds(b, 28); };
-      if (fresh) G.event.addListenerOnce(m, 'idle', () => { fit(); if (alive) setReady(true); });
-      else { fit(); setReady(true); }
-      const ro = new ResizeObserver(fit); ro.observe(el.current);
-      const host = el.current; cleanup = () => { ro.disconnect(); parkMap(kept.div, host); };
-    }).catch(() => {});
-    return () => { alive = false; cleanup(); };
-  }, [lat, lng, radius]);
+    const f = () => setD(isDark()); const mq = window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', f);
+    const mo = new MutationObserver(f); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => { mq.removeEventListener('change', f); mo.disconnect(); };
+  }, []);
+  return d;
+};
+export function SiteMap({ lat, lng, radius, name, height = 132 }) {
+  const dark = useDark();
+  const src = staticMapUrl({ lat, lng, radius, w: 400, h: height, dark });
+  const [state, setState] = useState('loading'); // loading | ready | failed
+  useEffect(() => { setState('loading'); }, [src]);
+  // Only fetch once the card is on screen or about to be (native lazy loading starts far too early).
+  const box = useRef(null); const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = box.current; if (!el || seen) return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect(); } }, { rootMargin: '200px 0px' });
+    io.observe(el); return () => io.disconnect();
+  }, [seen]);
   return (
-    <a className={'sitemap' + (ready ? ' ready' : '')} style={{ height }} href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" title={`Open ${name} in Google Maps`} aria-label={`Map of ${name}, geofence ${radius} metres. Opens Google Maps.`}>
+    <a ref={box} className="sitemap" style={{ height }} href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" aria-label={`Map of ${name}, geofence ${radius} metres. Opens Google Maps.`}>
       <svg viewBox="0 0 240 132" preserveAspectRatio="xMidYMid slice" className="sitemap-ph" aria-hidden="true">
         <rect width="240" height="132" className="geo-bg" />
         <path d="M0 86 L240 62 M70 0 L92 132 M170 0 L150 132" className="geo-road" />
         <circle cx="120" cy="68" r="34" className="geo-ring" /><circle cx="120" cy="68" r="4" className="geo-pin" />
       </svg>
-      <div ref={el} className="sitemap-map" />
+      {src && seen && state !== 'failed' && <img className={'sitemap-img' + (state === 'ready' ? ' ready' : '')} src={src} alt="" decoding="async" onLoad={() => setState('ready')} onError={() => setState('failed')} />}
+      {state === 'ready' && <span className="sitemap-dot" aria-hidden="true" />}
     </a>
   );
 }

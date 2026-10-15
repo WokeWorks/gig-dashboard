@@ -76,3 +76,23 @@ export const MAP_STYLES = {
   // reads as a surface, with roads picked out in --line-strong and soft teal water from the dark --accent.
   dark: style({ land: '#2A2524', built: '#312B2A', park: '#2C3A33', water: '#29453D', waterText: '#8CC7B4', road: '#3E3735', roadEdge: '#2A2524', highway: '#4F4644', highwayEdge: '#3A3331', text: '#CFC6C3', faint: '#A89F9C', halo: '#2A2524' }),
 };
+
+// Static map images for the location cards. A static image costs far less than a live map, is only fetched when
+// the card comes on screen, and the browser can keep it, so a return visit is often free.
+// Same palette as the live maps; the geofence is drawn to scale as a polygon. Needs the Static Maps API enabled
+// for the key; if it isn't, the image fails and the card keeps its drawn placeholder.
+const hex = (c) => c.replace('#', '');
+const ACCENT = { light: '1B5746', dark: '5CC2A2' }; // --accent in each theme
+const staticStyle = (rules) => rules.map((r) => 'style=' + encodeURIComponent([r.featureType && 'feature:' + r.featureType, r.elementType && 'element:' + r.elementType, ...r.stylers.flatMap((x) => Object.entries(x).map(([k, v]) => `${k}:${k === 'color' ? '0x' + hex(v) : v}`))].filter(Boolean).join('|'))).join('&');
+export function staticMapUrl({ lat, lng, radius, w, h, dark }) {
+  if (!GMAPS_KEY) return null;
+  // Zoom so the geofence takes about 60% of the image height, with street around it.
+  const mpp = (2 * radius) / (h * 0.6);
+  const zoom = Math.max(12, Math.min(18, Math.floor(Math.log2((156543.03392 * Math.cos((lat * Math.PI) / 180)) / mpp))));
+  const dLat = radius / 111320, dLng = radius / (111320 * Math.cos((lat * Math.PI) / 180));
+  const ring = Array.from({ length: 33 }, (_, i) => { const t = (i / 32) * 2 * Math.PI; return `${(lat + dLat * Math.sin(t)).toFixed(6)},${(lng + dLng * Math.cos(t)).toFixed(6)}`; }).join('|');
+  const a = ACCENT[dark ? 'dark' : 'light'];
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${w}x${h}&scale=2`
+    + `&path=${encodeURIComponent(`fillcolor:0x${a}26|color:0x${a}E6|weight:2|${ring}`)}`
+    + `&${staticStyle(dark ? MAP_STYLES.dark : MAP_STYLES.light)}&key=${encodeURIComponent(GMAPS_KEY)}`;
+}

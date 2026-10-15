@@ -179,10 +179,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .site-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
 .geo { width: 100%; height: 110px; display: block; }
 .sitemap { position: relative; display: block; overflow: hidden; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-.sitemap-ph, .sitemap-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sitemap-ph, .sitemap-img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .gm-canvas { width: 100%; height: 100%; }
-.sitemap-map { opacity: 0; transition: opacity .25s; pointer-events: none; }
-.sitemap.ready .sitemap-map { opacity: 1; }
+.sitemap-img { object-fit: cover; object-position: center; opacity: 0; transition: opacity .25s; }
+.sitemap-img.ready { opacity: 1; }
+.sitemap-dot { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2.5px var(--surface), 0 1px 4px rgba(0,0,0,.3); }
 .geo-bg { fill: var(--surface-2); } .geo-road { stroke: var(--line); stroke-width: 5; fill: none; }
 .geo-ring { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 2; } .geo-pin { fill: var(--accent); }
 
