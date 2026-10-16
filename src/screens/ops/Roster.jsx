@@ -337,6 +337,10 @@ export function Scheduling({ go }) {
             <button disabled={wk >= MAXWK} onClick={() => setWk(wk + 1)} aria-label="Next week"><Icon name="chevronRight" size={16} stroke={2.2} /></button>
           </div>
           {wk !== 0 && <button className="btn ghost" onClick={() => setWk(0)}>Today</button>}
+          {!empty && !narrow && <div className="ro-legend" aria-label="Key">
+            <span><i className="k-ok" />Clocked in</span><span><i className="k-miss" />Missed</span><span><i className="k-now" />In now</span>
+            <span><Icon name="sun" size={14} />Day</span><span><Icon name="moon" size={14} />Night</span><span><i className="k-cov" />Cover</span>
+          </div>}
           {empty ? <Pill>No roster yet</Pill> : wk < 0 ? <Pill>Read-only</Pill> : pub[wk] !== 'draft' && dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
         </div>
         <div className="toolbar rbar-filters">
@@ -410,10 +414,6 @@ export function Scheduling({ go }) {
         </section>}
       </div> :
       <section className="card flush roster-card">
-        <div className="ro-legend" aria-label="Key">
-          <span><i className="k-ok" />Clocked in</span><span><i className="k-miss" />Missed</span><span><i className="k-now" />In now</span>
-          <span><Icon name="sun" size={14} />Day</span><span><Icon name="moon" size={14} />Night</span><span><i className="k-cov" />Cover</span>
-        </div>
         <div className="table-wrap roster-wrap">
           <table className="roster">
             <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}<span className="dh-n">{onDay(i)} on</span>{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
@@ -431,7 +431,7 @@ export function Scheduling({ go }) {
                     <td className="rg-name" colSpan={8} style={{ zIndex: 11 + si * 2 }}><div className="rg-inner"><button className="rg-toggle" onClick={() => setCollapsed({ ...collapsed, [s.id]: !collapsed[s.id] })} aria-expanded={!isCol}>
                       <span className={'rg-caret' + (isCol ? ' col' : '')}><Icon name="down" size={14} stroke={2.2} /></span><b className="rg-loc" title={s.name}>{s.name}</b>{(isAdmin() || isCol) && <span className="muted small rg-sup">{[isAdmin() && MANAGERS.find((m) => m.sites.includes(s.id)).name, isCol && `${g.people.length} ${g.people.length === 1 ? 'employee' : 'employees'}`].filter(Boolean).join(' · ')}</span>}
                     </button>
-                    {locActs(s)}</div></td>
+                    <span className="rg-stats">{g.people.length} {g.people.length === 1 ? 'person' : 'people'} · {hrs} h this week</span>{locActs(s)}</div></td>
                   </tr>
                   {!isCol && rows.map(({ w, r }) => (
                     <tr key={w.id}>
