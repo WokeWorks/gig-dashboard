@@ -2,7 +2,7 @@ import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
 import { Drawer, Field, Toggle, useToast, Icon, Select, Phase, Spec } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
-import { LiveClock } from '../../lib/clock.jsx';
+import { useNow, clockTime } from '../../lib/clock.jsx';
 import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
@@ -18,16 +18,27 @@ const mgrOf = (sid) => MANAGERS.find((m) => m.sites.includes(sid));
 const byStatus = (a, b) => LV[a.status][2] - LV[b.status][2];
 const NEEDS = ['noshow', 'waiting', 'late'];
 const DOT = { noshow: 'crit', late: 'warn', waiting: 'warn', in: 'good', break: 'idle', upcoming: 'ring', covered: 'idle', absent: 'idle' };
-const line = (p) => ({
-  noshow: `Due ${p.start}, not in`,
-  waiting: `Due ${p.start}, not in yet`,
-  late: `In at ${hm(p.inAt)}, ${p.late} min late`,
-  in: `In at ${hm(p.inAt)} · until ${p.end}`,
-  break: `On break · until ${p.end}`,
-  upcoming: `${p.start} – ${p.end}`,
-  covered: `Covered · was due ${p.start}`,
-  absent: `Marked absent · was due ${p.start}`,
-})[p.status];
+const WHEN = { covered: 'Covered', absent: 'Marked absent' };
+const initials = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
+const span = (p) => (p.e0 > p.s0 ? p.e0 : p.e0 + 1440) - p.s0;
+// What sits on the right of a person's row: a picture of their time rather than a sentence about it.
+const Time = ({ p }) => {
+  if (WHEN[p.status]) return <span className="live-chip quiet">{WHEN[p.status]}</span>;
+  if (p.status === 'late') return <span className="live-chip" title={`In at ${hm(p.inAt)}`}>+{p.late}m</span>;
+  if (p.status === 'upcoming') return <span className="live-chip" title={`${p.start} to ${p.end}`}>{p.start}</span>;
+  if (p.status === 'in' || p.status === 'break') return (
+    <span className="live-shift" title={`${p.status === 'break' ? 'On break' : 'In at ' + hm(p.inAt)} · ${p.start} to ${p.end}`}>
+      <i className={p.status}><i style={{ width: `${Math.min(100, ((NOW_MIN - p.s0) / span(p)) * 100)}%` }} /></i><span>{p.end}</span>
+    </span>
+  );
+  return null;
+};
+const Face = ({ p }) => <span className={'live-face ' + DOT[p.status]} role="img" aria-label={`${p.w.name}, ${LV[p.status][0]}`}>{initials(p.w.name)}</span>;
+// The time large, the day small: the data is fixed to Wednesday 7 October, the time is live.
+function Clock() {
+  const t = useNow();
+  return <span className="live-clock" aria-label={`Live, Wednesday 7 October, ${clockTime(t)}`}><span className="lv-live" /><b>{clockTime(t)}</b><span>Wed 7 Oct</span></span>;
+}
 const places = (n) => (n === 1 ? 'at 1 location' : `at ${n} locations`);
 
 export function LiveBoard({ go }) {
@@ -61,17 +72,18 @@ export function LiveBoard({ go }) {
 
   const person = (p, withSite) => (
     <div key={p.w.id + p.start} className="live-person">
-      <span className={'sdot ' + DOT[p.status]} aria-label={LV[p.status][0]} />
+      <Face p={p} />
       <div className="live-who">
         <button className="live-name" onClick={() => go('workforce', { worker: p.w.id })}>{p.w.name}</button>
-        <span className="live-sub">{line(p)}{withSite && <> · <button className="live-site" onClick={() => pickSite(p.site.id)}>{short(p.site.name)}</button></>}</span>
-        {['noshow', 'waiting'].includes(p.status) && (
-          <span className="live-act">
-            <button className="btn sm ghost" onClick={() => setMark({ p, site: p.site, how: 'here', at: p.start, why: 'Phone not working', excused: false })}>Mark attendance</button>
-            {p.status === 'noshow' && <button className="btn sm" onClick={() => setCover(p)}>Cover</button>}
-          </span>
-        )}
+        {withSite ? <button className="live-site" onClick={() => pickSite(p.site.id)}>{short(p.site.name)}</button>
+          : ['noshow', 'waiting'].includes(p.status) && <span className="live-sub">Due {p.start}</span>}
       </div>
+      {['noshow', 'waiting'].includes(p.status) ? (
+        <span className="live-act">
+          <button className="icon-btn" title="Mark attendance" aria-label={`Mark attendance for ${p.w.name}`} onClick={() => setMark({ p, site: p.site, how: 'here', at: p.start, why: 'Phone not working', excused: false })}><Icon name="checkCircle" size={17} /></button>
+          {p.status === 'noshow' && <button className="btn sm" onClick={() => setCover(p)}>Cover</button>}
+        </span>
+      ) : <Time p={p} />}
     </div>
   );
   const group = (title, items, opts = {}) => (items.length > 0 || opts.empty) && (
@@ -87,7 +99,7 @@ export function LiveBoard({ go }) {
         <div className="live-title">
           <h1>Liveboard</h1>
           <span className="screen-tags"><Phase p={1} /><Spec s="5.1" /></span>
-          <span className="live-clock"><span className="lv-live" /><LiveClock /></span>
+          <Clock />
         </div>
         {isAdmin() && (
           <label className="live-mgr">
@@ -129,12 +141,14 @@ export function LiveBoard({ go }) {
                   {list.map((r) => (
                     <button key={r.s.id} className={'live-loc' + (hover === r.s.id ? ' hl' : '')} onClick={() => pickSite(r.s.id)}
                       onMouseEnter={() => setHover(r.s.id)} onMouseLeave={() => setHover((x) => (x === r.s.id ? null : x))} onFocus={() => setHover(r.s.id)} onBlur={() => setHover((x) => (x === r.s.id ? null : x))}>
-                      <span className={'sdot ' + (r.bad ? 'crit' : r.late ? 'warn' : r.due.length ? 'good' : 'ring')} />
                       <span className="live-who">
-                        <b className="live-name">{r.s.name}</b>
-                        <span className="live-sub">{[r.bad && `${r.bad} no-show`, r.late && `${r.late} late`, !r.bad && !r.late && (r.due.length ? 'All in' : 'No one due yet'), isAdmin() && mgrOf(r.s.id).name].filter(Boolean).join(' · ')}</span>
+                        <b className="live-name">{short(r.s.name)}</b>
+                        {/* one segment per person due: who is in, late or missing, at a glance */}
+                        <span className="live-segs" role="img" aria-label={`${r.inn} of ${r.due.length} in${r.bad ? `, ${r.bad} no-show` : ''}${r.late ? `, ${r.late} late` : ''}`}>
+                          {[...r.due].sort(byStatus).map((p) => <i key={p.w.id + p.start} className={DOT[p.status]} />)}
+                        </span>
                       </span>
-                      <span className="live-loc-n"><span><b>{r.inn}</b>/{r.due.length}</span><i className="live-meter"><i style={{ width: `${r.due.length ? (r.inn / r.due.length) * 100 : 0}%` }} /></i></span>
+                      <span className="live-loc-n"><b>{r.inn}</b>/{r.due.length}</span>
                     </button>
                   ))}
                 </section>
@@ -205,7 +219,7 @@ function Timeline({ row, go }) {
           return (
             <div key={p.w.id + p.start} className="live-tl-row">
               <button className="live-tl-who" onClick={() => go('workforce', { worker: p.w.id })}>
-                <span className={'sdot ' + DOT[p.status]} /><span><b>{p.w.name}</b><span className="live-sub">{LV[p.status][0]}{p.status === 'late' ? ` · ${p.late} min` : ''}</span></span>
+                <Face p={p} /><b>{p.w.name}</b>
               </button>
               <div className="live-tl-track">
                 <span className="live-tl-plan" style={{ left: X(p.s0), width: `calc(${X(Math.min(end, 1440))} - ${X(p.s0)})` }} />

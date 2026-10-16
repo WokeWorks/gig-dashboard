@@ -1811,7 +1811,8 @@ input[type=range] { accent-color: var(--accent); }
 .live { height: 100%; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 16px; }
 .live-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .live-title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.live-clock { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-size: 14px; font-weight: 500; }
+.live-clock { display: inline-flex; align-items: center; gap: 10px; height: 34px; padding: 0 14px 0 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 13px; font-weight: 500; }
+.live-clock b { color: var(--fg); font-size: 15px; font-weight: 500; }
 .live-mgr { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .live-mgr .select { min-width: 200px; }
 
@@ -1966,3 +1967,30 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
   .live-tl-hour:nth-child(even), .live-tl-key { display: none; }
   .overlay:not(.center) { align-items: flex-end; } .drawer { margin: 8px; width: 100%; height: auto; max-height: 88vh; }
 }
+
+/* Liveboard rows: a face, a name, a place, and a picture of their time on the right */
+.live-person { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; }
+.live-person > .live-act { margin: 0; }
+.live-face { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-mid); font-size: 12.5px; font-weight: 500; }
+.live-face::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid var(--bg); background: var(--faint); box-sizing: border-box; }
+.live-face.good::after { background: var(--accent); } .live-face.crit::after { background: var(--crit); } .live-face.warn::after { background: var(--warn); }
+.live-face.ring::after { background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--faint); }
+.live-name { font-size: 15.5px; }
+.live-site { align-self: flex-start; color: var(--muted); font-size: 14px; font-weight: 500; text-decoration: none; }
+.live-site:hover { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-strong); }
+.live-act { display: flex; align-items: center; gap: 8px; margin: 0; }
+.live-act .icon-btn { width: 34px; height: 34px; }
+.live-chip { padding: 0 10px; border-radius: 999px; background: var(--surface-2); color: var(--fg); font-size: 13.5px; font-weight: 500; line-height: 28px; white-space: nowrap; }
+.live-chip.quiet { background: none; color: var(--muted); }
+.live-shift { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13.5px; font-weight: 500; }
+.live-shift > i { display: block; width: 56px; height: 4px; border-radius: 2px; background: var(--line-strong); overflow: hidden; }
+.live-shift > i > i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.live-shift > i.break > i { background: var(--faint); }
+.live-loc { padding: 12px 10px; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; }
+.live-loc .live-who { gap: 8px; }
+.live-segs { display: flex; gap: 3px; }
+.live-segs i { width: 18px; height: 5px; border-radius: 3px; background: var(--line-strong); }
+.live-segs i.good { background: var(--accent); } .live-segs i.warn { background: var(--warn); } .live-segs i.crit { background: var(--crit); } .live-segs i.idle { background: var(--faint); }
+.live-loc-n { flex-direction: row; align-items: baseline; gap: 0; font-size: 14px; }
+.live-loc-n b { font-size: 18px; }
+.live-tl-who { gap: 10px; } .live-tl-who .live-face { width: 28px; height: 28px; font-size: 11px; }
