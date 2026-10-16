@@ -2109,3 +2109,12 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .sc-moon.sc-sun svg path, .sc-moon.sc-sun svg circle { fill: none; }
 .cell.O .cell-main, .cell.X .cell-main, .cell.A .cell-main { font-size: 14px; font-weight: 500; }
 .cell.today-in { --ring-r: 11px; } /* the dashed "in now" ring follows the rounder cells */
+
+/* Roster states as fills, not just outlines: clocked in teal, missed red; a cover is striped with a teal edge so it can't be mistaken for either */
+.cell.past-ok { background: rgba(0,204,188,.13) !important; border-color: rgba(0,204,188,.55) !important; }
+.cell.past-miss { background: rgba(255,107,107,.16) !important; border-color: rgba(255,107,107,.6) !important; }
+.cell.one.cover { background: repeating-linear-gradient(135deg, rgba(0,204,188,.17) 0 7px, rgba(0,204,188,.06) 7px 14px) !important; border-color: transparent !important; box-shadow: inset 3px 0 0 var(--accent); }
+.cell.one.cover .cov-link { color: var(--fg); font-weight: 500; }
+.ro-legend .k-ok { background: rgba(0,204,188,.13); border-color: rgba(0,204,188,.55); }
+.ro-legend .k-miss { background: rgba(255,107,107,.16); border-color: rgba(255,107,107,.6); }
+.ro-legend .k-cov { border-color: transparent; background: repeating-linear-gradient(135deg, rgba(0,204,188,.3) 0 3px, rgba(0,204,188,.08) 3px 6px); box-shadow: inset 2px 0 0 var(--accent); }
