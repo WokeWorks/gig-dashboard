@@ -2205,3 +2205,43 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .pub-opts { display: flex; flex-direction: column; gap: 8px; }
 .up-result .up-errs { background: none; border-radius: 0; overflow: visible; }
 .up-result .up-errs b { color: var(--fg); }
+
+/* ---------- day drawer: a strip of the day, then a card per shift ---------- */
+.dtl { display: flex; flex-direction: column; gap: 10px; }
+.dtl-strip { position: relative; height: 34px; margin: 18px 0 4px; border-radius: 8px; background: var(--surface-2); background-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / 22 * 3 - 1px), var(--line-strong) calc(100% / 22 * 3 - 1px) calc(100% / 22 * 3)); }
+.dtl-tick { position: absolute; top: -18px; transform: translateX(-50%); color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.dtl-strip i { position: absolute; top: 8px; bottom: 8px; border-radius: 5px; background: var(--accent); }
+.dtl-strip i.away { background: var(--ink-mid); }
+.dtl-strip i.ghost { background: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.dtl-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.dtl-card.away { box-shadow: inset 3px 0 0 var(--ink-mid); }
+.dtl-card.ghost { background: none; border-style: dashed; border-color: var(--accent-border); box-shadow: none; }
+.dtl-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.dtl-top b { font-size: 20px; font-weight: 500; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+.dtl-top small { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--line-strong); color: var(--ink-mid); font-size: 12px; vertical-align: 3px; }
+.dtl-meta { color: var(--muted); font-size: 14px; font-weight: 500; }
+.dtl-acts { display: flex; gap: 6px; flex: none; }
+.dtl-gap { align-self: center; padding: 2px 10px; border-radius: 999px; color: var(--muted); font-size: 13px; font-weight: 500; background: var(--surface); }
+.dtl .vday-status { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; margin-top: 2px; padding: 4px 10px; border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 13.5px; font-weight: 500; }
+.dtl .vday-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.dtl .vday-status.good::before { background: var(--accent); } .dtl .vday-status.crit::before { background: var(--crit); } .dtl .vday-status.warn::before { background: var(--warn); }
+.dtl .vday-note { color: var(--ink-mid); font-size: 13.5px; font-weight: 500; }
+.ro-note { margin-top: 6px; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.ro-note .small { font-size: 14px; color: var(--ink-mid); font-weight: 500; }
+/* day drawer: checks as a dotted list, copy days as filled circles, links as quiet buttons */
+.ds-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ds-checks li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.ds-checks .sdot { margin-top: 7px; }
+.ds-checks li > span:last-child { display: flex; flex-direction: column; } .ds-checks b { font-weight: 500; } .ds-checks li > span:last-child > span { color: var(--muted); font-weight: 500; }
+.ds-item.editing { border-radius: 14px; }
+.ds-form-title { font-size: 16px; font-weight: 500; }
+.wk-day { width: 40px; height: 40px; border: 0; background: var(--surface-2); color: var(--ink-mid); font-size: 14px; font-weight: 500; }
+.wk-day:hover:not(:disabled) { background: var(--line-strong); color: var(--fg); border: 0; }
+.wk-day.on { background: var(--fg); color: #000; }
+.rep-days .wk-day.same { border: 0; box-shadow: inset 0 0 0 1.5px var(--line-strong); background: none; }
+.ds-copy-head b { font-size: 15px; font-weight: 500; }
+.ds-foot { gap: 10px; }
+.ds-foot .linkbtn, .ds-copy-head .linkbtn { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--fg); font-size: 14px; font-weight: 500; text-decoration: none; }
+.ds-foot .linkbtn:hover, .ds-copy-head .linkbtn:hover { background: var(--surface-2); }
+.ds-copy-head .linkbtn { padding: 5px 12px; }
+.ds-add { height: 46px; border-radius: 14px; color: var(--ink-mid); font-size: 15px; font-weight: 500; }

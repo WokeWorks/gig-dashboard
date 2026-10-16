@@ -45,35 +45,38 @@ export function MiniBar({ list, home }) {
   );
 }
 
-// The day as a vertical calendar: hours down the left, one block per shift. Only the hours around the
-// day's shifts are shown (at least 8). Times after midnight count as the same working day.
+// The day: a slim strip from 05:00 to 03:00 showing where the shifts sit, then one card per shift with its times,
+// length, place and status, and the gap (and travel) between shifts. Times after midnight count as the same working day.
 export function DayTimeline({ list, home, ghost, acts, note }) {
-  const H = 24; // px per hour
   const abs = (st) => { const m = toMin(st); return m < DAY0 ? m + 1440 : m; };
   const items = [...list.map((x) => ({ x, ghost: false })), ...(ghost ? [{ x: ghost, ghost: true }] : [])]
     .map((it) => { const s0 = abs(it.x[1]); return { ...it, s0, e0: s0 + spanOf(tplOf(it.x[0])) * 60 }; })
     .sort((a, b) => a.s0 - b.s0);
   if (!items.length) return null;
-  let from = Math.floor(Math.min(...items.map((i) => i.s0)) / 60) - 1, to = Math.ceil(Math.max(...items.map((i) => i.e0)) / 60) + 1;
-  if (to - from < 8) { const pad = 8 - (to - from); from -= Math.floor(pad / 2); to += Math.ceil(pad / 2); }
-  const y = (m) => (m / 60 - from) * H;
-  const hours = Array.from({ length: to - from + 1 }, (_, k) => from + k);
+  const at = (m) => `${Math.max(0, Math.min(1, (m - DAY0) / DAYLEN)) * 100}%`;
   return (
-    <div className="vday" style={{ height: (to - from) * H }} role="img" aria-label="Shifts across the day">
-      {hours.map((h) => <div key={h} className="vday-hr" style={{ top: y(h * 60) }}><span>{String(h % 24).padStart(2, '0')}:00</span></div>)}
-      {items.slice(1).map((b, k) => { const a = items[k]; const gap = b.s0 - a.e0; if (gap <= 0) return null; const sa = a.x[2] || home, sb = b.x[2] || home; const tr = travelMins(sa, sb, TRAVEL);
-        return <div key={'g' + k} className="vday-gap" style={{ top: y(a.e0), height: y(b.s0) - y(a.e0) }}><span>{Math.floor(gap / 60) ? `${Math.floor(gap / 60)} h` : ''}{gap % 60 ? ` ${gap % 60} min` : ''} gap{tr ? ` · ${tr} min travel` : ''}</span></div>; })}
-      {items.map((it, k) => { const site = it.x[2] || home; const T = tplOf(it.x[0]); const e = endOf(it.x[1], spanOf(T));
+    <div className="dtl">
+      <div className="dtl-strip" role="img" aria-label="Where the shifts sit in the day">
+        {[6, 9, 12, 15, 18, 21, 24].map((h) => <span key={h} className="dtl-tick" style={{ left: at(h * 60) }}>{String(h % 24).padStart(2, '0')}</span>)}
+        {items.map((it, k) => <i key={k} className={(it.ghost ? 'ghost' : '') + ((it.x[2] || home) !== home ? ' away' : '')} style={{ left: at(it.s0), width: `calc(${at(it.e0)} - ${at(it.s0)})` }} />)}
+      </div>
+      {items.map((it, k) => {
+        const site = it.x[2] || home; const T = tplOf(it.x[0]); const e = endOf(it.x[1], spanOf(T)); const prev = items[k - 1];
+        const gap = prev ? it.s0 - prev.e0 : 0; const tr = prev ? travelMins(prev.x[2] || home, site, TRAVEL) : 0;
         return (
-          <div key={k} className={'vday-blk' + (site !== home ? ' away' : '') + (it.ghost ? ' ghost' : '')} style={{ top: y(it.s0), height: Math.max(40, y(it.e0) - y(it.s0) - 2) }}>
-            <div className="vday-txt">
-              <b className="mono">{it.x[1]} – {e.time}{e.nextDay ? ' (+1)' : ''}</b>
-              <span>{tplLabel(T)} · {siteOf(site).name}{it.x[3] ? ` · covering ${WORKERS.find((w) => w.id === it.x[3]).name}` : ''}</span>
+          <React.Fragment key={k}>
+            {prev && gap > 0 && <div className="dtl-gap">{Math.floor(gap / 60) ? `${Math.floor(gap / 60)} h` : ''}{gap % 60 ? ` ${gap % 60} min` : ''} gap{tr ? ` · ${tr} min travel` : ''}</div>}
+            <div className={'dtl-card' + (site !== home ? ' away' : '') + (it.ghost ? ' ghost' : '')}>
+              <div className="dtl-top">
+                <b>{it.x[1]} – {e.time}{e.nextDay && <small>+1</small>}</b>
+                {!it.ghost && acts && <div className="dtl-acts">{acts(it.x)}</div>}
+              </div>
+              <span className="dtl-meta">{tplLabel(T)} · {siteOf(site).name}{it.x[3] ? ` · covering ${WORKERS.find((w) => w.id === it.x[3]).name}` : ''}</span>
               {!it.ghost && note && note(it.x)}
             </div>
-            {!it.ghost && acts && <div className="vday-acts">{acts(it.x)}</div>}
-          </div>
-        ); })}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
@@ -709,7 +712,7 @@ export function Scheduling({ go }) {
               <Field label="Location"><Select id={pre + '-site'} className="input" value={v.site} onChange={(e) => set({ ...v, site: e.target.value })}>{SITES.map((y) => <option key={y.id} value={y.id}>{y.name}{y.id === site ? ' (theirs)' : ''}</option>)}</Select></Field>
             </div>
           );
-          const checkLines = (cs) => cs.map(([tone, tag, msg], k) => <div key={k} className="row-line"><Pill tone={tone}>{tag}</Pill><span className="small">{msg}</span></div>);
+          const checkLines = (cs) => cs.length > 0 && <ul className="ds-checks">{cs.map(([tone, tag, msg], k) => <li key={k}><span className={'sdot ' + tone} /><span><b>{tag}</b><span>{msg}</span></span></li>)}</ul>;
           return <>
             {cur === 'L' && (() => { const cv = covBy(dayWorker.id, day.c); const sh0 = usual(row)[0]; return (
               <section className={'cv-status' + (cv ? ' ok' : '')}>
