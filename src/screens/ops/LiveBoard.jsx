@@ -177,18 +177,25 @@ export function LiveBoard({ go }) {
         </aside>
       </div>
 
-      <Drawer open={!!mark} onClose={() => setMark(null)} title={mark && `Mark attendance · ${mark.p.w.name}`} sub={mark && `${mark.site.name} · due ${mark.p.start}`}>
+      <Drawer open={!!mark} onClose={() => setMark(null)} title="Mark attendance">
         {mark && <>
+          <div className="ma-who"><Face p={mark.p} /><div><b>{mark.p.w.name}</b><span>Due {mark.p.start} at {short(mark.site.name)}</span></div></div>
           <div className="ma-opts" role="radiogroup" aria-label="Attendance">
-            {[['here', 'They are here', 'Clocking in failed, but they are working'], ['absent', 'They are not coming', 'Close the shift as absent']].map(([k, l, sub]) => (
-              <button key={k} role="radio" aria-checked={mark.how === k} className={'ob-opt' + (mark.how === k ? ' on' : '')} onClick={() => setMark({ ...mark, how: k })}><b>{l}</b><span className="small muted">{sub}</span></button>
+            {[['here', 'checkCircle', 'They are here', 'Clocking in failed, but they are working'], ['absent', 'x', 'They are not coming', 'Close the shift as absent']].map(([k, ic, l, sub]) => (
+              <button key={k} role="radio" aria-checked={mark.how === k} className={'ob-opt ma-opt' + (mark.how === k ? ' on' : '')} onClick={() => setMark({ ...mark, how: k })}>
+                <span className="ma-ic"><Icon name={ic} size={20} /></span><span className="ma-txt"><b>{l}</b><small>{sub}</small></span><span className="ma-radio" />
+              </button>
             ))}
           </div>
-          {mark.how === 'here' ? <div className="form-grid">
+          {mark.how === 'here' ? <>
             <Field label="Arrived at"><input type="time" className="input" value={mark.at} onChange={(e) => setMark({ ...mark, at: e.target.value })} /></Field>
-            <Field label="Why they couldn't clock in"><Select className="input" value={mark.why} onChange={(e) => setMark({ ...mark, why: e.target.value })}>{['Phone not working', 'Face check failing', 'Location not detected', 'No phone with them', 'Other'].map((x) => <option key={x}>{x}</option>)}</Select></Field>
-          </div> : <Toggle id="ma-exc" checked={mark.excused} onChange={(v) => setMark({ ...mark, excused: v })} label="Excused (they called in, emergency)" />}
-          <div className="small muted">Shows on their timesheet as marked by you, with the reason, so it can be told apart from a real clock-in.</div>
+            <div className="field"><span className="field-label">Why they couldn't clock in</span>
+              <div className="ma-chips" role="radiogroup" aria-label="Why they couldn't clock in">
+                {['Phone not working', 'Face check failing', 'Location not detected', 'No phone with them', 'Other'].map((x) => <button key={x} role="radio" aria-checked={mark.why === x} className={'ma-chip' + (mark.why === x ? ' on' : '')} onClick={() => setMark({ ...mark, why: x })}>{x}</button>)}
+              </div>
+            </div>
+          </> : <div className="ma-row"><Toggle id="ma-exc" checked={mark.excused} onChange={(v) => setMark({ ...mark, excused: v })} label={<><b>Excused</b><small>They called in, or there's an emergency</small></>} /></div>}
+          <p className="ma-note"><Icon name="document" size={17} />Shows on their timesheet as marked by you, with the reason, so it can be told apart from a real clock-in.</p>
           <div className="drawer-actions"><button className="btn ghost" onClick={() => setMark(null)}>Cancel</button><span className="grow" /><button className="btn" onClick={() => { const n = mark.p.w.name.split(' ')[0]; setHandled({ ...handled, [mark.p.w.id]: mark.how === 'here' ? 'in' : 'absent' }); toast(mark.how === 'here' ? `${n} marked in at ${mark.at} · ${mark.why.toLowerCase()}` : `${n} marked absent${mark.excused ? ' (excused)' : ''}`); setMark(null); }}>{mark.how === 'here' ? 'Mark as here' : 'Mark as absent'}</button></div>
         </>}
       </Drawer>
