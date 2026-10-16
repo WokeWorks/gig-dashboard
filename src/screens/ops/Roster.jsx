@@ -104,7 +104,6 @@ export function Scheduling({ go }) {
   const [rep, setRep] = useState([]); // "copy this day to" days in the day drawer
   const [adding, setAdding] = useState(false); // the add-a-shift form in the day drawer is open
   const [pubOpt, setPubOpt] = useState({ notify: true, ack: true });
-  const [view, setView] = useState('board'); // board: one location's week as day columns · people: everyone's week as rows
   const has = (w) => !!weeks[w];
   const groups = fixedOff(weeks[wk] || emptyWeek());
   const empty = !has(wk);
@@ -323,114 +322,6 @@ export function Scheduling({ go }) {
     const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay || toMin(st) >= 17 * 60;
     return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}><span className={'sc-moon filled' + (night ? '' : ' sc-sun')} title={night ? 'Night shift' : 'Day shift'} aria-label={night ? 'Night shift' : 'Day shift'}><Icon name={night ? 'moon' : 'sun'} size={13} /></span><span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
   };
-  // ---------- Board: one location's week as seven day columns ----------
-  const short = (n) => n.replace(/^(Spinneys|Carrefour) /, '');
-  const nameShort = (n) => { const [a, b] = n.split(' '); return b ? `${a} ${b[0]}.` : a; };
-  const staffed = (sid, ci) => groups.reduce((n, g) => n + g.cells.filter((row) => Array.isArray(row[ci]) && row[ci].some((x) => (x[2] || g.site) === sid)).length, 0);
-  const bsite = view === 'board' ? (loc === 'all' ? (mine[0] || {}).id : loc) : null;
-  const night = ([t, st]) => endOf(st, spanOf(tplOf(t))).nextDay || toMin(st) >= 17 * 60;
-  // Everything one location has on one day: shift cards, people on leave, people off, people not rostered.
-  const dayAt = (sid, ci) => {
-    const out = { cards: [], leave: [], off: [], none: [], avail: [] };
-    if (sid === 'pool') {
-      poolRows.forEach(({ w, r }) => { const c = PG.cells[r][ci];
-        if (Array.isArray(c)) c.forEach((x, k) => out.cards.push({ w, g: 'pool', r, x, k, at: x[2] }));
-        else (c === 'A' ? out.avail : c === 'O' ? out.off : c === 'L' ? out.leave : out.none).push({ w, g: 'pool', r }); });
-    } else {
-      const g = G(sid);
-      g.people.forEach((id, r) => { const w = W(id); if (!matchAt(sid)(w)) return; const c = g.cells[r][ci];
-        if (Array.isArray(c)) c.filter((x) => !x[2] || x[2] === sid).forEach((x, k) => out.cards.push({ w, g: sid, r, x, k }));
-        else (c === 'O' ? out.off : c === 'L' ? out.leave : out.none).push({ w, g: sid, r }); });
-      visitorsOf(sid).filter((v) => matchAt(sid)(v.w)).forEach((v) => v.days[ci].forEach((x, k) => out.cards.push({ w: v.w, g: v.g, r: v.r, x, k, from: v.g })));
-    }
-    out.cards.sort((a, b) => toMin(a.x[1]) - toMin(b.x[1]));
-    return out;
-  };
-  const card = (c, ci, sid) => {
-    const { w, g, r, x, k } = c; const e = endOf(x[1], spanOf(tplOf(x[0]))); const nt = night(x);
-    const st = segCls(sid === 'pool' ? 'pool' : sid, w.id, ci, k);
-    const cv = ci >= nowIdx && !x[3] && coverFor(w.id, ci, x);
-    return (
-      <div key={w.id + x[1] + k} className="bc-wrap">
-        <button className={'bc' + st + (x[3] ? ' cover' : '')} onClick={() => openDay(g, r, ci)} {...(x[3] ? covHover(covKey(x[3], ci)) : cv ? covHover(covKey(w.id, ci)) : {})}
-          title={[pastTitle(sid, w.id, ci, [x]), tplLabel(tplOf(x[0])), e.nextDay && 'ends after midnight'].filter(Boolean).join(' · ')}>
-          {ring(st.includes('today-in'))}
-          <span className="bc-top"><span className="bc-av" aria-hidden="true">{ini(w.name)}</span><span className="bc-name">{nameShort(w.name)}</span></span>
-          <span className="bc-time"><Icon name={nt ? 'moon' : 'sun'} size={13} className={nt ? 'bc-night' : 'bc-day'} />{x[1]}–{e.time}</span>
-          {x[3] && <span className="bc-sub">For {first(W(x[3]).name)}</span>}
-          {cv && <span className="bc-sub">Covered by {first(cv.w.name)}</span>}
-          {c.from && c.from !== 'pool' && <span className="bc-sub">From {short(siteOf(c.from).name)}</span>}
-          {c.at && <span className="bc-sub"><Icon name="pin" size={11} />{short(siteOf(c.at).name)}</span>}
-        </button>
-        {rowActs(g, r, w)}
-      </div>
-    );
-  };
-  const leaveCard = ({ w, g, r }, ci) => { const cv = covBy(w.id, ci); return (
-    <button key={'l' + w.id} className={'bc leave' + (!cv && ci >= nowIdx ? ' open' : '')} onClick={() => openDay(g, r, ci)} {...covHover(cv && covKey(w.id, ci))}>
-      <span className="bc-top"><span className="bc-av" aria-hidden="true">{ini(w.name)}</span><span className="bc-name">{nameShort(w.name)}</span></span>
-      <span className="bc-time">On leave</span>
-      <span className="bc-sub">{cv ? `Covered by ${first(cv.w.name)}` : ci >= nowIdx ? 'Not covered' : 'Approved'}</span>
-    </button>
-  ); };
-  const faces = (list, ci, label) => list.length > 0 && (
-    <div className="bfoot-row"><span>{label}</span><span className="bfaces">
-      {list.slice(0, 5).map(({ w, g, r }) => <button key={w.id} className="bface" title={`${w.name} · ${label.toLowerCase()}`} aria-label={`${w.name}, ${label.toLowerCase()}`} onClick={() => openDay(g, r, ci)}>{ini(w.name)}</button>)}
-      {list.length > 5 && <span className="bface more">+{list.length - 5}</span>}
-    </span></div>
-  );
-  // What needs attention at this location this week.
-  const issuesAt = (sid) => {
-    if (sid === 'pool') return [];
-    const g = G(sid), out = [];
-    g.people.forEach((id, r) => { const row = g.cells[r]; if (row.filter((c) => Array.isArray(c)).length > 7 - offPerWeek()) out.push(['warn', `${W(id).name} has no weekly off`]); });
-    g.people.forEach((id, r) => g.cells[r].forEach((c, ci) => { if (c === 'L' && ci >= nowIdx && !covBy(id, ci)) out.push(['warn', `${W(id).name}'s leave on ${days[ci].split(' ')[0]} isn't covered`, () => openDay(sid, r, ci)]); }));
-    return out;
-  };
-  const board = () => {
-    const sid = bsite; if (!sid) return <section className="card wk-empty"><p className="muted">No locations match.</p></section>;
-    const isP = sid === 'pool', S = isP ? null : siteOf(sid), team = isP ? 0 : G(sid).people.length, iss = issuesAt(sid);
-    return (
-      <div className="rb">
-        <aside className="rb-rail" aria-label="Locations">
-          {[...mine, ...(poolRows.length ? [{ id: 'pool', name: 'Floaters' }] : [])].map((x) => (
-            <button key={x.id} className={'rb-loc' + (x.id === sid ? ' on' : '')} onClick={() => setLoc(x.id)} aria-current={x.id === sid ? 'true' : undefined}>
-              <span className="rb-loc-name"><b>{x.id === 'pool' ? 'Floaters' : short(x.name)}</b><span>{x.id === 'pool' ? `${poolRows.length} people` : (MANAGERS.find((m) => m.sites.includes(x.id)) || {}).name}</span></span>
-              {x.id !== 'pool' && <span className="rb-spark" role="img" aria-label={`Staffing this week at ${x.name}`}>
-                {days.map((d, ci) => { const n = staffed(x.id, ci), tm = Math.max(G(x.id).people.length, 1); return <i key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''} style={{ height: `${Math.max(14, Math.min(1, n / tm) * 100)}%` }} title={`${d}: ${n} on`} />; })}
-              </span>}
-            </button>
-          ))}
-        </aside>
-        <section className="rb-main">
-          <header className="rb-head">
-            <div><h2>{isP ? 'Floaters' : S.name}</h2><span className="muted">{isP ? 'Cover across every location' : [(MANAGERS.find((m) => m.sites.includes(sid)) || {}).name, S.hours, `${team} in the team`].filter(Boolean).join(' · ')}</span></div>
-            {!isP && locActs(S)}
-          </header>
-          {iss.length > 0 && <div className="rb-issues">{iss.map(([t, txt, on], i) => on
-            ? <button key={i} className="rb-issue" onClick={on}><span className={'sdot ' + t} />{txt}</button>
-            : <span key={i} className="rb-issue"><span className={'sdot ' + t} />{txt}</span>)}</div>}
-          <div className="rb-week">
-            {days.map((d, ci) => { const D = dayAt(sid, ci), n = D.cards.length, today = wk === 0 && ci === TODAY, past = ci < nowIdx; return (
-              <div key={d} className={'rb-day' + (today ? ' today' : '') + (past ? ' past' : '')} style={{ '--i': ci }}>
-                <div className="rb-dh">
-                  <span className="rb-dw">{d.split(' ')[0]}{today && <em>Today</em>}</span><b>{d.split(' ')[1]}</b>
-                  {!isP && <span className="rb-cov"><span>{n} on<small> of {team}</small></span><i><i style={{ width: `${Math.min(1, n / Math.max(team, 1)) * 100}%` }} /></i></span>}
-                  {isP && <span className="rb-cov"><span>{n}<small> covering</small></span></span>}
-                </div>
-                <div className="rb-cards">
-                  {D.cards.map((c) => card(c, ci, sid))}
-                  {D.leave.map((l) => leaveCard(l, ci))}
-                  {!D.cards.length && !D.leave.length && <span className="rb-none">Nobody rostered</span>}
-                </div>
-                <div className="rb-foot">{faces(D.off, ci, 'Off')}{faces(D.avail, ci, 'Free')}{faces(D.none, ci, 'Not rostered')}</div>
-              </div>
-            ); })}
-          </div>
-        </section>
-      </div>
-    );
-  };
   return (
     <>
       <ScreenHeader title="Roster" phase={1} spec="5.4" actions={<>
@@ -449,14 +340,13 @@ export function Scheduling({ go }) {
           {empty ? <Pill>No roster yet</Pill> : wk < 0 ? <Pill>Read-only</Pill> : pub[wk] !== 'draft' && dirty[wk] ? <Pill tone="info">{dirty[wk]} unpublished {dirty[wk] === 1 ? 'change' : 'changes'}</Pill> : null}
         </div>
         <div className="toolbar rbar-filters">
-        <div className="seg rb-view" role="tablist" aria-label="View">{[['board', 'Board'], ['people', 'People']].map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => { setView(k); if (k === 'people') setLoc('all'); }}>{l}</button>)}</div>
         <label className="search"><Icon name="search" size={16} /><input id="sch-q" className="input" type="search" placeholder="Search employees or locations…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search employees or locations" /></label>
         {isAdmin() && <Select id="sch-mgr" className="input" value={mgr} onChange={(e) => { setMgr(e.target.value); setLoc('all'); }} aria-label="Manager">
           <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.sites.length} locations</option>)}
         </Select>}
-        {view === 'people' && <Select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
+        <Select id="sch-loc" className="input" value={loc} onChange={(e) => setLoc(e.target.value)} aria-label="Location">
           <option value="all">All locations</option>{mine.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </Select>}
+        </Select>
         <Select id="sch-ven" className="input" value={ven} onChange={(e) => setVen(e.target.value)} aria-label="Vendor">
           <option value="all">All vendors</option>{VENDORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </Select>
@@ -519,7 +409,7 @@ export function Scheduling({ go }) {
           ); })}
         </section>}
       </div> :
-      view === 'board' ? board() : <section className="card flush roster-card">
+      <section className="card flush roster-card">
         <div className="ro-legend" aria-label="Key">
           <span><i className="k-ok" />Clocked in</span><span><i className="k-miss" />Missed</span><span><i className="k-now" />In now</span>
           <span><Icon name="sun" size={14} />Day</span><span><Icon name="moon" size={14} />Night</span><span><i className="k-cov" />Cover</span>
