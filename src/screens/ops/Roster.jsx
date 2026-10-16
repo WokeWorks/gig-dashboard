@@ -313,10 +313,17 @@ export function Scheduling({ go }) {
     canCopy && { icon: 'copy', label: 'Copy week forward', sub: `Everyone at ${s.name.replace(/^(Spinneys|Carrefour) /, '')}`, on: () => openCopy(wk + 1, { from: wk, sites: [s.id], stay: true }) },
     { icon: 'camera', label: 'Save week as picture', sub: 'To share on WhatsApp', on: () => setShot({ kind: 'loc', sid: s.id }) },
   ]);
+  // A shift: its times, and a thin bar showing where it sits in the day (05:00 to 05:00), so day and night shifts
+  // read apart at a glance.
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
-    const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay;
-    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}>{night && <span className="sc-moon filled" title="Overnight: ends after midnight" aria-label="Overnight shift"><Icon name="moon" size={12} /></span>}<span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
+    const len = tplOf(t).base + (tplOf(t).brk || 0), e = endOf(st, len);
+    const at = ((toMin(st) - DAY0 + 1440) % 1440) / 1440;
+    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}>
+      <span className="sc-time mono" title={`${tplLabel(tplOf(t))}${e.nextDay ? ' · ends after midnight' : ''}`}><span>{st}</span><span className="sc-to">to</span><span>{e.time}</span></span>
+      <span className="sc-bar" aria-hidden="true"><i style={{ left: `${at * 100}%`, width: `${Math.min(len / 24, 1 - at) * 100}%` }} /></span>
+      {away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}
+    </span>;
   };
   return (
     <>
@@ -408,7 +415,7 @@ export function Scheduling({ go }) {
       <section className="card flush roster-card">
         <div className="table-wrap roster-wrap">
           <table className="roster">
-            <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
+            <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}><span className="dh-w">{d.split(' ')[0]}</span><span className="dh-d">{d.split(' ')[1]}</span>{wk === 0 && i === TODAY && <span className="sr-only">, today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
             {shown.map((s, si) => {
               const g = G(s.id);
               const rows = g.people.map((id, r) => ({ w: W(id), r })).filter((x) => matchAt(s.id)(x.w));
