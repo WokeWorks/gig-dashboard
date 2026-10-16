@@ -30,11 +30,11 @@ export function AlertsHost({ on, children }) {
             <button key={t} role="tab" aria-selected={type === t} className={'ma-chip' + (type === t ? ' on' : '')} onClick={() => { setType(t); setSel(null); }}>{label(t)}<span className="nt-chip-n">{n}</span></button>
           ); })}
         </div>
-        <ul className="nt-list">
-          {rows.map((a) => {
+        <ul className="nt-list" key={type}>{/* keyed by filter, so the list plays in again when it changes */}
+          {rows.map((a, i) => {
             const w = WORKERS.find((x) => x.id === a.worker), on = sel === a.id;
             return (
-              <li key={a.id} className={'nt-item' + (a.open ? '' : ' done') + (on ? ' on' : '')}>
+              <li key={a.id} className={'nt-item' + (a.open ? '' : ' done') + (on ? ' on' : '')} style={{ '--i': i }}>
                 <button className="nt-head" aria-expanded={on} onClick={() => setSel(on ? null : a.id)}>
                   <span className={'sdot ' + (a.open ? DOT[a.sev] : 'ring')} />
                   <span className="nt-what"><b>{label(a.type)}</b><span>{w.name} · {siteOf(a.site).name.replace(/^(Spinneys|Carrefour) /, '')}</span></span>
@@ -65,7 +65,7 @@ export function Bell() {
   if (!c) return null;
   return (
     <button className="bell icon-btn" onClick={c.show} aria-label={`Notifications, ${c.count} open`} title="Notifications">
-      <Icon name="bell" size={18} />{c.count > 0 && <span className={'bell-n' + (c.urgent ? ' urgent' : '')}>{c.count}</span>}
+      <Icon name="bell" size={18} />{c.count > 0 && <span key={c.count} className={'bell-n' + (c.urgent ? ' urgent' : '')}>{c.count}</span>}
     </button>
   );
 }

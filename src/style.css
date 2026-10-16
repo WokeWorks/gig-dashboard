@@ -2058,3 +2058,20 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .nt-body p { margin: 0; color: var(--ink-mid); font-size: 15px; }
 .nt-act { display: flex; flex-wrap: wrap; gap: 8px; }
 .nt-route { color: var(--muted); font-size: 13.5px; font-weight: 500; }
+
+/* chips: filled, and the chosen one solid white so it reads at a glance */
+.ma-chip { border-color: transparent; background: var(--surface-2); color: var(--ink-mid); }
+.ma-chip:hover { background: var(--line-strong); color: var(--fg); }
+.ma-chip.on { border-color: transparent; background: var(--fg); color: #000; }
+.nt-chip-n { color: var(--faint); } .ma-chip:hover .nt-chip-n { color: var(--muted); } .ma-chip.on .nt-chip-n { color: rgba(0,0,0,.5); }
+
+/* notifications motion: the list plays in, an opened alert eases down, the badge pops when it changes */
+@keyframes nt-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes nt-open { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes bell-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } }
+.nt-item { animation: nt-in .36s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 35ms + 80ms); }
+.nt-body { animation: nt-open .24s var(--ease) backwards; }
+.nt-item.done { transition: opacity .3s; opacity: .8; }
+.bell-n { animation: bell-pop .4s var(--ease); }
+.nt-chips .ma-chip { transition: background-color .18s, color .18s, transform .12s var(--ease); }
+.nt-chips .ma-chip:active { transform: scale(.96); }
