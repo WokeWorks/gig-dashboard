@@ -61,13 +61,18 @@ export function CoverDrawer({ open, onClose, ctx, onAssign, onSkip, skipLabel })
   const shown = all ? list : list.slice(0, 6);
   return (
     <Drawer open onClose={onClose} title={`Cover ${absW.name.split(' ')[0]}`} sub={`${dayLabel} · ${sh[1]} to ${endOf(sh[1], T.base + (T.brk || 0)).time} · ${siteOf(site).name}`}>
+      {ctx.why && <p className="cv-why"><span className="sdot crit" />{ctx.why}</p>}
       {list.length === 0 && <p className="small muted">Nobody is free for this shift.</p>}
-      {shown.map((x, i) => (
-        <div key={x.w.id} className="cv-row">
-          <div className="cv-who"><b>{x.w.name}</b><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.fl ? 'Floater' : 'Day off'}{x.km != null ? ` · ${x.km} km` : ''}{x.c === 'O' && <span className="warnt"> · Weekly off</span>}</span></div>
-          <button className={'btn sm' + (i ? ' ghost' : '')} onClick={() => onAssign(x)}>Assign</button>
-        </div>
-      ))}
+      {/* Ranked as the cover engine orders them; the first is the one to pick unless there's a reason not to. */}
+      <ol className="cv-list">
+        {shown.map((x, i) => (
+          <li key={x.w.id} className={'cv-row' + (i ? '' : ' top')}>
+            <span className="cv-rank">{i + 1}</span>
+            <div className="cv-who"><b>{x.w.name}{!i && <em>Best match</em>}</b><span className="small muted"><span className="vtag">{vendorOf(x.w.vendor).code}</span> {x.fl ? 'Floater' : 'Day off'}{x.km != null ? ` · ${x.km} km away` : ''}{x.c === 'O' && ' · on their weekly off'}</span></div>
+            <button className={'btn sm' + (i ? ' ghost' : '')} onClick={() => onAssign(x)}>Assign</button>
+          </li>
+        ))}
+      </ol>
       {!all && list.length > 6 && <button className="linkbtn small cv-toggle" onClick={() => setAll(true)}>Show {list.length - 6} more</button>}
       {onSkip && <div className="feed-actions"><button className="btn ghost" onClick={onSkip}>{skipLabel || 'Leave uncovered'}</button></div>}
     </Drawer>

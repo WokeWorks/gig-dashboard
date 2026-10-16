@@ -4,8 +4,8 @@ import * as Vd from './vendor.jsx';
 import { Forms } from './forms.jsx';
 import { PhoneApp } from './phone.jsx';
 import { SCOPE, ADMIN_ONLY } from './lib/scope.js';
-import { getTheme, setTheme, applyTheme } from './lib/theme.js';
-applyTheme(getTheme());
+import { applyTheme } from './lib/theme.js';
+applyTheme();
 
 const { useState, useEffect } = React;
 
@@ -35,15 +35,14 @@ function Account({ who, viewAs, setViewAs }) {
   const menu = useMenu(); const toast = useToast();
   const initials = who.name.split(' ').map((x) => x[0]).join('').slice(0, 2);
   return <>
-    <button className={'acct' + (menu.isOpen(who.name) ? ' open' : '')} aria-haspopup="menu" onClick={(e) => menu.open(e, who.name, [
+    <button className={'rail-item acct' + (menu.isOpen(who.name) ? ' open' : '')} aria-haspopup="menu" title={who.name} onClick={(e) => menu.open(e, who.name, [
       // Temporary, until real sign-in: see the client dashboard as an admin or as one manager.
       setViewAs && { icon: viewAs === 'admin' ? 'check' : 'person', label: 'View as admin', sub: 'Every location and every screen', on: () => setViewAs('admin') },
       setViewAs && { icon: viewAs === 'manager' ? 'check' : 'person', label: 'View as manager', sub: 'Only Omar Haddad\'s 3 locations', on: () => setViewAs('manager') },
-      { seg: [['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['system', 'System', 'monitor']], label: 'Theme', value: getTheme(), onPick: setTheme },
       { icon: 'logout', label: 'Log out', danger: !!setViewAs, on: () => toast('Logged out (prototype: nothing happens)') },
     ], who.role)}>
       <span className="acct-av" aria-hidden="true">{initials}</span>
-      <span className="acct-txt"><b>{who.name}</b><span>{who.org}</span></span>
+      <span className="rail-label acct-txt"><b>{who.name}</b><span>{who.org}</span></span>
     </button>
     {menu.el}
   </>;
@@ -53,8 +52,6 @@ function App() {
   const [persona, setPersona] = useState(() => { const v = load('ops.persona', 'operator'); return ['kiosk', 'worker', 'supervisor'].includes(v) ? (v === 'kiosk' ? 'operator' : 'phone') : v; });
   const [screen, setScreen] = useState(() => load('ops.screen', 'live'));
   useEffect(() => { save('ops.persona', persona); save('ops.screen', screen); }, [persona, screen]);
-  // Keep --tb in step with the top bar's height so the sidebar and sticky headers sit right under it.
-  useEffect(() => { const tb = document.querySelector('.topbar'); if (!tb) return; const set = () => document.documentElement.style.setProperty('--tb', tb.getBoundingClientRect().height + 'px'); set(); const ro = new ResizeObserver(set); ro.observe(tb); return () => ro.disconnect(); }, []);
 
   const [viewAs, setViewAs] = useState(() => load('ops.viewas', 'admin')); // client dashboard: admin or manager (temporary)
   SCOPE.role = viewAs;
@@ -63,49 +60,46 @@ function App() {
   const items = P.nav ? P.nav.flatMap(([, xs]) => xs) : [];
   const cur = items.find((i) => i[0] === screen) || items[0];
   const [params, setParams] = useState(null);
-  const [slim, setSlim] = useState(() => load('ops.slim', '0') === '1');
   const [vClient, setVClient] = useState(() => load('ops.vclient', 'all')); // vendor portal: which client
   useEffect(() => { save('ops.viewas', viewAs); }, [viewAs]);
   useEffect(() => { save('ops.vclient', vClient); }, [vClient]);
-  useEffect(() => { save('ops.slim', slim ? '1' : '0'); }, [slim]);
   const toast = useToast();
   const go = (id, prm = null) => { setParams(prm); setScreen(id); };
   const changeView = (v) => { setViewAs(v); setParams(null); if (v === 'manager' && ADMIN_ONLY.includes(screen)) setScreen('live'); toast(v === 'admin' ? 'Viewing as an admin: everything' : 'Viewing as Omar Haddad: his 3 locations'); };
   const pick = (p) => { setPersona(p.id); if (p.first) setScreen(p.first); };
 
-  // Which side of the product is on show: at the bottom of the side navigation, on every surface.
+  // Which side of the product is on show: at the foot of the rail, on every surface.
   const switcher = (
-    <nav className="persona-sw" aria-label="Show the product as">
-      {PERSONAS.map((p) => <button key={p.id} className={persona === p.id ? 'on' : ''} onClick={() => pick(p)} title={p.label} aria-pressed={persona === p.id}><Icon name={p.icon} size={16} /><span>{p.label}</span></button>)}
-    </nav>
+    <div className="rail-group persona-sw" role="group" aria-label="Show the product as">
+      {PERSONAS.map((p) => <button key={p.id} className={'rail-item' + (persona === p.id ? ' on' : '')} onClick={() => pick(p)} title={p.label} aria-pressed={persona === p.id}><Icon name={p.icon} size={19} /><span className="rail-label">{p.label} view</span></button>)}
+    </div>
   );
+  // One icon rail for every surface: it opens to show labels on hover or keyboard focus. Pages run edge to edge beside it.
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand"><Logo size={30} tight /><b>OpsPro</b></div>
-        {P.nav && (persona === 'vendor' ? <Account who={ACCOUNTS.vendor} /> : <Account who={ACCOUNTS[viewAs]} viewAs={viewAs} setViewAs={changeView} />)}
-      </header>
-      {P.nav ? (
-        <div className={'body' + (persona === 'vendor' ? ' vendor' : '') + (slim ? ' slim' : '')}>
-          <button className="side-edge" onClick={() => setSlim(!slim)} aria-label={slim ? 'Expand navigation' : 'Collapse navigation'} title={slim ? 'Expand' : 'Collapse'} />
-          <aside className="side">
-            {persona === 'vendor' && <Vd.ClientPicker value={vClient} onChange={setVClient} />}
-            {P.nav.map(([group, xs]) => (
-              <div key={group} className="side-group">
-                <div className="side-label">{group}</div>
-                {xs.map(([id, label, ph]) => (
-                  <button key={id} className={'side-item' + (cur[0] === id ? ' on' : '')} onClick={() => go(id)} title={slim ? label : undefined} aria-label={label}>
-                    <span className="side-ic"><Icon name={NAV_ICONS[id] || 'document'} size={18} /></span><span className="side-text">{label}</span>
-                  </button>
-                ))}
-              </div>
+      <nav className="rail" aria-label="Main">
+        <div className="rail-logo"><Logo size={26} /><b className="rail-label">OpsPro</b></div>
+        {P.nav && P.nav.map(([group, xs]) => (
+          <div key={group} className="rail-group" role="group" aria-label={group}>
+            {xs.map(([id, label]) => (
+              <button key={id} className={'rail-item' + (cur[0] === id ? ' on' : '')} onClick={() => go(id)} title={label} aria-current={cur[0] === id ? 'page' : undefined}>
+                <Icon name={NAV_ICONS[id] || 'document'} size={19} /><span className="rail-label">{label}</span>
+              </button>
             ))}
-            {switcher}
-          </aside>
-          <main className="main" key={cur[0] + JSON.stringify(params) + (persona === 'vendor' ? vClient : viewAs)}>{React.createElement(cur[3], { go, params, client: vClient })}</main>
+          </div>
+        ))}
+        <div className="rail-foot">
+          {switcher}
+          {P.nav && (persona === 'vendor' ? <Account who={ACCOUNTS.vendor} /> : <Account who={ACCOUNTS[viewAs]} viewAs={viewAs} setViewAs={changeView} />)}
         </div>
+      </nav>
+      {P.nav ? (
+        <main className={'main' + (persona === 'vendor' ? ' vendor' : '')} key={cur[0] + JSON.stringify(params) + (persona === 'vendor' ? vClient : viewAs)}>
+          {persona === 'vendor' && <Vd.ClientPicker value={vClient} onChange={setVClient} />}
+          {React.createElement(cur[3], { go, params, client: vClient })}
+        </main>
       ) : (
-        <div className="body"><PhoneApp switcher={switcher} /></div>
+        <div className="body"><PhoneApp /></div>
       )}
     </div>
   );

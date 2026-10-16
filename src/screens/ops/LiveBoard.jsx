@@ -1,127 +1,168 @@
 import { MANAGERS, SITES, ROSTER_GROUPS } from '../../data.js';
-import { ScreenHeader, Drawer, Field, Toggle, useToast, Icon, Select } from '../../ui.jsx';
+import { Drawer, Field, Toggle, useToast, Icon, Select, Phase, Spec } from '../../ui.jsx';
 import { CoverDrawer } from '../../lib/cover.jsx';
 import { hm, TODAY } from '../../lib/dates.js';
 import { LiveClock } from '../../lib/clock.jsx';
 import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
-import { StatFilters } from '../../lib/statfilter.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
 
-const { useState, useEffect, useRef } = React;
+const { useState } = React;
+
+// Liveboard: the totals across the top (each one filters the map and the list), the map filling the screen, and a
+// column beside it that leads with the people who need action. Opening a location swaps the column for that location
+// and puts today's timeline under the map. Status is carried by small dots; text stays in the two neutral tones.
+const short = (n) => n.replace(/^(Spinneys|Carrefour) /, '');
+const mgrOf = (sid) => MANAGERS.find((m) => m.sites.includes(sid));
+const byStatus = (a, b) => LV[a.status][2] - LV[b.status][2];
+const NEEDS = ['noshow', 'waiting', 'late'];
+const DOT = { noshow: 'crit', late: 'warn', waiting: 'warn', in: 'good', break: 'idle', upcoming: 'ring', covered: 'idle', absent: 'idle' };
+const line = (p) => ({
+  noshow: `Due ${p.start}, not in`,
+  waiting: `Due ${p.start}, not in yet`,
+  late: `In at ${hm(p.inAt)}, ${p.late} min late`,
+  in: `In at ${hm(p.inAt)} · until ${p.end}`,
+  break: `On break · until ${p.end}`,
+  upcoming: `${p.start} – ${p.end}`,
+  covered: `Covered · was due ${p.start}`,
+  absent: `Marked absent · was due ${p.start}`,
+})[p.status];
+const places = (n) => (n === 1 ? 'at 1 location' : `at ${n} locations`);
 
 export function LiveBoard({ go }) {
   const [mgr, setMgr] = useState(isAdmin() ? 'all' : SCOPE.mgr);
   const [only, setOnly] = useState('all');
-  const [openLoc, setOpenLoc] = useState(null);
-  const [pick, setPick] = useState(null);
-  const [panel, setPanel] = useState(null); // location open in the side panel (from a pin)
+  const [hover, setHover] = useState(null);
+  const [panel, setPanel] = useState(null); // the location open in the column
   const [cover, setCover] = useState(null);
   const [handled, setHandled] = useState({});
   const [mark, setMark] = useState(null); // { p, site, how, at, why, excused }
   const toast = useToast();
-  const sites = SITES.filter(siteInScope).filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id));
-  const data = sites.map((s) => { const ppl = liveOf(s.id).map((p) => (handled[p.w.id] ? { ...p, status: handled[p.w.id] } : p)); const due = ppl.filter((p) => p.status !== 'upcoming'); const inn = due.filter((p) => ['in', 'late', 'break'].includes(p.status)).length; const bad = ppl.filter((p) => p.status === 'noshow').length; const late = ppl.filter((p) => p.status === 'late').length; return { s, ppl, due, inn, bad, late, up: ppl.filter((p) => p.status === 'upcoming') }; });
-  const tot = data.reduce((a, d) => ({ due: a.due + d.due.length, inn: a.inn + d.inn, bad: a.bad + d.bad, late: a.late + d.late, up: a.up + d.up.length }), { due: 0, inn: 0, bad: 0, late: 0, up: 0 });
-  const HAS = { in: (d) => d.inn, noshow: (d) => d.bad, late: (d) => d.late, later: (d) => d.up.length };
-  const shown = data.filter((d) => only === 'all' || HAS[only](d)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
-  const actions = data.flatMap((d) => d.ppl.filter((p) => p.status === 'noshow' || p.status === 'late').map((p) => ({ ...p, site: d.s }))).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
-  const loc = openLoc && data.find((d) => d.s.id === openLoc);
-  const pd = panel && data.find((d) => d.s.id === panel);
+
+  const rows = SITES.filter(siteInScope).filter((s) => mgr === 'all' || MANAGERS.find((m) => m.id === mgr).sites.includes(s.id)).map((s) => {
+    const ppl = liveOf(s.id).map((p) => (handled[p.w.id] ? { ...p, status: handled[p.w.id] } : p));
+    const due = ppl.filter((p) => p.status !== 'upcoming');
+    return { s, ppl, due, inn: due.filter((p) => ['in', 'late', 'break'].includes(p.status)).length, bad: ppl.filter((p) => p.status === 'noshow').length, late: ppl.filter((p) => p.status === 'late').length, up: ppl.filter((p) => p.status === 'upcoming') };
+  });
+  const sum = (f) => rows.reduce((n, r) => n + f(r), 0);
+  const next = Math.min(...rows.flatMap((r) => r.up.map((p) => p.s0)));
+  const KPIS = [
+    { k: 'in', label: 'In now', dot: 'good', n: sum((r) => r.inn), sub: `of ${sum((r) => r.due.length)} due`, has: (r) => r.inn },
+    { k: 'noshow', label: 'No-show', dot: 'crit', n: sum((r) => r.bad), sub: places(rows.filter((r) => r.bad).length), has: (r) => r.bad },
+    { k: 'late', label: 'Late', dot: 'warn', n: sum((r) => r.late), sub: places(rows.filter((r) => r.late).length), has: (r) => r.late },
+    { k: 'later', label: 'Later today', dot: 'ring', n: sum((r) => r.up.length), sub: isFinite(next) ? `first at ${hm(next)}` : 'nobody else today', has: (r) => r.up.length },
+  ];
+  const f = KPIS.find((x) => x.k === only);
+  const list = rows.filter((r) => !f || f.has(r)).sort((a, b) => b.bad * 10 + b.late - (a.bad * 10 + a.late));
+  const flat = rows.flatMap((r) => r.ppl.map((p) => ({ ...p, site: r.s })));
+  const open = panel && rows.find((r) => r.s.id === panel);
+  const pickSite = (id) => { setHover(null); setPanel(id); };
+
+  const person = (p, withSite) => (
+    <div key={p.w.id + p.start} className="live-person">
+      <span className={'sdot ' + DOT[p.status]} aria-label={LV[p.status][0]} />
+      <div className="live-who">
+        <button className="live-name" onClick={() => go('workforce', { worker: p.w.id })}>{p.w.name}</button>
+        <span className="live-sub">{line(p)}{withSite && <> · <button className="live-site" onClick={() => pickSite(p.site.id)}>{short(p.site.name)}</button></>}</span>
+        {['noshow', 'waiting'].includes(p.status) && (
+          <span className="live-act">
+            <button className="btn sm ghost" onClick={() => setMark({ p, site: p.site, how: 'here', at: p.start, why: 'Phone not working', excused: false })}>Mark attendance</button>
+            {p.status === 'noshow' && <button className="btn sm" onClick={() => setCover(p)}>Cover</button>}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+  const group = (title, items, opts = {}) => (items.length > 0 || opts.empty) && (
+    <section className="live-sec">
+      <h3>{title}<span className="live-count">{items.length}</span></h3>
+      {items.length ? items.map((p) => person(p, opts.site)) : <p className="live-sub">{opts.empty}</p>}
+    </section>
+  );
+
   return (
-    <>
-      <ScreenHeader title="Liveboard" phase={1} spec="5.1" actions={<span className="lv-clock"><span className="lv-live" /><LiveClock /></span>} />
-      <section className="card flush lm-wrap lm-split">
-        <div className="lm-mapcol">
-          <LiveMap points={shown.map((d) => { const [lng, lat] = GEO[d.s.id] || [55.2, 25.1]; return { id: d.s.id, name: d.s.name.replace(/^(Spinneys|Carrefour) /, ''), title: d.s.name, lat, lng, due: d.due.length, inn: d.inn, bad: d.bad, late: d.late, left: LEFT[d.s.id] }; })} pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} />
+    <div className="live">
+      <header className="live-head">
+        <div className="live-title">
+          <h1>Liveboard</h1>
+          <span className="screen-tags"><Phase p={1} /><Spec s="5.1" /></span>
+          <span className="live-clock"><span className="lv-live" /><LiveClock /></span>
         </div>
-        <aside className="lm-side" aria-label={pd ? pd.s.name : 'Locations'}>
-          {!pd ? <>
-            {isAdmin() && <div className="lm-side-mgr"><label className="lm-sel"><Icon name="users" size={15} /><Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPick(null); setPanel(null); }} aria-label="Manager"><option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></label></div>}
-            <StatFilters only={only} setOnly={(k) => { setOnly(k); setPick(null); }} items={[
-              { k: 'in', n: tot.inn, label: 'in now', tone: 'good', desc: 'Locations with someone in' },
-              { k: 'noshow', n: tot.bad, label: 'no-show', tone: 'crit', desc: 'Locations with a no-show' },
-              { k: 'late', n: tot.late, label: 'late', tone: 'warn', desc: 'Locations with someone late' },
-              { k: 'later', n: tot.up, label: 'later today', desc: 'Locations with someone starting later' },
-            ]} />
-            <div className="lm-side-body lm-locs">
-              {shown.length === 0 && <div className="small muted lm-none">No locations match.</div>}
-              {shown.map((d) => (
-                <button key={d.s.id} className={'lm-loc' + (pick === d.s.id ? ' on' : '')} onClick={() => { setPick(null); setPanel(d.s.id); }} onMouseEnter={() => setPick(d.s.id)} onMouseLeave={() => setPick((x) => (x === d.s.id ? null : x))} onFocus={() => setPick(d.s.id)} onBlur={() => setPick((x) => (x === d.s.id ? null : x))}>
-                  <span className={'lm-k ' + (d.bad ? 'crit' : d.due.length ? 'good' : 'idle')} />
-                  <span className="lm-name"><b>{d.s.name}</b><span className="small muted">{d.bad ? <span className="neg">{d.bad} no-show</span> : null}{d.bad && d.late ? ' · ' : null}{d.late ? `${d.late} late` : null}{!d.bad && !d.late ? (d.due.length ? 'All in' : 'No one due yet') : null}{isAdmin() ? ` · ${MANAGERS.find((m) => m.sites.includes(d.s.id)).name}` : ''}</span></span>
-                  <span className="lm-cnt mono">{d.inn}<span className="muted">/{d.due.length}</span></span>
-                  <Icon name="chevronRight" size={15} />
-                </button>
-              ))}
-            </div>
-          </> : (() => {
-            const need = pd.ppl.filter((p) => ['noshow', 'waiting', 'late'].includes(p.status)).sort((a, b) => LV[a.status][2] - LV[b.status][2]);
-            const inn = pd.ppl.filter((p) => ['in', 'break'].includes(p.status)).sort((a, b) => a.s0 - b.s0);
-            const ups = [...pd.up].sort((a, b) => a.s0 - b.s0);
-            const who = (p) => <button className="namelink" onClick={() => go('workforce', { worker: p.w.id })}>{p.w.name}</button>;
-            return <>
-              <div className="lm-panel-head">
-                <button className="lm-panel-x" aria-label="Back to all locations" onClick={() => setPanel(null)}><Icon name="chevronLeft" size={17} /></button>
-                <div className="lm-panel-title"><b>{pd.s.name}</b><span className="small muted">{[isAdmin() && MANAGERS.find((m) => m.sites.includes(pd.s.id)).name, pd.s.hours].filter(Boolean).join(' · ')}</span></div>
-              </div>
-              <div className="lm-side-stats">
-                <div className={pd.inn ? 'good' : ''}><b>{pd.inn}</b><span>in now</span></div>
-                <div className={pd.bad ? 'crit' : ''}><b>{pd.bad}</b><span>no-show</span></div>
-                <div className={pd.late ? 'warn' : ''}><b>{pd.late}</b><span>late</span></div>
-                <div><b>{pd.up.length}</b><span>later today</span></div>
-              </div>
-              <div className="lm-side-body">
-                {need.length > 0 && <div className="lm-panel-sec"><h4>Needs you</h4>
-                  {need.map((p) => (
-                    <div key={p.w.id + p.start} className={'lm-pp ' + p.status}>
-                      <span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.status === 'late' ? `In at ${hm(p.inAt)}, ${p.late} min late` : p.status === 'noshow' ? `No-show · due ${p.start}` : `Due ${p.start}, not in yet`}</span></span>
-                      <span className="lm-p-act">
-                        {p.status !== 'late' && <button className="btn sm ghost" onClick={() => setMark({ p, site: pd.s, how: 'here', at: p.start, why: 'Phone not working', excused: false })}>Mark attendance</button>}
-                        {p.status === 'noshow' && <button className="btn sm" onClick={() => setCover({ ...p, site: pd.s })}>Cover</button>}
-                      </span>
-                    </div>
-                  ))}
-                </div>}
-                <div className="lm-panel-sec"><h4>In now</h4>
-                  {inn.length ? inn.map((p) => <div key={p.w.id + p.start} className="lm-pp in"><span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.status === 'break' ? 'On break' : `In at ${hm(p.inAt)}`} · until {p.end}</span></span></div>) : <div className="small muted">Nobody in yet.</div>}
-                </div>
-                {ups.length > 0 && <div className="lm-panel-sec"><h4>Later today</h4>
-                  {ups.map((p) => <div key={p.w.id + p.start} className="lm-pp"><span className="lb-dot" /><span className="lm-pp-who">{who(p)}<span className="small muted">{p.start} – {p.end}</span></span></div>)}
-                </div>}
-              </div>
-              <div className="lm-panel-foot">
-                <button className="btn ghost sm" onClick={() => setOpenLoc(pd.s.id)}>Today's timeline</button>
-                <button className="btn ghost sm" onClick={() => go('schedule')}>Open roster</button>
-              </div>
-            </>;
-          })()}
-        </aside>
-      </section>
-      <Drawer open={!!loc} onClose={() => setOpenLoc(null)} title={loc && loc.s.name} sub={loc && `Today · ${loc.inn} of ${loc.due.length} due are in · ${loc.up.length} starting later`}>
-        {loc && <>
-          <div className="lb-tl">
-            <div className="lb-tl-axis">{[6, 9, 12, 15, 18, 21, 24].map((h) => <span key={h} style={{ left: `${((h - 6) / 18) * 100}%` }}>{String(h % 24).padStart(2, '0')}:00</span>)}</div>
-            <div className="lb-tl-now" style={{ left: `calc(130px + (100% - 130px) * ${(NOW_MIN - 360) / 1080})` }}><span>{hm(NOW_MIN)}</span></div>
-            {[...loc.ppl].sort((a, b) => a.s0 - b.s0 || LV[a.status][2] - LV[b.status][2]).map((p) => {
-              const X = (m) => `${Math.max(0, Math.min(100, ((m - 360) / 1080) * 100))}%`;
-              const endM = p.e0 > p.s0 ? p.e0 : p.e0 + 1440;
-              return (
-                <div key={p.w.id + p.start} className="lb-tl-row">
-                  <button className="lb-tl-who" onClick={() => go('workforce', { worker: p.w.id })}><b>{p.w.name}</b><span className={'small lb-st ' + p.status}>{LV[p.status][0]}{p.status === 'late' ? ` · ${p.late}m` : ''}</span></button>
-                  <div className="lb-tl-track">
-                    <span className="lb-tl-plan" style={{ left: X(p.s0), width: `calc(${X(Math.min(endM, 1440))} - ${X(p.s0)})` }} />
-                    {p.inAt != null && <span className={'lb-tl-act ' + p.status} style={{ left: X(p.inAt), width: `calc(${X(NOW_MIN)} - ${X(p.inAt)})` }} />}
-                  </div>
-                </div>
-              );
-            })}
+        {isAdmin() && (
+          <label className="live-mgr">
+            <Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPanel(null); }} aria-label="Manager">
+              <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </Select>
+          </label>
+        )}
+      </header>
+
+      <div className="live-kpis" role="group" aria-label="Show locations with">
+        {KPIS.map((x) => (
+          <button key={x.k} className={'live-kpi' + (only === x.k ? ' on' : '')} aria-pressed={only === x.k} disabled={!x.n && only !== x.k} onClick={() => { setOnly(only === x.k ? 'all' : x.k); setPanel(null); }}>
+            <span className="live-kpi-label"><span className={'sdot ' + x.dot} />{x.label}</span>
+            <span className="live-kpi-n"><b>{x.n}</b><span>{x.sub}</span></span>
+          </button>
+        ))}
+      </div>
+
+      <div className="live-body">
+        <div className={'live-mapcol' + (open ? ' with-tl' : '')}>
+          <div className="live-map">
+            <LiveMap points={list.map((r) => { const [lng, lat] = GEO[r.s.id] || [55.2, 25.1]; return { id: r.s.id, name: short(r.s.name), title: r.s.name, lat, lng, due: r.due.length, inn: r.inn, bad: r.bad, late: r.late, left: LEFT[r.s.id] }; })}
+              pick={panel} hover={hover} focus={panel} onPick={pickSite} />
+            {f && <button className="live-filter" onClick={() => setOnly('all')}>Locations with {f.label.toLowerCase()} <Icon name="x" size={14} /></button>}
           </div>
-          <div className="legend small lb-legend"><span className="lb-key plan" /> Rostered <span className="lb-key act" /> Clocked in <span className="lb-key late" /> Late</div>
-          <div className="feed-actions"><button className="btn ghost" onClick={() => go('schedule')}>Open roster</button></div>
-        </>}
-      </Drawer>
+          {open && <Timeline row={open} go={go} />}
+        </div>
+
+        <aside className="live-side" aria-label={open ? open.s.name : 'Needs you and locations'}>
+          {!open ? (
+            <div className="live-pane" key="all">
+              <div className="live-scroll">
+                {group('No-shows', flat.filter((p) => p.status === 'noshow' || p.status === 'waiting').sort(byStatus), { site: true })}
+                {group('Running late', flat.filter((p) => p.status === 'late'), { site: true })}
+                <section className="live-sec">
+                  <h3>Locations<span className="live-count">{list.length}</span></h3>
+                  {!list.length && <p className="live-sub">No locations match.</p>}
+                  {list.map((r) => (
+                    <button key={r.s.id} className={'live-loc' + (hover === r.s.id ? ' hl' : '')} onClick={() => pickSite(r.s.id)}
+                      onMouseEnter={() => setHover(r.s.id)} onMouseLeave={() => setHover((x) => (x === r.s.id ? null : x))} onFocus={() => setHover(r.s.id)} onBlur={() => setHover((x) => (x === r.s.id ? null : x))}>
+                      <span className={'sdot ' + (r.bad ? 'crit' : r.late ? 'warn' : r.due.length ? 'good' : 'ring')} />
+                      <span className="live-who">
+                        <b className="live-name">{r.s.name}</b>
+                        <span className="live-sub">{[r.bad && `${r.bad} no-show`, r.late && `${r.late} late`, !r.bad && !r.late && (r.due.length ? 'All in' : 'No one due yet'), isAdmin() && mgrOf(r.s.id).name].filter(Boolean).join(' · ')}</span>
+                      </span>
+                      <span className="live-loc-n"><span><b>{r.inn}</b>/{r.due.length}</span><i className="live-meter"><i style={{ width: `${r.due.length ? (r.inn / r.due.length) * 100 : 0}%` }} /></i></span>
+                    </button>
+                  ))}
+                </section>
+              </div>
+            </div>
+          ) : (
+            <div className="live-pane" key={open.s.id}>
+              <div className="live-site-head">
+                <button className="icon-btn" onClick={() => setPanel(null)} aria-label="Back to all locations"><Icon name="chevronLeft" size={18} /></button>
+                <div><h2>{open.s.name}</h2><span className="live-sub">{[isAdmin() && mgrOf(open.s.id).name, open.s.hours].filter(Boolean).join(' · ')}</span></div>
+              </div>
+              <div className="live-stats">
+                {[['good', open.inn, 'In now'], ['crit', open.bad, 'No-show'], ['warn', open.late, 'Late'], ['ring', open.up.length, 'Later today']].map(([d, n, l]) => (
+                  <div key={l}><b>{n}</b><span><span className={'sdot ' + (n ? d : 'ring')} />{l}</span></div>
+                ))}
+              </div>
+              <div className="live-scroll">
+                {group('Needs you', open.ppl.filter((p) => NEEDS.includes(p.status)).sort(byStatus).map((p) => ({ ...p, site: open.s })))}
+                {group('In now', open.ppl.filter((p) => ['in', 'break'].includes(p.status)).sort((a, b) => a.s0 - b.s0), { empty: 'Nobody in yet.' })}
+                {group('Later today', [...open.up].sort((a, b) => a.s0 - b.s0))}
+                {group('Handled', open.ppl.filter((p) => ['covered', 'absent'].includes(p.status)))}
+              </div>
+              <div className="live-foot"><button className="btn ghost" onClick={() => go('schedule')}><Icon name="calendar" size={16} />Open roster</button></div>
+            </div>
+          )}
+        </aside>
+      </div>
+
       <Drawer open={!!mark} onClose={() => setMark(null)} title={mark && `Mark attendance · ${mark.p.w.name}`} sub={mark && `${mark.site.name} · due ${mark.p.start}`}>
         {mark && <>
           <div className="ma-opts" role="radiogroup" aria-label="Attendance">
@@ -140,7 +181,40 @@ export function LiveBoard({ go }) {
       <CoverDrawer open={!!cover} onClose={() => setCover(null)}
         ctx={cover && { site: cover.site.id, ci: TODAY, absent: cover.w.id, sh: [cover.t, cover.start], dayLabel: 'Today', groups: ROSTER_GROUPS, why: `No-show: due ${cover.start}, not in after ${NOW_MIN - cover.s0} min` }}
         onSkip={() => { setHandled({ ...handled, [cover.w.id]: 'covered' }); setCover(null); toast('Left uncovered · stays a no-show on the timesheet'); }}
-        onAssign={(x) => { setHandled({ ...handled, [cover.w.id]: 'covered' }); setCover(null); toast(`${x.w.name.split(' ')[0]} asked to cover at ${cover.site.name.replace(/^(Spinneys|Carrefour) /, '')} · push sent · ${cover.w.name.split(' ')[0]}'s day marked excused`); }} />
-    </>
+        onAssign={(x) => { setHandled({ ...handled, [cover.w.id]: 'covered' }); setCover(null); toast(`${x.w.name.split(' ')[0]} asked to cover at ${short(cover.site.name)} · push sent · ${cover.w.name.split(' ')[0]}'s day marked excused`); }} />
+    </div>
+  );
+}
+
+// Today at one location, under the map: rostered shifts as dashed outlines, clock-ins as bars, a line at now.
+const X = (m) => `${Math.max(0, Math.min(100, ((m - 360) / 1080) * 100))}%`; // 06:00 to 24:00
+function Timeline({ row, go }) {
+  return (
+    <section className="live-tl" aria-label={`Today at ${row.s.name}`}>
+      <header className="live-tl-head">
+        <h3>Today at {short(row.s.name)}</h3>
+        <span className="live-tl-key"><i className="plan" />Rostered<i className="act" />Clocked in</span>
+      </header>
+      <div className="live-tl-grid">
+        <div className="live-tl-over" aria-hidden="true">
+          {[6, 9, 12, 15, 18, 21, 24].map((h) => <span key={h} className="live-tl-hour" style={{ left: X(h * 60) }}>{String(h % 24).padStart(2, '0')}:00</span>)}
+          <span className="live-tl-now" style={{ left: X(NOW_MIN) }}><span>{hm(NOW_MIN)}</span></span>
+        </div>
+        {[...row.ppl].sort((a, b) => a.s0 - b.s0 || byStatus(a, b)).map((p) => {
+          const end = p.e0 > p.s0 ? p.e0 : p.e0 + 1440;
+          return (
+            <div key={p.w.id + p.start} className="live-tl-row">
+              <button className="live-tl-who" onClick={() => go('workforce', { worker: p.w.id })}>
+                <span className={'sdot ' + DOT[p.status]} /><span><b>{p.w.name}</b><span className="live-sub">{LV[p.status][0]}{p.status === 'late' ? ` · ${p.late} min` : ''}</span></span>
+              </button>
+              <div className="live-tl-track">
+                <span className="live-tl-plan" style={{ left: X(p.s0), width: `calc(${X(Math.min(end, 1440))} - ${X(p.s0)})` }} />
+                {p.inAt != null && <span className={'live-tl-act ' + DOT[p.status]} style={{ left: X(p.inAt), width: `calc(${X(NOW_MIN)} - ${X(p.inAt)})` }} />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

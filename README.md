@@ -36,7 +36,7 @@ React loads from cdnjs and the Liveboard map from Google Maps, so both need an i
 
 ```
 src/
-  main.jsx         app shell: top bar, persona tabs, side navigation, routing
+  main.jsx         app shell: icon rail (navigation, persona switch, account), routing
   data.js          all mock data: workers, sites, vendors, roster, shift templates, alerts, leave
   ui.jsx           shared components: Stat, Pill, Tabs, Drawer, Modal, Field, Toggle, Icon, toasts
   style.css        all styles, light and dark

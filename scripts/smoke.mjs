@@ -24,7 +24,8 @@ await page.waitForTimeout(500);
 for (const persona of ['Client', 'Vendor', 'Phone']) {
   current = persona;
   await page.click(`.persona-sw button:has-text("${persona}")`);
-  await page.waitForTimeout(200);
+  await page.mouse.move(900, 400); // off the rail, which opens over the page while hovered
+  await page.waitForTimeout(400);
   let n = 0;
   if (persona === 'Phone') {
     // The phone has two apps (picker, supervisor); open each, then every screen in its list.
@@ -40,10 +41,11 @@ for (const persona of ['Client', 'Vendor', 'Phone']) {
       }
     }
   } else {
-    const items = await page.$$eval('.side-item', (els) => els.map((e) => e.innerText.split('\n')[0].trim()));
+    const NAV = '.rail-group:not(.persona-sw) .rail-item';
+    const items = await page.$$eval(NAV, (els) => els.map((e) => e.textContent.trim()));
     for (let i = 0; i < items.length; i++) {
       current = `${persona} › ${items[i]}`;
-      await page.click(`.side-item >> nth=${i}`);
+      await page.click(`${NAV} >> nth=${i}`);
       await page.waitForTimeout(150);
       n++;
     }

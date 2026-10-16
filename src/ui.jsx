@@ -72,7 +72,7 @@ export function Drawer({ open, onClose, title, children, sub }) {
             <h2>{title}</h2>
             {sub && <div className="muted small">{sub}</div>}
           </div>
-          <button className="btn ghost" onClick={onClose} aria-label="Close">Close</button>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" size={17} /></button>
         </div>
         <div className="drawer-body">{children}</div>
       </aside>
@@ -87,7 +87,7 @@ export function Modal({ open, onClose, title, children, footer }) {
       <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="drawer-head">
           <h2>{title}</h2>
-          <button className="btn ghost" onClick={onClose}>Close</button>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" size={17} /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -163,6 +163,7 @@ const GLYPHS = {
   logout: <><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14" /><path d="M10 16.5L5.5 12 10 7.5" /><path d="M5.5 12H15" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></>,
   check: <path d="M4.5 12.5l5 5 10-11" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
   checkCircle: <><circle cx="12" cy="12" r="9" /><path d="M8 12.2l2.8 2.8L16 9.5" /></>,
   alert: <><path d="M12 3.5L21 19.5H3z" /><path d="M12 9.5v4M12 16.8h.01" /></>,
   bell: <><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,

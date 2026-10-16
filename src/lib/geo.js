@@ -66,15 +66,13 @@ const style = (c) => [
   { elementType: 'labels.text.fill', stylers: [{ color: c.text }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: c.halo }, { weight: 3 }] },
   { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: c.text }] },
-  { featureType: 'administrative.sublocality', elementType: 'labels.text.fill', stylers: [{ color: c.faint }] },
   { featureType: 'administrative.neighborhood', elementType: 'labels.text.fill', stylers: [{ color: c.faint }] },
 ];
 export const MAP_STYLES = {
   // --bg #F5F2F2, --surface-2 #EEE9E9, --line #E4DEDD, --line-strong #D3CBCA, --muted #756C6A, --faint #9A908E, --accent-soft #ECF9F5
   light: style({ land: '#F5F2F2', built: '#EEE9E9', park: '#E2EFE8', water: '#CFE6DD', waterText: '#4F7D6E', road: '#FFFFFF', roadEdge: '#E4DEDD', highway: '#FFFFFF', highwayEdge: '#D3CBCA', text: '#756C6A', faint: '#9A908E', halo: '#F5F2F2' }),
-  // Dusk rather than night: a step lighter than the dark UI (--surface-2 #2A2524 land, --line #3A3331 blocks) so the map
-  // reads as a surface, with roads picked out in --line-strong and soft teal water from the dark --accent.
-  dark: style({ land: '#2A2524', built: '#312B2A', park: '#2C3A33', water: '#29453D', waterText: '#8CC7B4', road: '#3E3735', roadEdge: '#2A2524', highway: '#4F4644', highwayEdge: '#3A3331', text: '#CFC6C3', faint: '#A89F9C', halo: '#2A2524' }),
+  // Night: near-black land a step off the black page, roads in quiet greys, deep teal water from the accent.
+  dark: style({ land: '#0A0B0B', built: '#101212', park: '#0C1412', water: '#041615', waterText: '#4F7F7A', road: '#191C1C', roadEdge: '#0A0B0B', highway: '#242828', highwayEdge: '#191C1C', text: '#98A2A2', faint: '#6E7777', halo: '#0A0B0B' }),
 };
 
 // Static map images for the location cards. A static image costs far less than a live map, is only fetched when
@@ -82,7 +80,7 @@ export const MAP_STYLES = {
 // Same palette as the live maps; the geofence is drawn to scale as a polygon. Needs the Static Maps API enabled
 // for the key; if it isn't, the image fails and the card keeps its drawn placeholder.
 const hex = (c) => c.replace('#', '');
-const ACCENT = { light: '1B5746', dark: '5CC2A2' }; // --accent in each theme
+const ACCENT = { light: '00736B', dark: '00CCBC' }; // --accent in each theme
 const staticStyle = (rules) => rules.map((r) => 'style=' + encodeURIComponent([r.featureType && 'feature:' + r.featureType, r.elementType && 'element:' + r.elementType, ...r.stylers.flatMap((x) => Object.entries(x).map(([k, v]) => `${k}:${k === 'color' ? '0x' + hex(v) : v}`))].filter(Boolean).join('|'))).join('&');
 export function staticMapUrl({ lat, lng, radius, w, h, dark }) {
   if (!GMAPS_KEY) return null;
