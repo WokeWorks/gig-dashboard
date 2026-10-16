@@ -5,12 +5,13 @@ import { Forms } from './forms.jsx';
 import { PhoneApp } from './phone.jsx';
 import { SCOPE, ADMIN_ONLY } from './lib/scope.js';
 import { applyTheme } from './lib/theme.js';
+import { AlertsHost } from './lib/alerts.jsx';
 applyTheme();
 
 const { useState, useEffect } = React;
 
 const OPERATOR = [
-  ['Operations', [['live', 'Liveboard', 1, Op.LiveBoard], ['alerts', 'Notifications', 1, Op.Alerts], ['schedule', 'Roster', 1, Op.Scheduling], ['leave', 'Leave', 1, Op.Leave]]],
+  ['Operations', [['live', 'Liveboard', 1, Op.LiveBoard], ['schedule', 'Roster', 1, Op.Scheduling], ['leave', 'Leave', 1, Op.Leave]]],
   ['People', [['workforce', 'Workforce', 1, Op.Workforce], ['onboarding', 'Onboarding', 1, Op.Onboarding], ['vendors', 'Vendors', 1, Op.Vendors], ['clients', 'Locations', 1, Op.ClientsSites]]],
   ['Insight', [['performance', 'Performance', 2, Op.Performance], ['finance', 'Vendor costs', 2, Op.Finance], ['forms', 'Forms', 2, Forms], ['comms', 'Announcements', 2, Op.Communication]]],
   ['Admin', [['settings', 'Settings', 1, Op.Settings]]],
@@ -76,6 +77,7 @@ function App() {
   );
   // One icon rail for every surface: it opens to show labels on hover or keyboard focus. Pages run edge to edge beside it.
   return (
+    <AlertsHost on={persona === 'operator'}>
     <div className="app">
       <nav className="rail" aria-label="Main">
         <div className="rail-logo"><Logo size={26} /><b className="rail-label">OpsPro</b></div>
@@ -102,6 +104,7 @@ function App() {
         <div className="body"><PhoneApp /></div>
       )}
     </div>
+    </AlertsHost>
   );
 }
 

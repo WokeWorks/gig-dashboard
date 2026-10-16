@@ -2030,3 +2030,31 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .toggle input:checked + .toggle-track .toggle-knob { transform: translateX(16px); background: var(--accent-ink); }
 .ma-note { display: flex; gap: 10px; margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 500; text-wrap: pretty; }
 .ma-note .icon { flex: none; margin-top: 2px; }
+
+/* ---------- notifications: a bell at the top right of every client page, opening a drawer ---------- */
+.screen-actions:empty { display: none; }
+.screen-head { align-items: flex-start; }
+.screen-actions { align-items: center; }
+.live-tools { display: flex; align-items: center; gap: 10px; }
+.bell { position: relative; width: 40px; height: 40px; border-radius: 12px; color: var(--ink-mid); }
+.bell-n { position: absolute; top: -5px; right: -5px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; border: 2px solid var(--bg); background: var(--fg); color: #000;
+  font-size: 11.5px; font-weight: 500; line-height: 15px; text-align: center; box-sizing: border-box; }
+.bell-n.urgent { background: var(--crit); color: #1A0505; }
+.nt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nt-chip-n { margin-left: 8px; color: var(--muted); }
+.ma-chip.on .nt-chip-n { color: var(--fg); }
+.nt-list { list-style: none; margin: 0 -10px; padding: 0; display: flex; flex-direction: column; }
+.nt-item { border-radius: 14px; transition: background-color .15s; }
+.nt-item.on { background: var(--surface-2); }
+.nt-item + .nt-item { margin-top: 2px; }
+.nt-head { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 12px; border: 0; border-radius: 14px; background: none; text-align: left; color: var(--fg); }
+.nt-head:hover { background: var(--surface-2); }
+.nt-what { display: flex; flex-direction: column; min-width: 0; }
+.nt-what b { font-size: 15.5px; font-weight: 500; }
+.nt-what span { color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-when { color: var(--muted); font-size: 14px; font-weight: 500; }
+.nt-item.done .nt-what b { color: var(--muted); }
+.nt-body { display: flex; flex-direction: column; gap: 12px; padding: 0 12px 14px 34px; }
+.nt-body p { margin: 0; color: var(--ink-mid); font-size: 15px; }
+.nt-act { display: flex; flex-wrap: wrap; gap: 8px; }
+.nt-route { color: var(--muted); font-size: 13.5px; font-weight: 500; }

@@ -1,6 +1,5 @@
 // Every Ops dashboard screen, in the order of the side navigation.
 export { LiveBoard } from './LiveBoard.jsx';
-export { Alerts } from './Notifications.jsx';
 export { Scheduling } from './Roster.jsx';
 export { Leave } from './Leave.jsx';
 export { Workforce } from './Workforce.jsx';

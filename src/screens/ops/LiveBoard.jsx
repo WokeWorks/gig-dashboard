@@ -7,6 +7,7 @@ import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
+import { Bell } from '../../lib/alerts.jsx';
 
 const { useState } = React;
 
@@ -101,13 +102,13 @@ export function LiveBoard({ go }) {
           <span className="screen-tags"><Phase p={1} /><Spec s="5.1" /></span>
           <Clock />
         </div>
-        {isAdmin() && (
+        <div className="live-tools">{isAdmin() && (
           <label className="live-mgr">
             <Select id="lb-mgr" value={mgr} onChange={(e) => { setMgr(e.target.value); setPanel(null); }} aria-label="Manager">
               <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </Select>
           </label>
-        )}
+        )}<Bell /></div>
       </header>
 
       <div className="live-kpis" role="group" aria-label="Show locations with">

@@ -1,3 +1,5 @@
+import { Bell } from './lib/alerts.jsx';
+
 const { useState, useEffect, createContext, useContext } = React;
 
 export const ToastCtx = createContext(() => {});
@@ -33,7 +35,7 @@ export function ScreenHeader({ title, phase, spec, actions }) {
         </div>
         <h1>{title}</h1>
       </div>
-      {actions && <div className="screen-actions">{actions}</div>}
+      <div className="screen-actions">{actions}<Bell /></div>
     </header>
   );
 }

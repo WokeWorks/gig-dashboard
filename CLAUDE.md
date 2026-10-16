@@ -36,6 +36,7 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - **Cover links on the roster:** the absent person's cell ("Covered by …") and the cover's cell ("Covering …") share a `data-cov` key: hovering either lights both, clicking the line scrolls to the other (opening its section) and flashes it.
 - **Theme:** dark only. `applyTheme()` in `src/lib/theme.js` sets `<html data-theme="dark">` so the maps use their dark style. Menus can still hold a choice row (`seg` items in `useMenu`).
 - **Shell:** an icon rail on the left (`.rail` in `main.jsx`) that opens to show labels on hover or keyboard focus; the persona switch and the account menu sit at its foot, the vendor client picker at the top of the vendor pages. Pages run edge to edge beside it, with no card around the page. Below 820 px the rail becomes a bottom bar.
+- **Notifications** are a bell at the top right of every client page (`Bell` in `src/lib/alerts.jsx`, rendered by `ScreenHeader` and the Liveboard header), not a page. The list lives in `AlertsHost`, above the pages, so resolved alerts stay resolved; it opens as a drawer with type filters, and each alert opens in place with Confirm, False alarm and Excused. Hidden outside the client dashboard.
 - **Leave types** have days a year, pay, carry over, per-request limit and certificate rule.
 
 ## Gotchas
