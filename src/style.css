@@ -2245,3 +2245,12 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .ds-foot .linkbtn:hover, .ds-copy-head .linkbtn:hover { background: var(--surface-2); }
 .ds-copy-head .linkbtn { padding: 5px 12px; }
 .ds-add { height: 46px; border-radius: 14px; color: var(--ink-mid); font-size: 15px; font-weight: 500; }
+
+/* Drawers: wide enough that a line of detail fits on one line */
+.drawer { width: min(600px, calc(100vw - 20px)); }
+.drawer-head { padding: 26px 28px 16px; }
+.drawer-body { padding: 4px 28px 0; }
+.drawer-body > :last-child:not(.drawer-actions) { margin-bottom: 28px; }
+.drawer-actions { margin: auto -28px 0; padding: 16px 28px 20px; }
+.up-help dl { grid-template-columns: minmax(200px, auto) 1fr; }
+.up-help dt { justify-self: start; } .up-help dl { grid-template-columns: auto 1fr; column-gap: 20px; }
