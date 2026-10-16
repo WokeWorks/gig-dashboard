@@ -217,6 +217,8 @@ export function Scheduling({ go }) {
       <button key={k} className={'cell one cseg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{ring(!!segCls(sid, wid, ci, k).includes('today-in'))}{chip(x, k, sid)}</button>
     ))}</div>
   );
+  // Where the upload is: choose a file, check it, import it.
+  const upSteps = (at) => <ol className="up-steps2" aria-label="Upload steps">{['Choose a file', 'Check', 'Import'].map((l, i) => <li key={l} className={i < at ? 'done' : i === at ? 'on' : ''} aria-current={i === at ? 'step' : undefined}><span>{i < at ? <Icon name="check" size={12} /> : i + 1}</span>{l}</li>)}</ol>;
   // Upload helpers: the template, reading a file, the error report, and the demo sample.
   const fileWeek = (w) => weekLabel(w, true).replace(/\s+/g, '-').replace(/[–—]/g, '').replace(/-+/g, '-').toLowerCase();
   const sourceFor = (w) => (has(w) ? weeks[w] : copyWeek(weeks[latestBefore(w)], null, shown.map((x) => x.id), w));
@@ -509,21 +511,27 @@ export function Scheduling({ go }) {
           const nothing = pub[wk] === 'published' && !dirty[wk];
           const errs = offErrors(scope.concat(groups.filter((g) => g.float)));
           return <>
-            <div className="pub-stats">
-              <div><span className="stat-value">{people}</span><span className="small muted">workers</span></div>
-              <div><span className="stat-value">{shifts}</span><span className="small muted">shifts</span></div>
-              <div><span className="stat-value">{hours}</span><span className="small muted">base hours</span></div>
+            <div className="up-stats big"><div><b>{people}</b><span>workers</span></div><div><b>{shifts}</b><span>shifts</span></div><div><b>{hours}</b><span>base hours</span></div></div>
+            <details className="up-help"><summary>{shown.length === SITES.length ? `All ${shown.length} locations` : shown.length === 1 ? shown[0].name : `${shown.length} locations`}</summary>
+              <div className="pub-locs">{shown.map((x) => <span key={x.id}>{x.name.replace(/^(Spinneys|Carrefour) /, '')}</span>)}</div>
+            </details>
+            {errs.length > 0 && <section className="up-result is-bad" role="alert">
+              <div className="up-result-head"><span className="up-big">{errs.length}</span><span><b>Can't publish yet</b><span>{errs.length === 1 ? 'One worker breaks' : `${errs.length} workers break`} the organisation's weekly off rule.</span></span></div>
+              <ul className="up-errs">{errs.map((x) => <li key={x.wid}><span className="up-at">{x.closed.length ? 'Off day' : 'No off'}</span><span><b>{W(x.wid).name}</b><span>{x.g.float ? 'Floaters' : siteOf(x.g.site).name}: {errText(x)}</span></span></li>)}</ul>
+            </section>}
+            <section className="up-list">
+              <h3>Before you publish<span className="live-count">3</span></h3>
+              <ul>
+                <li><span className="sdot warn" /><span><b>Rest period</b><span>Bilal Ahmed: 9 h between Thu evening and Fri morning (minimum 10 h)</span></span></li>
+                <li><span className="sdot idle" /><span><b>Two locations</b><span>Rajesh Kumar, Mon: Barsha Heights then Marina Promenade, 7 h gap, 25 min travel</span></span></li>
+                <li><span className="sdot crit" /><span><b>Document</b><span>Chinedu Okafor's visa expires before Sat 10</span></span></li>
+              </ul>
+              <p>These don't stop publishing.</p>
+            </section>
+            <div className="pub-opts">
+              <div className="ma-row"><Toggle id="pub-notify" checked={pubOpt.notify} onChange={(v) => setPubOpt({ ...pubOpt, notify: v })} label={pub[wk] === 'draft' ? <><b>Notify workers</b><small>All {people} get their week in the app</small></> : <><b>Notify changed workers</b><small>Only people whose shifts changed hear about it</small></>} /></div>
+              <div className="ma-row"><Toggle id="pub-ack" checked={pubOpt.ack} onChange={(v) => setPubOpt({ ...pubOpt, ack: v })} label={<><b>Ask for acknowledgement</b><small>Workers confirm they've seen their week</small></>} /></div>
             </div>
-            <div className="small muted">Covers {shown.map((s) => s.name).join(', ')}{ven !== 'all' ? '' : ''}.</div>
-            {errs.length > 0 && <div className="up-block"><b>Can't publish yet</b><div className="small">{errs.length === 1 ? 'One worker breaks' : `${errs.length} workers break`} the organisation's weekly off rule this week.</div>
-              {errs.map((x) => <div key={x.wid} className="row-line"><Pill tone="crit">{x.closed.length ? 'Works on the off day' : 'No weekly off'}</Pill><span className="small">{W(x.wid).name}, {x.g.float ? 'Floaters' : siteOf(x.g.site).name}: {errText(x)}</span></div>)}</div>}
-            <h3 className="pub-h">Before you publish</h3>
-            <div className="row-line"><Pill tone="warn">Rest period</Pill><span className="small">Bilal Ahmed: 9 h between Thu evening and Fri morning (minimum 10 h)</span></div>
-            <div className="row-line"><Pill tone="info">Two locations</Pill><span className="small">Rajesh Kumar, Mon: Barsha Heights then Marina Promenade, 7 h gap, 25 min travel</span></div>
-            <div className="row-line"><Pill tone="crit">Document</Pill><span className="small">Chinedu Okafor's visa expires before Sat 10</span></div>
-            <h3 className="pub-h">Workers</h3>
-            <Toggle id="pub-notify" checked={pubOpt.notify} onChange={(v) => setPubOpt({ ...pubOpt, notify: v })} label={pub[wk] === 'draft' ? `Notify all ${people} workers in the app` : 'Notify only workers whose shifts changed'} />
-            <Toggle id="pub-ack" checked={pubOpt.ack} onChange={(v) => setPubOpt({ ...pubOpt, ack: v })} label="Ask workers to acknowledge their week" />
             <div className="drawer-actions">
               <button className="btn ghost" onClick={() => setPubOpen(false)}>Cancel</button>
               <span className="grow" />
@@ -579,24 +587,37 @@ export function Scheduling({ go }) {
           </>;
         })()}
       </Drawer>
-      <Drawer open={!!up} onClose={() => setUp(null)} title="Upload a roster" sub={up && `${weekLabel(up.wk)} · ${shown.length === SITES.length ? 'all locations' : shown.map((x) => x.name).join(', ')}`}>
+      <Drawer open={!!up} onClose={() => setUp(null)} title="Upload a roster" sub={up && `${weekLabel(up.wk)} · ${shown.length === SITES.length ? 'all locations' : shown.length === 1 ? shown[0].name : `${shown.length} locations`}`}>
         {up && up.step === 'pick' && <>
-          <Field label="Week"><Select id="up-wk" className="input" value={up.wk} onChange={(e) => setUp({ ...up, wk: +e.target.value })}>
-            {Array.from({ length: MAXWK + 1 }, (_, k) => k).map((k) => <option key={k} value={k}>{weekLabel(k)}{k === 0 ? ' · this week' : k === 1 ? ' · next week' : ''}{!has(k) ? ' · no roster yet' : pub[k] === 'draft' ? ' · draft' : ' · published'}</option>)}
-          </Select></Field>
-          <ol className="up-steps">
-            <li><b>Download the template.</b> <span className="muted">It lists your workers and is already filled in with {has(up.wk) ? 'this week' : weekLabel(latestBefore(up.wk), true)}, so you only change what's different.</span>
-              <div><button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} /> roster-{fileWeek(up.wk)}.xlsx</button></div></li>
-            <li><b>Fill in each day.</b> <span className="muted">Any of these work:</span>
-              <div className="up-fmt"><span className="mono">07:00-19:00</span><span className="mono">7-7</span><span className="mono">7am to 7pm</span><span className="mono">OFF</span><span className="mono">LEAVE</span><span className="mono">07:00-11:00 + 17:00-21:00</span><span className="mono">07:00-19:00 @ Barsha Heights</span></div></li>
-            <li><b>Upload it back.</b> <span className="muted">Columns are matched by name, so your own sheet works too.</span></li>
-          </ol>
+          {upSteps(0)}
+          <div className="field"><span className="field-label">Week</span>
+            <div className="up-weeks" role="radiogroup" aria-label="Week">
+              {Array.from({ length: MAXWK + 1 }, (_, k) => k).map((k) => (
+                <button key={k} role="radio" aria-checked={up.wk === k} className={'up-week' + (up.wk === k ? ' on' : '')} onClick={() => setUp({ ...up, wk: k })}>
+                  <b>{k === 0 ? 'This week' : k === 1 ? 'Next week' : `In ${k} weeks`}</b><span>{weekLabel(k)}</span>
+                  <em className={!has(k) ? '' : pub[k] === 'draft' ? 'draft' : 'live'}>{!has(k) ? 'Empty' : pub[k] === 'draft' ? 'Draft' : 'Published'}</em>
+                </button>
+              ))}
+            </div>
+          </div>
           <label className={'up-drop' + (up.over ? ' over' : '')} onDragOver={(e) => { e.preventDefault(); if (!up.over) setUp({ ...up, over: true }); }} onDragLeave={() => setUp({ ...up, over: false })} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f, up.wk); }}>
             <input id="up-file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files[0]; if (f) readFile(f, up.wk); e.target.value = ''; }} />
-            <Icon name="upload" size={22} /><b>Drop the file here, or choose it</b><span className="small muted">Excel (.xlsx, .xls) or CSV</span>
+            <span className="up-drop-ic"><Icon name="upload" size={22} /></span><b>Drop your roster here</b><span>or <u>choose a file</u> · Excel or CSV</span>
           </label>
-          <div className="up-rule"><Icon name="alert" size={14} /><span className="small">{fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} ${OFF_RULES.days.length === 1 ? 'is' : 'are'} off for everyone. A file with any shift on ${OFF_RULES.days.length === 1 ? 'that day' : 'those days'} is rejected as a whole.` : `Every worker needs at least ${OFF_RULES.perWeek} weekly off. If any row has a problem, nothing is imported and you get a list of exactly what to fix.`}</span></div>
-          <div className="small muted">No file to hand? <button className="linkbtn" onClick={() => setUp({ ...up, step: 'report', file: `roster-${fileWeek(up.wk)} (sample).xlsx`, aoa: sampleSheet(up.wk, true), map: null, sample: true })}>Try a sample with a few mistakes</button></div>
+          <div className="up-row">
+            <span className="up-row-ic"><Icon name="document" size={18} /></span>
+            <span className="up-row-txt"><b>Start from the template</b><span>Your workers, filled in with {has(up.wk) ? 'this week' : weekLabel(latestBefore(up.wk), true)}</span></span>
+            <button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} />Download</button>
+          </div>
+          <details className="up-help"><summary>What to type in a day</summary>
+            <dl>{HOW.slice(1, 9).map(([a, b]) => <React.Fragment key={a}><dt>{a}</dt><dd>{b}</dd></React.Fragment>)}</dl>
+            <p>Columns are matched by name, so your own sheet works too.</p>
+          </details>
+          <p className="up-note"><Icon name="alert" size={15} />{fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} ${OFF_RULES.days.length === 1 ? 'is' : 'are'} off for everyone. A file with any shift on ${OFF_RULES.days.length === 1 ? 'that day' : 'those days'} is rejected as a whole.` : `Every worker needs at least ${OFF_RULES.perWeek} weekly off. If any row has a problem, nothing is imported and you get a list of exactly what to fix.`}</p>
+          <div className="drawer-actions">
+            <button className="btn ghost" onClick={() => setUp(null)}>Cancel</button><span className="grow" />
+            <button className="btn ghost" onClick={() => setUp({ ...up, step: 'report', file: `roster-${fileWeek(up.wk)} (sample).xlsx`, aoa: sampleSheet(up.wk, true), map: null, sample: true })}>Try a sample file</button>
+          </div>
         </>}
         {up && up.step === 'report' && (() => {
           const sites = shown.map((x) => x.id);
@@ -615,27 +636,32 @@ export function Scheduling({ go }) {
           const getM = (k) => (k[0] === 'd' ? res.map.days[+k.slice(1)] : res.map[k]);
           const setM = (k, v) => { const m = { ...res.map, days: [...res.map.days] }; if (k[0] === 'd') m.days[+k.slice(1)] = v; else m[k] = v; setUp({ ...up, map: m }); };
           return <>
-            <div className="up-file"><Icon name="upload" size={15} /><b>{up.file}</b><span className="small muted">{res.rows} rows read</span></div>
+            {upSteps(errors.length || res.missing.length ? 1 : 2)}
+            <div className="up-row">
+              <span className="up-row-ic"><Icon name="document" size={18} /></span>
+              <span className="up-row-txt"><b>{up.file}</b><span>{res.rows} rows · {FIELDS.filter(([k]) => getM(k) >= 0).length} of {FIELDS.length} columns matched</span></span>
+              <button className="btn ghost sm" onClick={() => setUp({ wk: up.wk, step: 'pick' })}>Change</button>
+            </div>
             <details className="up-map" open={res.missing.length > 0}>
-              <summary className="small">{res.missing.length ? <span className="neg">Couldn't find {res.missing.join(', ')}. Pick the right columns:</span> : <>Columns matched: {FIELDS.filter(([k]) => getM(k) >= 0).map(([k, l]) => l).join(', ')}. <span className="muted">Change</span></>}</summary>
+              <summary>{res.missing.length ? <span className="up-miss">Couldn't find {res.missing.join(', ')}. Pick the right columns</span> : 'Check which column is which'}</summary>
               <div className="up-map-grid">{FIELDS.map(([k, l]) => (
                 <label key={k} className="small"><span>{l}</span><Select className="input sm" value={getM(k)} onChange={(e) => setM(k, +e.target.value)}><option value={-1}>Not in the file</option>{headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}</Select></label>
               ))}</div>
             </details>
-            {res.missing.length > 0 ? null : errors.length ? <div className="up-block">
-              <b>Nothing imported yet: {errors.length} {errors.length === 1 ? 'thing' : 'things'} to fix</b>
-              <div className="small">Fix these in your file and upload it again. The error report is your file with a Problem column added.</div>
-              <table className="up-errs"><thead><tr><th>Row</th><th>Column</th><th>Problem</th></tr></thead><tbody>
-                {errors.slice(0, 8).map((x, i) => <tr key={i}><td className="mono">{x.row ?? '–'}</td><td>{x.col}</td><td>{x.msg}</td></tr>)}
-              </tbody></table>
-              {errors.length > 8 && <div className="small muted">and {errors.length - 8} more in the error report</div>}
-              <div><button className="btn ghost sm" onClick={() => downloadErrors(up, errors)}><Icon name="download" size={14} /> Error report</button></div>
-            </div> : <div className="up-ok"><b>Ready to import</b><div className="small">{res.seen.size} {res.seen.size === 1 ? 'worker' : 'workers'} from the file. The week will have {shifts} shifts, {hours} base hours across your locations.{has(up.wk) ? ` Updates ${pub[up.wk] === 'published' ? 'the published roster; workers are told when you publish' : 'the draft'}.` : ''}</div></div>}
-            {warns.length > 0 && res.missing.length === 0 && <>
-              <h3 className="pub-h">Worth a look</h3>
-              {warns.map((x, i) => <div key={i} className="row-line"><Pill tone="warn">Check</Pill><span className="small">{x}</span></div>)}
-              <div className="small muted">These don't stop the import.</div>
-            </>}
+            {res.missing.length > 0 ? null : errors.length ? <section className="up-result is-bad" role="alert">
+              <div className="up-result-head"><span className="up-big">{errors.length}</span><span><b>{errors.length === 1 ? 'Problem' : 'Problems'} to fix</b><span>Nothing was imported. Fix {errors.length === 1 ? 'it' : 'these'} in your file and upload it again.</span></span></div>
+              <ul className="up-errs">{errors.slice(0, 6).map((x, i) => <li key={i}><span className="up-at">{x.row ? `Row ${x.row}` : 'File'}</span><span><b>{x.col}</b><span>{x.msg}</span></span></li>)}</ul>
+              {errors.length > 6 && <p className="up-more">{errors.length - 6} more in the marked-up file</p>}
+              <button className="btn ghost sm" onClick={() => downloadErrors(up, errors)}><Icon name="download" size={14} />Download the file with problems marked</button>
+            </section> : <section className="up-result is-ok">
+              <div className="up-result-head"><span className="up-ok-ic"><Icon name="check" size={20} /></span><span><b>Ready to import</b><span>{has(up.wk) ? (pub[up.wk] === 'published' ? 'Updates the published week. Workers hear about it when you publish.' : 'Updates the draft.') : 'Saved as a draft until you publish.'}</span></span></div>
+              <div className="up-stats"><div><b>{res.seen.size}</b><span>workers</span></div><div><b>{shifts}</b><span>shifts</span></div><div><b>{hours}</b><span>base hours</span></div></div>
+            </section>}
+            {warns.length > 0 && res.missing.length === 0 && <section className="up-list">
+              <h3>Worth a look<span className="live-count">{warns.length}</span></h3>
+              <ul>{warns.map((x, i) => <li key={i}><span className="sdot warn" /><span>{x}</span></li>)}</ul>
+              <p>These don't stop the import.</p>
+            </section>}
             <div className="drawer-actions">
               <button className="btn ghost" onClick={() => setUp({ wk: up.wk, step: 'pick' })}>Back</button>
               <span className="grow" />
