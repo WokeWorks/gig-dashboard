@@ -2075,3 +2075,37 @@ button.live-name:hover { text-decoration: underline; text-decoration-color: var(
 .bell-n { animation: bell-pop .4s var(--ease); }
 .nt-chips .ma-chip { transition: background-color .18s, color .18s, transform .12s var(--ease); }
 .nt-chips .ma-chip:active { transform: scale(.96); }
+
+/* ======================================================================================================
+   Roster: the same bordered grid, sharper. A sun or moon on every shift, a headcount under each day,
+   faces in the name column, a key at the top, bigger times and a little more room.
+   ====================================================================================================== */
+.roster-card { border-radius: 18px; overflow: hidden; }
+.ro-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13.5px; font-weight: 500; }
+.ro-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.ro-legend i { display: inline-block; width: 18px; height: 12px; border-radius: 4px; border: 1.5px solid var(--line-strong); }
+.ro-legend .k-ok { border-color: var(--good); } .ro-legend .k-miss { border-color: var(--crit); background: var(--crit-soft); }
+.ro-legend .k-now { border: 1.5px dashed var(--good); } .ro-legend .k-cov { border-color: transparent; background: var(--good-soft); }
+.ro-legend .icon { color: var(--ink-mid); }
+
+.roster th { padding: 12px 10px; font-size: 15px; font-weight: 500; color: var(--ink-mid); }
+.roster th .dh-n { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; font-weight: 500; }
+.roster th.today .dh-n { color: var(--accent); }
+.roster td { padding: 5px; }
+.roster td.mq-host { position: relative; padding: 10px 12px 10px 60px; }
+.r-av { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-mid); font-size: 12.5px; font-weight: 500; }
+.roster .namelink { font-size: 15px; font-weight: 500; }
+.roster td.mq-host .small.muted { margin-top: 2px; font-size: 13.5px; }
+.rgroup .rg-head td { padding: 12px 14px; }
+.rg-toggle { font-size: 16px; } .rg-loc { font-weight: 500; }
+
+.roster td > .cell, .cell-split, .cell-split > .cell.cseg { min-height: 58px; }
+.cell { border-radius: 11px; transition: border-color .15s, background-color .15s, transform .15s var(--ease), box-shadow .15s; }
+.cell.one, .cell.multi { padding: 9px 12px; }
+.cell.one:hover, .cell.multi:hover { border-color: var(--line-strong); transform: translateY(-1px); box-shadow: 0 8px 20px -10px rgba(0,0,0,.8); }
+.sc-time { font-size: 15px !important; font-weight: 500; letter-spacing: -0.01em; }
+.sc-moon { top: 1px; right: 0; color: var(--info); }
+.sc-moon.sc-sun { color: var(--warn); }
+.sc-moon.sc-sun svg path, .sc-moon.sc-sun svg circle { fill: none; }
+.cell.O .cell-main, .cell.X .cell-main, .cell.A .cell-main { font-size: 14px; font-weight: 500; }
+.cell.today-in { --ring-r: 11px; } /* the dashed "in now" ring follows the rounder cells */

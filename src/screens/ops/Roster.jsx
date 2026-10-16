@@ -186,6 +186,10 @@ export function Scheduling({ go }) {
   const shown = mine.filter((s) => loc === 'all' || s.id === loc);
   // The floaters band: floaters in this manager's pool, plus anyone from the pool covering at these locations this week.
   const PG = groups.find((g) => g.float);
+  // How many people work each day at the locations on screen, wherever their roster row lives.
+  const shownIds = new Set(shown.map((s) => s.id));
+  const onDay = (i) => groups.reduce((n, g) => n + g.cells.filter((row) => Array.isArray(row[i]) && row[i].some((x) => shownIds.has(x[2] || g.site))).length, 0);
+  const ini = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
   const poolRows = PG ? PG.people.map((id, r) => ({ w: W(id), r })).filter(({ w }) => match(w) && isFloat(w)) : [];
   // People from other locations who have at least one shift here this week.
   const visitorsOf = (sid) => {
@@ -315,8 +319,8 @@ export function Scheduling({ go }) {
   ]);
   const chip = ([t, st, s2, x4], k, home) => {
     const away = s2 && s2 !== home;
-    const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay;
-    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}>{night && <span className="sc-moon filled" title="Overnight: ends after midnight" aria-label="Overnight shift"><Icon name="moon" size={12} /></span>}<span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
+    const night = endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).nextDay || toMin(st) >= 17 * 60;
+    return <span key={k} className={'shiftchip' + (away ? ' away' : '')} title={away ? `At ${siteOf(s2).name}` : undefined}><span className={'sc-moon filled' + (night ? '' : ' sc-sun')} title={night ? 'Night shift' : 'Day shift'} aria-label={night ? 'Night shift' : 'Day shift'}><Icon name={night ? 'moon' : 'sun'} size={13} /></span><span className="sc-time mono" title={tplLabel(tplOf(t))}><span>{st}</span><span className="sc-to">to</span><span>{endOf(st, tplOf(t).base + (tplOf(t).brk || 0)).time}</span></span>{away && <span className="sc-loc"><Icon name="pin" size={10} />{siteOf(s2).name.replace(/^(Spinneys|Carrefour) /, '')}</span>}</span>;
   };
   return (
     <>
@@ -406,9 +410,13 @@ export function Scheduling({ go }) {
         </section>}
       </div> :
       <section className="card flush roster-card">
+        <div className="ro-legend" aria-label="Key">
+          <span><i className="k-ok" />Clocked in</span><span><i className="k-miss" />Missed</span><span><i className="k-now" />In now</span>
+          <span><Icon name="sun" size={14} />Day</span><span><Icon name="moon" size={14} />Night</span><span><i className="k-cov" />Cover</span>
+        </div>
         <div className="table-wrap roster-wrap">
           <table className="roster">
-            <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
+            <thead><tr><th aria-label="Name" />{days.map((d, i) => <th key={d} className={(wk === 0 && i === TODAY ? 'today' : '') + (fixedMode && OFF_RULES.days.includes(i) ? ' closed' : '')}>{d}{wk === 0 && i === TODAY && <span className="today-tag">Today</span>}<span className="dh-n">{onDay(i)} on</span>{fixedMode && OFF_RULES.days.includes(i) && <span className="off-tag">Weekly off</span>}</th>)}</tr></thead>
             {shown.map((s, si) => {
               const g = G(s.id);
               const rows = g.people.map((id, r) => ({ w: W(id), r })).filter((x) => matchAt(s.id)(x.w));
@@ -427,7 +435,7 @@ export function Scheduling({ go }) {
                   </tr>
                   {!isCol && rows.map(({ w, r }) => (
                     <tr key={w.id}>
-                      <td className="mq-host"><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs(s.id, r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</Marquee></div></td>
+                      <td className="mq-host"><span className="r-av" aria-hidden="true">{ini(w.name)}</span><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs(s.id, r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}{(() => { const row = g.cells[r]; const worked = row.filter((c) => Array.isArray(c)).length; return worked > 7 - offPerWeek() ? <span className="off-warn" title={`Rostered ${worked} days this week; the organisation requires ${OFF_RULES.perWeek} off a week. This week can't be published until it's fixed.`}><Icon name="alert" size={11} /> No weekly off</span> : null; })()}</Marquee></div></td>
                       {g.cells[r].map((c, ci) => {
                         const here = Array.isArray(c) ? c.filter((x) => !x[2] || x[2] === s.id) : [];
                         const away = Array.isArray(c) && here.length === 0;
@@ -451,7 +459,7 @@ export function Scheduling({ go }) {
                   ))}
                   {!isCol && vis.map((v) => (
                     <tr key={'v' + v.w.id} className="visitor">
-                      <td className="mq-host"><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.g === 'pool' ? 'Floater' : `From ${siteOf(v.g).name.replace(/^(Spinneys|Carrefour) /, '')}`}</Marquee></div></td>
+                      <td className="mq-host"><span className="r-av" aria-hidden="true">{ini(v.w.name)}</span><button className="namelink" onClick={() => go('workforce', { worker: v.w.id })}><Marquee>{v.w.name}</Marquee></button><div className="small muted"><Marquee><span className="vtag">{vendorOf(v.w.vendor).code}</span> {v.g === 'pool' ? 'Floater' : `From ${siteOf(v.g).name.replace(/^(Spinneys|Carrefour) /, '')}`}</Marquee></div></td>
                       {v.days.map((d, ci) => (
                         <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>{d.length > 1 ? split(d, s.id, v.w.id, ci, () => openDay(v.g, v.r, ci), `${v.w.name} ${days[ci]}`) : d.length ? <button className={'cell one' + pastCls(s.id, v.w.id, ci, d)} title={pastTitle(s.id, v.w.id, ci, d)} onClick={() => openDay(v.g, v.r, ci)} aria-label={`${v.w.name} ${days[ci]} at ${s.name}`}>{ring(pastCls(s.id, v.w.id, ci, d).includes('today-in'))}{d.map((x, k) => chip(x, k, s.id))}</button> : <span className="cell vis-empty" aria-hidden="true">–</span>}</td>
                       ))}
@@ -469,7 +477,7 @@ export function Scheduling({ go }) {
                 </tr>
                 {!isCol && poolRows.map(({ w, r }) => (
                   <tr key={w.id}>
-                    <td className="mq-host"><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs('pool', r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</Marquee></div></td>
+                    <td className="mq-host"><span className="r-av" aria-hidden="true">{ini(w.name)}</span><div className="namerow"><button className="namelink" onClick={() => go('workforce', { worker: w.id })}><Marquee>{w.name}</Marquee></button>{rowActs('pool', r, w)}</div><div className="small muted"><Marquee><span className="vtag">{vendorOf(w.vendor).code}</span> {w.role}</Marquee></div></td>
                     {PG.cells[r].map((c, ci) => (
                       <td key={ci} className={wk === 0 && ci === TODAY ? 'today' : ''}>
                         {Array.isArray(c) && c.length > 1 ? split(c, 'pool', w.id, ci, () => openDay('pool', r, ci), `${w.name} ${days[ci]}`) :
