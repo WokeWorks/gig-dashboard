@@ -133,8 +133,10 @@ export function Finance({ go }) {
               const gap = !rateFixed && v.id === MISSING.vendor;
               return (
                 <section key={v.id} className="vc-rcol" style={{ '--i': gi }}>
-                  <h3><span className="vtag">{v.code}</span>{v.name}</h3>
-                  <span className="vc-rbill">{UNIT_LABEL[mine[0]?.unit] || ''}</span>
+                  <header className="vc-rhead">
+                    <span className="vc-rcode">{v.code}</span>
+                    <span><h3>{v.name}</h3><span>{UNIT_LABEL[mine[0]?.unit] || 'No rates yet'} · {mine.length} {mine.length === 1 ? 'role' : 'roles'}</span></span>
+                  </header>
                   {mine.map((r) => (
                     <div key={r.role} className="vc-rate">
                       <span className="vc-role">{r.role}</span>
