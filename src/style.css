@@ -2488,3 +2488,39 @@ html, * { scrollbar-width: thin; scrollbar-color: #2E3535 transparent; }
 .drawer.bottom { margin: 0; border-radius: 22px 22px 0 0; border-bottom: 0; max-height: 90vh; } /* attached to the foot of the screen */
 .wfx-tab .up-stats { grid-template-columns: repeat(4, 1fr); }
 .wfx-tab .ts-head { display: flex; align-items: center; gap: 14px; }
+
+/* ======================================================================================================
+   Onboarding: vendor suggestions lead the page; the wizard and bulk import open from the header in drawers
+   ====================================================================================================== */
+.ob2 { display: flex; flex-direction: column; gap: 14px; }
+.ob2-head h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; font-size: 18px; }
+.ob2-head p { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 500; }
+.ob2-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ob2-row { display: grid; grid-template-columns: minmax(240px, 1.4fr) minmax(200px, 1fr) minmax(220px, 1.1fr) auto; align-items: center; gap: 24px; padding: 16px 12px; border-top: 1px solid var(--line);
+  animation: lv-in .4s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 45ms + 60ms); transition: background-color .15s; }
+.ob2-row:last-child { border-bottom: 1px solid var(--line); }
+.ob2-row:hover { background: var(--surface); }
+.ob2-row.leaving { animation: lv-out .28s cubic-bezier(.4, 0, 1, 1) forwards; }
+.ob2-cell { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-mid); font-size: 15px; min-width: 0; }
+.ob2-cell .icon { color: var(--muted); flex: none; }
+.ob2 .lv-none { min-height: calc(100vh - 360px); }
+
+.ob2-step { display: flex; flex-direction: column; gap: 18px; animation: lv-in .32s var(--ease) backwards; }
+.ob2-lede { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 500; }
+.ob2-photo { padding: 36px 20px; }
+.ob2-photo.has { border-style: solid; border-color: var(--accent-border); background: rgba(0,204,188,.06); }
+.ob2-face { width: 72px; height: 72px; margin-bottom: 6px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-size: 24px; font-weight: 500; animation: lv-pop .45s cubic-bezier(.34, 1.56, .64, 1); }
+.ob2-photo > span:last-child { color: var(--muted); font-size: 14px; font-weight: 500; max-width: 46ch; }
+.ob2-done { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 12px; text-align: center; }
+.ob2-done > * { animation: lv-in .45s var(--ease) backwards; } .ob2-done h3 { animation-delay: .2s; margin: 6px 0 0; font-size: 22px; } .ob2-done .wfx-kv { animation-delay: .28s; width: 100%; text-align: left; } .ob2-done-act { animation-delay: .36s; }
+.ob2-done .lv-none-ic { animation: lv-pop .55s cubic-bezier(.34, 1.56, .64, 1) backwards; }
+.ob2-done-act { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-top: 6px; }
+.ob2-howto { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ob2-howto li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); animation: lv-in .35s var(--ease) backwards; }
+.ob2-howto li:nth-child(2) { animation-delay: .06s; } .ob2-howto li:nth-child(3) { animation-delay: .12s; }
+.ob2-howto li:first-child { border-top: 0; }
+.ob2-howto li > span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-size: 14px; font-weight: 500; }
+.ob2-howto b { font-size: 16px; font-weight: 500; } .ob2-howto p { margin: 3px 0 0; color: var(--muted); font-size: 14.5px; font-weight: 500; line-height: 1.5; }
+.drawer .up-steps2 { flex-wrap: wrap; row-gap: 8px; }
+@media (max-width: 1100px) { .ob2-row { grid-template-columns: minmax(200px, 1fr) auto; } .ob2-cell { display: none; } }
+.ob2-done .wfx-kv dd { flex-wrap: nowrap; align-items: flex-start; } .ob2-done .wfx-kv dd .sdot { margin-top: 8px; }
