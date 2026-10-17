@@ -1,5 +1,5 @@
 import { SITES, WORKERS, MANAGERS, siteOf, vendorOf } from './data.js';
-import { ScreenHeader, Tabs, Drawer, Field, Toggle, useToast, Icon, Select } from './ui.jsx';
+import { ScreenHeader, Tabs, Drawer, Field, Toggle, useToast, Icon, Select, IPhone } from './ui.jsx';
 
 const { useState } = React;
 
@@ -120,27 +120,8 @@ const SUBS = [
 const TRIGGER_ICON = { clockin: 'clock', clockout: 'logout', schedule: 'calendar', demand: 'document' };
 const initials = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
 
-// An iPhone frame around the live form: side buttons, dynamic island, status bar, home indicator.
-function PhoneForm(props) {
-  return (
-    <div className="ip">
-      <span className="ip-btn ip-act" /><span className="ip-btn ip-vup" /><span className="ip-btn ip-vdn" /><span className="ip-btn ip-pwr" />
-      <div className="ip-screen">
-        <div className="ip-status" aria-hidden="true">
-          <span className="ip-time">9:41</span>
-          <span className="ip-island" />
-          <span className="ip-sys">
-            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
-            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0L8 11.5Z" /><path d="M3.4 6.8a6.5 6.5 0 0 1 9.2 0l-1.4 1.4a4.5 4.5 0 0 0-6.4 0L3.4 6.8Z" /><path d="M1.1 4.5a9.8 9.8 0 0 1 13.8 0l-1.4 1.4a7.8 7.8 0 0 0-11 0L1.1 4.5Z" /></svg>
-            <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45" /><rect x="2" y="2" width="18" height="9" rx="2" /><path d="M25 4.5v4a2 2 0 0 0 0-4Z" opacity=".45" /></svg>
-          </span>
-        </div>
-        <div className="ip-body fp-screen"><FormBody {...props} /></div>
-        <span className="ip-home" aria-hidden="true" />
-      </div>
-    </div>
-  );
-}
+// The live form inside an iPhone frame.
+const PhoneForm = (props) => <IPhone bodyClass="fp-screen"><FormBody {...props} /></IPhone>;
 export function FormBody({ form, answers, setAnswers, onSubmit, ctx = 'Carrefour Barsha Heights · Wed 7 Oct · 07:00 shift', submitLabel = 'Submit' }) {
   const set = (id, v) => setAnswers({ ...answers, [id]: v });
   const missing = form.fields.filter((q) => q.req && (answers[q.id] === undefined || answers[q.id] === '' || (Array.isArray(answers[q.id]) && q.type !== 'check' && !answers[q.id].length))).length;

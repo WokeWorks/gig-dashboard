@@ -211,6 +211,30 @@ export function Icon({ name, size = 20, stroke = 1.9, className = '' }) {
   );
 }
 
+// An iPhone frame: side buttons, dynamic island, status bar, home indicator. Used by the Forms preview and the
+// phone app. The body scrolls; `foot` sits pinned under it (the phone app's tab bar). CSS: .ip in style.css.
+export function IPhone({ children, className = '', bodyClass = '', foot, frameRef }) {
+  return (
+    <div className={'ip ' + className} ref={frameRef}>
+      <span className="ip-btn ip-act" /><span className="ip-btn ip-vup" /><span className="ip-btn ip-vdn" /><span className="ip-btn ip-pwr" />
+      <div className="ip-screen">
+        <div className="ip-status" aria-hidden="true">
+          <span className="ip-time">9:41</span>
+          <span className="ip-island" />
+          <span className="ip-sys">
+            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0L8 11.5Z" /><path d="M3.4 6.8a6.5 6.5 0 0 1 9.2 0l-1.4 1.4a4.5 4.5 0 0 0-6.4 0L3.4 6.8Z" /><path d="M1.1 4.5a9.8 9.8 0 0 1 13.8 0l-1.4 1.4a7.8 7.8 0 0 0-11 0L1.1 4.5Z" /></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45" /><rect x="2" y="2" width="18" height="9" rx="2" /><path d="M25 4.5v4a2 2 0 0 0 0-4Z" opacity=".45" /></svg>
+          </span>
+        </div>
+        <div className={'ip-body ' + bodyClass}>{children}</div>
+        {foot}
+        <span className="ip-home" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
 // Text that doesn't fit is clipped, not ellipsed. Hovering the host (see .mq-host in style.css)
 // slides it left at reading speed to show the rest, then it slides back.
 export function Marquee({ children, className = '' }) {
