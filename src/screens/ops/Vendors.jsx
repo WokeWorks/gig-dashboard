@@ -1,5 +1,6 @@
 import { VENDORS } from '../../data.js';
 import { ScreenHeader, Drawer, aed, Icon } from '../../ui.jsx';
+import { Ring, Trend as TrendLine } from '../../lib/charts.jsx';
 
 const { useState } = React;
 
@@ -14,35 +15,7 @@ const TREND = { v1: [80, 82, 81, 84, 85, 86], v2: [82, 80, 81, 78, 79, 79], v3: 
 const MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
 const trendOf = (v) => TREND[v.id] || Array(MONTHS.length).fill(v.score);
 
-function Ring({ value, size = 64, stroke = 6 }) {
-  const r = (size - stroke) / 2, c = 2 * Math.PI * r;
-  return (
-    <span className="vd-ring" style={{ width: size, height: size }} role="img" aria-label={`Score ${value} of 100`}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line-strong)" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)} style={{ '--c': c }} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      </svg>
-      <b>{value}</b>
-    </span>
-  );
-}
-
-function Trend({ data, w = 140, h = 40, labels }) {
-  const lo = Math.min(...data) - 2, hi = Math.max(...data) + 2;
-  const pts = data.map((v, i) => [(i / (data.length - 1)) * (w - 8) + 4, h - 4 - ((v - lo) / (hi - lo)) * (h - 8)]);
-  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-  const up = data[data.length - 1] >= data[0];
-  return (
-    <span className="vd-trend">
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Score ${data[0]} in ${MONTHS[0]} to ${data[data.length - 1]} in ${MONTHS[MONTHS.length - 1]}`}>
-        <path d={`${line} L${pts[pts.length - 1][0]},${h} L${pts[0][0]},${h} Z`} className="vd-trend-area" />
-        <path d={line} className={'vd-trend-line' + (up ? '' : ' down')} />
-        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="3.5" className={'vd-trend-dot' + (up ? '' : ' down')} />
-      </svg>
-      {labels && <span className="vd-trend-x">{MONTHS.map((m) => <span key={m}>{m}</span>)}</span>}
-    </span>
-  );
-}
+const Trend = (props) => <TrendLine months={MONTHS} {...props} />;
 
 export function Vendors({ go }) {
   const [sel, setSel] = useState(null);

@@ -97,8 +97,7 @@ function App() {
       </nav>
       {P.nav ? (
         <main className={'main' + (persona === 'vendor' ? ' vendor' : '')} key={cur[0] + JSON.stringify(params) + (persona === 'vendor' ? vClient : viewAs)}>
-          {persona === 'vendor' && <Vd.ClientPicker value={vClient} onChange={setVClient} />}
-          {React.createElement(cur[3], { go, params, client: vClient })}
+          {React.createElement(cur[3], { go, params, client: vClient, setClient: setVClient })}
         </main>
       ) : (
         <div className="body"><PhoneApp /></div>

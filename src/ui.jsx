@@ -114,20 +114,6 @@ export const Bar = ({ value, max = 100, tone = 'accent' }) => (
   <div className="bar"><span className={'bar-fill ' + tone} style={{ width: Math.min(100, (value / max) * 100) + '%' }} /></div>
 );
 
-export function Spark({ data, w = 96, h = 28 }) {
-  const min = Math.min(...data), max = Math.max(...data);
-  const x = (i) => (i / (data.length - 1)) * (w - 4) + 2;
-  const y = (v) => h - 3 - ((v - min) / (max - min || 1)) * (h - 6);
-  const d = data.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('');
-  const last = data.length - 1;
-  return (
-    <svg className="spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-      <path d={`${d}L${x(last)} ${h}L${x(0)} ${h}Z`} className="spark-area" />
-      <path d={d} className="spark-line" />
-      <circle cx={x(last)} cy={y(data[last])} r="2.5" className="spark-dot" />
-    </svg>
-  );
-}
 
 export const Avatar = ({ name }) => {
   const ini = name.split(' ').map((p) => p[0]).slice(0, 2).join('');

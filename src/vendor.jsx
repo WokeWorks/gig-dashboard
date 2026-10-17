@@ -3,13 +3,20 @@ import { todayOf } from './lib/live.js';
 import { timesheetOf, missedAt } from './lib/roster.js';
 import { GEO } from './lib/geo.js';
 import { LiveMap } from './lib/livemap.jsx';
-import { StatFilters } from './lib/statfilter.jsx';
-import { ScreenHeader, Pill, Spark, aed, Field, Note, useToast, Icon, Select } from './ui.jsx';
+import { ScreenHeader, aed, Field, Note, useToast, Icon, Select, Drawer, Phase, Spec } from './ui.jsx';
+import { Ring, Trend } from './lib/charts.jsx';
 
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect } = React;
 const ME = 'v4'; // GH FZE
 
-/* ---------- the clients this vendor supplies ----------
+/* ---------- Vendor portal ----------
+   Built on the same rules as the client screens (see CLAUDE.md, Design): no cards, rows with status dots, plain words,
+   readable sizes, drawers for anything with steps, entrance animations. The client picker sits at the top right of every
+   page, like the manager picker on the Liveboard. Each screen mirrors its client counterpart: Overview is the Liveboard
+   layout (it reuses the live-* classes), My workers is Workforce, Scorecard uses the Vendors rings and trends,
+   Proposals works like Onboarding, Statements like Vendor costs. Vendor-only CSS: the "Vendor portal" section, .vn-*.
+
+   ---------- the clients this vendor supplies ----------
    A vendor usually supplies more than one client. Deliveroo UAE runs on OpsPro here, so its numbers are the live
    prototype data; the other two are small mock clients so the portal shows how a vendor sees all of them at once. */
 export const VCLIENTS = [
@@ -55,199 +62,273 @@ const deliveroo = () => WORKERS.filter((w) => w.vendor === ME).map((w) => { cons
 export const peopleFor = (client) => [...deliveroo(), ...others].filter((p) => client === 'all' || p.client === client);
 const todayCounts = (ps) => ({ due: ps.filter((p) => p.today.key !== 'off').length, in: ps.filter((p) => p.today.key === 'in').length, late: ps.filter((p) => p.today.text.startsWith('Late')).length, ns: ps.filter((p) => p.today.key === 'notin').length });
 
-const ClientCell = ({ id }) => <span className="vc-tag">{vclient(id).name}</span>;
 
-// Score trend: the latest score up top with the change since the first month, then a line across the months with
-// a hover read-out per month. Sized to its card (measured), so text and strokes stay at their real size.
-const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-function ScoreTrend({ data, sub }) {
-  const box = useRef(null); const [w, setW] = useState(480); const [hov, setHov] = useState(null);
-  useEffect(() => { const el = box.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth || 480)); ro.observe(el); return () => ro.disconnect(); }, []);
-  const H = 190, L = 30, R = 14, T = 18, B = 26;
-  const lo = Math.floor((Math.min(...data) - 2) / 5) * 5, hi = Math.ceil((Math.max(...data) + 2) / 5) * 5;
-  const x = (i) => L + (i / (data.length - 1)) * (w - L - R);
-  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
-  const line = data.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('');
-  const area = `${line}L${x(data.length - 1).toFixed(1)} ${H - B}L${x(0).toFixed(1)} ${H - B}Z`;
-  const ticks = []; for (let v = lo; v <= hi; v += 5) ticks.push(v);
-  const last = data[data.length - 1], diff = last - data[0];
-  const at = hov ?? data.length - 1;
+const initials = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
+const short = (w) => w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, '');
+const isLate = (p) => p.today.text.startsWith('Late');
+// The dot for a person today, and their place in a "needs you first" order.
+const dotOf = (p) => (p.today.key === 'notin' ? 'crit' : isLate(p) ? 'warn' : p.today.key === 'in' ? 'good' : 'ring');
+const rank = (p) => (p.today.key === 'notin' ? 0 : isLate(p) ? 1 : p.today.key === 'in' ? 2 : 3);
+// What sits on the right of a person's row, short: the minutes late, the time they came in, or why they're off.
+const todayChip = (p) => { const m = p.today.text.match(/(\d+) min/); if (isLate(p) && m) return `+${m[1]}m`; if (p.today.text.startsWith('In since ')) return p.today.text.replace('In since ', 'In '); return p.today.text; };
+const Face = ({ p }) => <span className={'live-face ' + dotOf(p)} role="img" aria-label={`${p.name}, ${p.today.text}`}>{initials(p.name)}</span>;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+// The client picker, at the top right of every vendor page.
+export function ClientPicker({ value, onChange }) {
   return (
-    <div className="st">
-      <div className="st-head">
-        <div><h3>Score trend</h3><div className="small muted">{sub}</div></div>
-        <div className="st-now"><b>{last}</b><span className={'small ' + (diff > 0 ? 'pos' : diff < 0 ? 'neg' : 'muted')}>{diff > 0 ? '+' : ''}{diff} since April</span></div>
+    <label className="vn-pick">
+      <span>Client</span>
+      <Select id="v-client" className="input" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Client">
+        <option value="all">All clients</option>{VCLIENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </Select>
+    </label>
+  );
+}
+const Head = ({ title, phase, spec, client, setClient, children }) => <ScreenHeader title={title} phase={phase} spec={spec} actions={<>{children}{setClient && <ClientPicker value={client} onChange={setClient} />}</>} />;
+
+/* ---------- Overview: the Liveboard layout for your people at every client ---------- */
+const OV_MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+export function VendorOverview({ go, client = 'all', setClient }) {
+  const [hover, setHover] = useState(null);
+  const [panel, setPanel] = useState(null);
+  const [only, setOnly] = useState('all');
+  const ps = peopleFor(client); const t = todayCounts(ps);
+  const score = client === 'all' ? Math.round(VCLIENTS.reduce((a, c) => a + c.score * peopleFor(c.id).length, 0) / peopleFor('all').length) : vclient(client).score;
+  const trend = client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend;
+  // Every place your people are due today, worst first.
+  const locs = [...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))]
+    .map((w) => { const here = ps.filter((p) => p.where === w); return { key: w, client: here[0].client, ppl: here, g: geoOf(w), ...todayCounts(here) }; })
+    .sort((a, b) => b.ns - a.ns || b.late - a.late || b.due - a.due || a.key.localeCompare(b.key));
+  const KPIS = [
+    { k: 'in', label: 'In now', dot: 'good', n: t.in, sub: `of ${t.due} due`, has: (x) => x.in },
+    { k: 'noshow', label: 'No-show', dot: 'crit', n: t.ns, sub: `at ${plural(locs.filter((x) => x.ns).length, 'location')}`, has: (x) => x.ns },
+    { k: 'late', label: 'Late', dot: 'warn', n: t.late, sub: `at ${plural(locs.filter((x) => x.late).length, 'location')}`, has: (x) => x.late },
+  ];
+  const f = KPIS.find((x) => x.k === only);
+  const shown = locs.filter((x) => !f || f.has(x));
+  const open = panel && locs.find((x) => x.key === panel);
+  const pick = (k) => { setHover(null); setPanel(k); };
+  const RANK = { returned: 0, ready: 1, client: 2, review: 3, proposed: 4 };
+  const props = [...proposalsFor(client)].sort((a, b) => RANK[a.stage] - RANK[b.stage]);
+
+  const person = (p, withSite) => (
+    <div key={p.id} className="live-person">
+      <Face p={p} />
+      <div className="live-who">
+        <b className="live-name">{p.name}</b>
+        {withSite ? <button className="live-site" onClick={() => pick(p.where)}>{short(p.where)}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</button> : <span className="live-sub">{p.role}</span>}
       </div>
-      <div ref={box} className="st-plot">
-        <svg width={w} height={H} role="img" aria-label={`Score by month, April to October: ${data.map((v, i) => `${MONTHS[i]} ${v}`).join(', ')}`} onMouseLeave={() => setHov(null)}>
-          {ticks.map((t) => <g key={t}><line x1={L} x2={w - R} y1={y(t)} y2={y(t)} className="st-grid" /><text x={L - 8} y={y(t) + 4} className="st-ax" textAnchor="end">{t}</text></g>)}
-          {MONTHS.slice(0, data.length).map((m, i) => <text key={m} x={x(i)} y={H - 6} className={'st-ax' + (i === at ? ' on' : '')} textAnchor="middle">{m}</text>)}
-          <path d={area} className="st-area" />
-          <path d={line} className="st-line" />
-          {hov != null && <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} className="st-cross" />}
-          <circle cx={x(at)} cy={y(data[at])} r="5" className="st-dot" />
-          <text x={x(at)} y={y(data[at]) - 11} className="st-val" textAnchor={at === 0 ? 'start' : at === data.length - 1 ? 'end' : 'middle'}>{data[at]}</text>
-          {data.map((_, i) => <rect key={i} x={x(i) - (w - L - R) / (data.length - 1) / 2} y={T} width={(w - L - R) / (data.length - 1)} height={H - T} fill="transparent" onMouseEnter={() => setHov(i)} />)}
-        </svg>
+      {p.today.key !== 'notin' && <span className={'live-chip' + (rank(p) > 1 ? ' quiet' : '')}>{todayChip(p)}</span>}
+    </div>
+  );
+  const group = (title, items, opts = {}) => (items.length > 0 || opts.empty) && (
+    <section className="live-sec">
+      <h3>{title}<span className="live-count">{items.length}</span></h3>
+      {items.length ? items.map((p) => person(p, opts.site)) : <p className="live-sub">{opts.empty}</p>}
+    </section>
+  );
+
+  return (
+    <div className="live vn-live">
+      <header className="live-head">
+        <div className="live-title"><h1>Overview</h1><span className="screen-tags"><Phase p={1} /><Spec s="6" /></span></div>
+        <div className="live-tools"><ClientPicker value={client} onChange={setClient || (() => {})} /></div>
+      </header>
+
+      <div className="live-kpis" role="group" aria-label="Show locations with">
+        {KPIS.map((x) => (
+          <button key={x.k} className={'live-kpi' + (only === x.k ? ' on' : '')} aria-pressed={only === x.k} disabled={!x.n && only !== x.k} onClick={() => { setOnly(only === x.k ? 'all' : x.k); setPanel(null); }}>
+            <span className="live-kpi-label"><span className={'sdot ' + x.dot} />{x.label}</span>
+            <span className="live-kpi-n"><b>{x.n}</b><span>{x.sub}</span></span>
+          </button>
+        ))}
+        <button className="live-kpi vn-kpi-score" onClick={() => go && go('v-score')} title="Open the scorecard">
+          <span className="live-kpi-label">Score<span className="vn-kpi-from">{client === 'all' ? 'average across clients' : `from ${vclient(client).name}`}</span></span>
+          <span className="live-kpi-n"><b>{score}</b><Trend data={trend} w={110} h={30} months={OV_MONTHS} /></span>
+        </button>
+      </div>
+
+      <div className="live-body">
+        <div className="live-mapcol">
+          <div className="live-map">
+            <LiveMap slot="vendor" pick={panel} hover={hover} focus={panel} onPick={pick} points={shown.filter((x) => x.g).map((x) => ({ id: x.key, name: short(x.key), title: x.key, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
+            {f && <button className="live-filter" onClick={() => setOnly('all')}>Locations with {f.label.toLowerCase()} <Icon name="x" size={14} /></button>}
+          </div>
+        </div>
+
+        <aside className="live-side" aria-label={open ? open.key : 'Needs you and locations'}>
+          {!open ? (
+            <div className="live-pane" key="all">
+              <div className="live-scroll">
+                {group('No-shows', ps.filter((p) => p.today.key === 'notin'), { site: true })}
+                {group('Running late', ps.filter(isLate), { site: true })}
+                <section className="live-sec">
+                  <h3>Locations<span className="live-count">{shown.length}</span></h3>
+                  {!shown.length && <p className="live-sub">No locations match.</p>}
+                  {shown.map((x) => (
+                    <button key={x.key} className={'live-loc' + (hover === x.key ? ' hl' : '')} onClick={() => pick(x.key)}
+                      onMouseEnter={() => setHover(x.key)} onMouseLeave={() => setHover((k) => (k === x.key ? null : k))} onFocus={() => setHover(x.key)} onBlur={() => setHover((k) => (k === x.key ? null : k))}>
+                      <span className="live-who">
+                        <b className="live-name">{short(x.key)}{client === 'all' && <span className="vn-loc-c"> · {vclient(x.client).name}</span>}</b>
+                        <span className="live-segs" role="img" aria-label={`${x.in} of ${x.due} in${x.ns ? `, ${x.ns} no-show` : ''}${x.late ? `, ${x.late} late` : ''}`}>
+                          {x.ppl.filter((p) => p.today.key !== 'off').sort((a, b) => rank(a) - rank(b)).map((p) => <i key={p.id} className={dotOf(p)} />)}
+                        </span>
+                      </span>
+                      <span className="live-loc-n"><b>{x.in}</b>/{x.due}</span>
+                    </button>
+                  ))}
+                </section>
+                <section className="live-sec">
+                  <h3>Your proposals<span className="live-count">{props.length}</span><button className="linkbtn vn-seeall" onClick={() => go && go('v-prop')}>See all</button></h3>
+                  {!props.length && <p className="live-sub">No proposals yet.</p>}
+                  {props.slice(0, 5).map((p) => (
+                    <div key={p.id} className="live-person vn-prop-mini">
+                      <span className={'sdot ' + STAGE[p.stage][1]} />
+                      <div className="live-who"><b className="live-name">{p.name}</b><span className="live-sub">{p.role}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>
+                      <span className="live-chip quiet">{STAGE[p.stage][0]}</span>
+                    </div>
+                  ))}
+                </section>
+              </div>
+            </div>
+          ) : (
+            <div className="live-pane" key={open.key}>
+              <div className="live-site-head">
+                <button className="icon-btn" onClick={() => setPanel(null)} aria-label="Back to all locations"><Icon name="chevronLeft" size={18} /></button>
+                <div><h2>{open.key}</h2><span className="live-sub">{vclient(open.client).name} · {open.ppl.length} of your people</span></div>
+              </div>
+              <div className="live-stats">
+                {[['good', open.in, 'In now'], ['crit', open.ns, 'No-show'], ['warn', open.late, 'Late'], ['ring', open.due, 'Due today']].map(([d, n, l]) => (
+                  <div key={l}><b>{n}</b><span><span className={'sdot ' + (n ? d : 'ring')} />{l}</span></div>
+                ))}
+              </div>
+              <div className="live-scroll">
+                {group('No-shows and late', open.ppl.filter((p) => rank(p) < 2).sort((a, b) => rank(a) - rank(b)))}
+                {group('In now', open.ppl.filter((p) => rank(p) === 2), { empty: 'Nobody in yet.' })}
+                {group('Not working today', open.ppl.filter((p) => rank(p) === 3))}
+              </div>
+              <div className="live-foot vn-foot"><button className="btn ghost" onClick={() => go && go('v-att')}><Icon name="calendar" size={16} />Attendance</button><button className="btn ghost" onClick={() => go && go('v-workers')}><Icon name="users" size={16} />My workers</button></div>
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );
 }
 
-export function VendorOverview({ go, client = 'all' }) {
-  const [pick, setPick] = useState(null); // hovered in the list
-  const [panel, setPanel] = useState(null); // location open in the side column
-  const [only, setOnly] = useState('all'); // 'all' | 'in' | 'noshow' | 'late'
-  const ps = peopleFor(client); const t = todayCounts(ps);
-  const score = client === 'all' ? Math.round(VCLIENTS.reduce((a, c) => a + c.score * peopleFor(c.id).length, 0) / peopleFor('all').length) : vclient(client).score;
-  // Every place your people are due today, worst first.
-  const locs = [...new Set(ps.filter((p) => p.today.key !== 'off').map((p) => p.where))]
-    .map((w) => { const here = ps.filter((p) => p.where === w); return { key: w, title: w, client: here[0].client, ppl: here, g: geoOf(w), ...todayCounts(here) }; })
-    .sort((a, b) => b.ns - a.ns || b.due - a.due || a.title.localeCompare(b.title));
-  const HAS = { in: (x) => x.in, noshow: (x) => x.ns, late: (x) => x.late };
-  const shown = locs.filter((x) => only === 'all' || HAS[only](x));
-  const pd = panel && locs.find((x) => x.key === panel);
-  const short = (w) => w.replace(/^(Spinneys|Carrefour|Talabat Mart) /, '');
-  return (
-    <>
-      <ScreenHeader title="Overview" phase={1} spec="6" />
-      <section className="card flush lm-wrap lm-split vo-map">
-        <div className="lm-mapcol">
-          <LiveMap slot="vendor" pick={panel} hover={pick} focus={panel} onPick={(id) => setPanel(id)} points={shown.filter((x) => x.g).map((x) => ({ id: x.key, name: short(x.key), title: x.key, lat: x.g[1], lng: x.g[0], due: x.due, inn: x.in, bad: x.ns, late: x.late }))} />
-        </div>
-        <aside className="lm-side" aria-label={pd ? pd.title : 'Locations'}>
-          {!pd ? <>
-            <StatFilters only={only} setOnly={(k) => { setOnly(k); setPick(null); }} items={[
-              { k: 'in', n: t.in, label: 'in now', tone: 'good', desc: 'Locations with someone in' },
-              { k: 'noshow', n: t.ns, label: 'no-show', tone: 'crit', desc: 'Locations with a no-show' },
-              { k: 'late', n: t.late, label: 'late', tone: 'warn', desc: 'Locations with someone late' },
-              { n: score, label: 'score', tone: 'good' },
-            ]} />
-            <div className="lm-side-body lm-locs">
-              {shown.length === 0 && <div className="small muted lm-none">No locations match.</div>}
-              {shown.map((x) => (
-                <button key={x.key} className={'lm-loc' + (pick === x.key ? ' on' : '')} onClick={() => { setPick(null); setPanel(x.key); }} onMouseEnter={() => setPick(x.key)} onMouseLeave={() => setPick((k) => (k === x.key ? null : k))} onFocus={() => setPick(x.key)} onBlur={() => setPick((k) => (k === x.key ? null : k))}>
-                  <span className={'lm-k ' + (x.ns ? 'crit' : x.due ? 'good' : 'idle')} />
-                  <span className="lm-name"><b>{x.title}</b><span className="small muted">{x.ns ? <span className="neg">{x.ns} no-show</span> : null}{x.ns && x.late ? ' · ' : null}{x.late ? `${x.late} late` : null}{!x.ns && !x.late ? 'All in' : null}{client === 'all' ? ` · ${vclient(x.client).name}` : ''}</span></span>
-                  <span className="lm-cnt mono">{x.in}<span className="muted">/{x.due}</span></span>
-                  <Icon name="chevronRight" size={15} />
-                </button>
-              ))}
-            </div>
-          </> : (() => {
-            const order = (p) => (p.today.key === 'notin' ? 0 : p.today.text.startsWith('Late') ? 1 : p.today.key === 'in' ? 2 : 3);
-            const need = pd.ppl.filter((p) => order(p) < 2), inn = pd.ppl.filter((p) => order(p) === 2), rest = pd.ppl.filter((p) => order(p) === 3);
-            const row = (p) => <div key={p.id} className={'lm-pp' + (p.today.key === 'notin' ? ' noshow' : p.today.text.startsWith('Late') ? ' late' : p.today.key === 'in' ? ' in' : '')}><span className="lb-dot" /><span className="lm-pp-who"><b>{p.name}</b><span className="small muted">{p.role} · {p.today.text}</span></span></div>;
-            return <>
-              <div className="lm-panel-head">
-                <button className="lm-panel-x" aria-label="Back to all locations" onClick={() => setPanel(null)}><Icon name="chevronLeft" size={17} /></button>
-                <div className="lm-panel-title"><b>{pd.title}</b><span className="small muted">{vclient(pd.client).name} · {pd.ppl.length} of your people</span></div>
-              </div>
-              <div className="lm-side-stats">
-                <div className={pd.in ? 'good' : ''}><b>{pd.in}</b><span>in now</span></div>
-                <div className={pd.ns ? 'crit' : ''}><b>{pd.ns}</b><span>no-show</span></div>
-                <div className={pd.late ? 'warn' : ''}><b>{pd.late}</b><span>late</span></div>
-                <div><b>{pd.due}</b><span>due today</span></div>
-              </div>
-              <div className="lm-side-body">
-                {need.length > 0 && <div className="lm-panel-sec"><h4>No-shows and late</h4>{need.map(row)}</div>}
-                <div className="lm-panel-sec"><h4>In now</h4>{inn.length ? inn.map(row) : <div className="small muted">Nobody in yet.</div>}</div>
-                {rest.length > 0 && <div className="lm-panel-sec"><h4>Not working today</h4>{rest.map(row)}</div>}
-              </div>
-              <div className="lm-panel-foot">
-                <button className="btn ghost sm" onClick={() => go && go('v-att')}>Attendance</button>
-                <button className="btn ghost sm" onClick={() => go && go('v-workers')}>My workers</button>
-              </div>
-            </>;
-          })()}
-        </aside>
-      </section>
-      <div className="grid-2">
-        <section className="card">
-          {(() => {
-            // At most five, the ones that need you first (returned, then ready to start), newest stage last.
-            const RANK = { returned: 0, ready: 1, client: 2, review: 3, proposed: 4 };
-            const all = [...proposalsFor(client)].sort((a, b) => RANK[a.stage] - RANK[b.stage]);
-            const more = all.length - 5;
-            return <>
-              <div className="card-head"><h3>Your proposals <span className="muted small">{all.length}</span></h3><button className="btn sm ghost" onClick={() => go && go('v-prop')}>See all</button></div>
-              {all.length === 0 && <div className="small muted">No proposals with {client === 'all' ? 'any client' : vclient(client).name} yet.</div>}
-              {all.slice(0, 5).map((p) => <div key={p.id} className="row-line"><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill><span className="small">{p.name}{client === 'all' ? ` · ${vclient(p.client).name}` : ''}</span></div>)}
-              {more > 0 && <button className="linkbtn small vo-more" onClick={() => go && go('v-prop')}>{more} more {more === 1 ? 'proposal' : 'proposals'}</button>}
-            </>;
-          })()}
-        </section>
-        <section className="card">
-          <ScoreTrend data={client === 'all' ? VCLIENTS[0].trend.map((_, i) => Math.round(VCLIENTS.reduce((a, c) => a + c.trend[i], 0) / VCLIENTS.length)) : vclient(client).trend} sub={client === 'all' ? 'Average across your clients' : `From ${vclient(client).name}`} />
-        </section>
-      </div>
-    </>
-  );
-}
-
-export function VendorWorkers({ client = 'all' }) {
+/* ---------- My workers: one row each, faces first, like Workforce ---------- */
+export function VendorWorkers({ client = 'all', setClient }) {
+  const [q, setQ] = useState('');
+  const [chip, setChip] = useState('all');
   const ps = peopleFor(client);
+  const CHIPS = [['all', 'Everyone', () => true], ['notin', 'Not in', (p) => p.today.key === 'notin'], ['late', 'Late', isLate], ['docs', 'Documents to renew', (p) => p.docs > 0]];
+  const rows = ps.filter(CHIPS.find(([k]) => k === chip)[2]).filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => rank(a) - rank(b));
+  const all = client === 'all';
   return (
     <>
-      <ScreenHeader title="My workers" phase={1} spec="6" />
-      <section className="card flush"><div className="table-wrap"><table className="table wf-table">
-        <thead><tr><th>Worker</th>{client === 'all' && <th>Client</th>}<th>Location</th><th>Today</th><th>October so far</th><th className="num">Score</th><th>Documents</th></tr></thead>
-        <tbody>{ps.map((p) => (
-          <tr key={p.id}>
-            <td><b>{p.name}</b><div className="small muted">{p.role}</div></td>
-            {client === 'all' && <td><ClientCell id={p.client} /></td>}
-            <td>{p.where}</td>
-            <td><span className={'wf-dot ' + p.today.tone} />{p.today.text}</td>
-            <td><span className="mono">{p.hours.toFixed(0)} h</span><div className="small muted">{p.days} {p.days === 1 ? 'day' : 'days'}{p.absent ? <span className="neg"> · {p.absent} absent</span> : ''}</div></td>
-            <td className="num mono">{p.score}</td>
-            <td>{p.docs ? <span className="wf-doc"><Icon name="alert" size={14} />{p.docs}</span> : <span className="muted small">All valid</span>}</td>
-          </tr>
-        ))}</tbody>
-      </table></div></section>
+      <Head title="My workers" phase={1} spec="6" client={client} setClient={setClient} />
+      <div className="vn-tools">
+        <div className="ma-chips">{CHIPS.map(([k, l, fn]) => <button key={k} className={'ma-chip' + (chip === k ? ' on' : '')} onClick={() => setChip(k)}>{l}<span className="nt-chip-n">{ps.filter(fn).length}</span></button>)}</div>
+        <input id="vw-q" className="input vn-search" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className={'vn-list' + (all ? ' all' : '')} role="table" aria-label="My workers">
+        <div className="vn-row vn-rh" role="row"><span>Worker</span>{all && <span>Client</span>}<span>Location</span><span>Today</span><span>October so far</span><span>Score</span><span>Documents</span></div>
+        {rows.map((p, i) => (
+          <div key={p.id} className="vn-row" role="row" style={{ '--i': Math.min(i, 14) }}>
+            <span className="vn-who"><Face p={p} /><span><b>{p.name}</b><span>{p.role}</span></span></span>
+            {all && <span>{vclient(p.client).name}</span>}
+            <span>{p.where}</span>
+            <span className="vn-today"><span className={'sdot ' + dotOf(p)} />{p.today.text}</span>
+            <span className="vn-month"><b>{p.hours.toFixed(0)} h</b><span>{plural(p.days, 'day')}{p.absent ? ` · ${p.absent} absent` : ''}</span></span>
+            <span className="vn-score"><b>{p.score}</b><i className="vd-bar"><i style={{ width: `${p.score}%` }} /></i></span>
+            <span className="vn-today">{p.docs ? <><span className="sdot warn" />{p.docs} to renew</> : <><span className="sdot good" />All valid</>}</span>
+          </div>
+        ))}
+        {!rows.length && <p className="vn-empty">Nobody matches.</p>}
+      </div>
       <Note>Keeping documents in date is yours to do. An expired visa or Emirates ID stops that person clocking in, for every client.</Note>
     </>
   );
 }
 
+/* ---------- Attendance: the week, one word per day ---------- */
 const DAYWORD = { in: 'In', late: 'Late', abs: 'Absent', leave: 'Leave', off: 'Off', none: '–', standby: 'Standby' };
-export function VendorAttendance({ client = 'all' }) {
+export function VendorAttendance({ client = 'all', setClient }) {
   const ps = peopleFor(client);
   return (
     <>
-      <ScreenHeader title="Attendance" phase={1} spec="6" />
-      <div className="legend small va-legend">{['in', 'late', 'abs', 'leave', 'off'].map((k) => <span key={k} className={'dchip ' + k}>{DAYWORD[k]}</span>)}<span className="dchip standby">Standby</span><span className="dchip plan">07:00</span><span className="muted">rostered start, still to come</span></div>
-      <section className="card flush"><div className="table-wrap"><table className="table va-table">
-        <thead><tr><th>Worker</th>{DAYS.map((d, i) => <th key={d} className={i === 2 ? 'today' : ''}>{d}{i === 2 && <span className="today-tag">Today</span>}</th>)}</tr></thead>
-        <tbody>{ps.map((p) => <tr key={p.id}><td><b>{p.name}</b><div className="small muted">{client === 'all' ? `${vclient(p.client).name} · ` : ''}{p.where}</div></td>
-          {p.week.map(([k, plan, where], i) => <td key={i} className={i === 2 ? 'today' : ''}><span className={'dchip ' + k}>{k === 'plan' ? plan : DAYWORD[k]}</span>{where && <div className="va-where">{where}</div>}</td>)}</tr>)}</tbody>
-      </table></div></section>
+      <Head title="Attendance" phase={1} spec="6" client={client} setClient={setClient} />
+      <div className="vn-key">{['in', 'late', 'abs', 'leave', 'off', 'standby'].map((k) => <span key={k}><i className={'vn-d ' + k}>{DAYWORD[k]}</i></span>)}<span><i className="vn-d plan">07:00</i>Rostered start, still to come</span></div>
+      <div className="vn-att" role="table" aria-label="This week's attendance">
+        <div className="vn-arow vn-ah" role="row"><span>Worker</span>{DAYS.map((d, i) => <span key={d} className={i === 2 ? 'today' : ''}>{d}{i === 2 && <small>Today</small>}</span>)}</div>
+        {ps.map((p, r) => (
+          <div key={p.id} className="vn-arow" role="row" style={{ '--i': Math.min(r, 14) }}>
+            <span className="vn-who"><Face p={p} /><span><b>{p.name}</b><span>{client === 'all' ? `${vclient(p.client).name} · ` : ''}{short(p.where)}</span></span></span>
+            {p.week.map(([k, plan, where], i) => <span key={i} className={'vn-acell' + (i === 2 ? ' today' : '')}><i className={'vn-d ' + k}>{k === 'plan' ? plan : DAYWORD[k]}</i>{where && <small>{where}</small>}</span>)}
+          </div>
+        ))}
+      </div>
     </>
   );
 }
 
-export function VendorScorecard({ client = 'all' }) {
+/* ---------- Scorecard: each client's score, then what makes it up ---------- */
+const SC_MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+export function VendorScorecard({ client = 'all', setClient }) {
   const v = vendorOf(ME);
   if (client === 'all') return (
     <>
-      <ScreenHeader title="Scorecard" phase={2} spec="8" />
-      <section className="card flush"><table className="table">
-        <thead><tr><th>Client</th><th className="num">People</th><th className="num">Score</th><th>Last 7 months</th></tr></thead>
-        <tbody>{VCLIENTS.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td className="num mono">{peopleFor(c.id).length}</td><td className="num mono"><b>{c.score}</b></td><td><Spark data={c.trend} w={140} h={28} /></td></tr>)}</tbody>
-      </table></section>
-      <Note>Each client scores you on its own terms. Pick a client to see what makes up its score.</Note>
+      <Head title="Scorecard" phase={2} spec="8" client={client} setClient={setClient} />
+      <p className="vn-lead">Each client scores you on its own terms. Pick one to see what makes up its score.</p>
+      <div className="vn-sc">
+        {VCLIENTS.map((c, i) => (
+          <button key={c.id} className="vn-sc-row" style={{ '--i': i }} onClick={() => setClient && setClient(c.id)}>
+            <span className="vn-sc-name"><b>{c.name}</b><span>{peopleFor(c.id).length} of your people with them</span></span>
+            <Ring value={c.score} size={72} stroke={7} />
+            <Trend data={c.trend} w={260} h={54} months={OV_MONTHS} labels />
+            <span className="vn-sc-go">See the breakdown<Icon name="chevronRight" size={16} /></span>
+          </button>
+        ))}
+      </div>
     </>
   );
   const c = vclient(client); const k = c.score - 91; // other clients sit a little off Deliveroo's numbers
-  const rows = [['Fill rate', Math.min(100, v.fill + k) + '%', 'Heads supplied ÷ requested', [90, 92, 94, 93, 95, 96]], ['Attendance rate', (97.1 + k / 3).toFixed(1) + '%', 'Rostered shifts attended', [95, 96, 96, 97, 96, 97]], ['No-show rate', (v.noshow - k / 4).toFixed(1) + '%', 'Lower is better', [3.1, 2.8, 2.4, 2.2, 2.0, 1.8]], ['Time to fill', v.ttf - k + ' h', 'Request to candidates proposed', [36, 30, 28, 26, 24, 22]], ['Retention at 90 days', Math.min(100, v.retention + k) + '%', 'Still active after 90 days', [80, 82, 84, 85, 87, 88]], ['Document compliance', Math.min(100, v.compliance + k) + '%', 'Workers with valid documents', [92, 93, 95, 95, 96, 97]]];
+  // [name, shown value, bar 0-100, lower is better, what it means, last six months]
+  const rows = [
+    ['Fill rate', Math.min(100, v.fill + k) + '%', Math.min(100, v.fill + k), false, 'Heads supplied ÷ requested', [90, 92, 94, 93, 95, 96]],
+    ['Attendance rate', (97.1 + k / 3).toFixed(1) + '%', 97.1 + k / 3, false, 'Rostered shifts attended', [95, 96, 96, 97, 96, 97]],
+    ['No-show rate', (v.noshow - k / 4).toFixed(1) + '%', ((v.noshow - k / 4) / 5) * 100, true, 'Share of shifts missed', [3.1, 2.8, 2.4, 2.2, 2.0, 1.8]],
+    ['Time to fill', v.ttf - k + ' h', ((v.ttf - k) / 48) * 100, true, 'Request to candidates proposed', [36, 30, 28, 26, 24, 22]],
+    ['Retention at 90 days', Math.min(100, v.retention + k) + '%', Math.min(100, v.retention + k), false, 'Still active after 90 days', [80, 82, 84, 85, 87, 88]],
+    ['Document compliance', Math.min(100, v.compliance + k) + '%', Math.min(100, v.compliance + k), false, 'Workers with valid documents', [92, 93, 95, 95, 96, 97]],
+  ];
   return (
     <>
-      <ScreenHeader title="Scorecard" phase={2} spec="8" />
-      <div className="score-grid">{rows.map(([n, val, d, s]) => <section key={n} className="card"><div className="stat-label">{n}</div><div className="stat-value">{val}</div><Spark data={s} w={200} h={36} /><div className="small muted">{d}</div></section>)}</div>
+      <Head title="Scorecard" phase={2} spec="8" client={client} setClient={setClient} />
+      <section className="vn-sc-top">
+        <Ring value={c.score} size={112} stroke={10} />
+        <div><span>Your score from {c.name}</span><b>{c.score} of 100</b><button className="linkbtn" onClick={() => setClient && setClient('all')}>All clients</button></div>
+        <div className="vn-sc-trend"><span>Last 7 months</span><Trend data={c.trend} w={420} h={80} months={OV_MONTHS} labels /></div>
+      </section>
+      <div className="vn-kpis" role="table" aria-label={`What makes up your score from ${c.name}`}>
+        <div className="vn-kpi vn-rh" role="row"><span>Measure</span><span>Now</span><span /><span>Last 6 months</span></div>
+        {rows.map(([n, val, bar, low, d, s], i) => (
+          <div key={n} className={'vn-kpi' + (low ? ' low' : '')} role="row" style={{ '--i': i }}>
+            <span className="vn-kpi-n"><b>{n}</b><span>{d}{low ? ' · lower is better' : ''}</span></span>
+            <b className="vn-kpi-v">{val}</b>
+            <i className="vd-bar"><i style={{ width: `${Math.max(4, Math.min(100, bar))}%` }} /></i>
+            <Trend data={s} w={180} h={40} months={SC_MONTHS} better={low ? 'down' : 'up'} />
+          </div>
+        ))}
+      </div>
     </>
   );
 }
 
-const STAGE = { proposed: ['Proposed', 'muted'], review: ['In review', 'info'], client: ['Staff ID pending', 'info'], ready: ['Ready', 'good'], returned: ['Returned', 'warn'] };
+// Stages a proposal goes through, with the dot each shows. Returned means the client sent it back: it needs you.
+const STAGE = { proposed: ['Proposed', 'ring'], review: ['In review', 'idle'], client: ['Staff ID pending', 'idle'], ready: ['Ready', 'good'], returned: ['Returned', 'warn'] };
+const STEPS = ['proposed', 'review', 'client', 'ready'];
 const PROPS = [...PROPOSALS.filter((p) => p.vendor === ME).map((p) => ({ ...p, client: 'deliveroo', where: siteOf(p.site).name })),
   { id: 'dp1', client: 'deliveroo', name: 'Santosh Gurung', role: 'Picker', where: 'Carrefour Barsha Heights', stage: 'proposed' },
   { id: 'dp2', client: 'deliveroo', name: 'Aldrin Bautista', role: 'Reliever', where: 'Spinneys Marina Promenade', stage: 'review' },
@@ -258,57 +339,87 @@ const proposalsFor = (client) => PROPS.filter((p) => client === 'all' || p.clien
 const sitesOf = (cid) => (cid === 'deliveroo' ? SITES.map((s) => s.name) : vclient(cid).sites);
 const rolesOf = (cid) => (cid === 'deliveroo' ? ['Picker', 'Reliever', 'Shift lead'] : [...new Set(vclient(cid).roles)]);
 
-export function VendorProposals({ client = 'all' }) {
+
+/* ---------- Proposals: the people you've put forward, and a drawer to propose someone ---------- */
+const PROP_CHIPS = [['all', 'All'], ['returned', 'Returned'], ['proposed', 'Proposed'], ['review', 'In review'], ['client', 'Staff ID pending'], ['ready', 'Ready']];
+export function VendorProposals({ client = 'all', setClient, params }) {
   const [items, setItems] = useState(proposalsFor(client));
+  const [chip, setChip] = useState('all');
   const first = client === 'all' ? 'deliveroo' : client;
-  const [form, setForm] = useState({ name: '', phone: '', idno: '', client: first, role: rolesOf(first)[0], where: sitesOf(first)[0] });
+  const blank = (pre = {}) => { const cid = pre.client || first; return { name: '', phone: '', idno: '', client: cid, role: pre.role && rolesOf(cid).includes(pre.role) ? pre.role : rolesOf(cid)[0], where: pre.where && sitesOf(cid).includes(pre.where) ? pre.where : sitesOf(cid)[0], files: [] }; };
+  const [form, setForm] = useState(null);
   const toast = useToast();
-  const setClient = (cid) => setForm({ ...form, client: cid, role: rolesOf(cid)[0], where: sitesOf(cid)[0] });
-  const submit = (e) => {
-    e.preventDefault();
-    if (!form.name || !form.phone) { toast('Add a name and phone number'); return; }
-    setItems([{ id: 'n' + Date.now(), client: form.client, name: form.name, role: form.role, where: form.where, stage: 'proposed' }, ...items]);
-    setForm({ ...form, name: '', phone: '', idno: '' });
+  // Opened from a headcount request: start the form for that request.
+  useEffect(() => { if (params?.prefill) setForm(blank(params.prefill)); }, []);
+  const setClient2 = (cid) => setForm({ ...form, client: cid, role: rolesOf(cid)[0], where: sitesOf(cid)[0] });
+  const errs = form ? { name: !form.name.trim() && 'Add their full name', phone: !/^\+?[\d\s]{9,}$/.test(form.phone.trim()) && 'Add a mobile number' } : {};
+  const submit = () => {
+    if (errs.name || errs.phone) return setForm({ ...form, tried: true });
+    setItems([{ id: 'n' + Date.now(), client: form.client, name: form.name.trim(), role: form.role, where: form.where, stage: 'proposed', fresh: true }, ...items]);
     toast(`Proposal sent to ${vclient(form.client).name} for review`);
+    setForm(null); setChip('all');
   };
+  const rows = items.filter((p) => chip === 'all' || p.stage === chip);
   return (
     <>
-      <ScreenHeader title="Proposals" phase={1} spec="6" />
-      <div className="grid-2">
-        <form className="card form" onSubmit={submit}>
-          <div className="card-head"><h3>Propose a candidate</h3></div>
-          <div className="form-grid">
-            {client === 'all' && <Field label="For"><Select id="pr-client" className="input" value={form.client} onChange={(e) => setClient(e.target.value)}>{VCLIENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>}
-            <Field label="Full name (as on passport)"><input id="pr-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="Mobile number"><input id="pr-phone" className="input mono" placeholder="+971 5…" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
-            <Field label="Emirates ID or passport no."><input id="pr-id" className="input mono" value={form.idno} onChange={(e) => setForm({ ...form, idno: e.target.value })} /></Field>
-            <Field label="Role"><Select id="pr-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{rolesOf(form.client).map((r) => <option key={r}>{r}</option>)}</Select></Field>
-            <Field label="Preferred location"><Select id="pr-site" className="input" value={form.where} onChange={(e) => setForm({ ...form, where: e.target.value })}>{sitesOf(form.client).map((s) => <option key={s}>{s}</option>)}</Select></Field>
+      <Head title="Proposals" phase={1} spec="6" client={client} setClient={setClient}><button className="btn" onClick={() => setForm(blank())}><Icon name="plus" size={15} />Propose a candidate</button></Head>
+      <div className="vn-tools"><div className="ma-chips">{PROP_CHIPS.map(([k, l]) => { const n = items.filter((p) => k === 'all' || p.stage === k).length; return (k === 'all' || n > 0) && <button key={k} className={'ma-chip' + (chip === k ? ' on' : '')} onClick={() => setChip(k)}>{l}<span className="nt-chip-n">{n}</span></button>; })}</div></div>
+      <div className="vn-props">
+        {rows.map((p, i) => { const at = STEPS.indexOf(p.stage); return (
+          <div key={p.id} className={'vn-prop' + (p.fresh ? ' fresh' : '')} style={{ '--i': i }}>
+            <span className="vn-who"><span className={'live-face ' + STAGE[p.stage][1]}>{initials(p.name)}</span><span><b>{p.name}</b><span>{p.role} · {p.where}{client === 'all' && !p.where.startsWith(vclient(p.client).name.split(' ')[0]) ? ` · ${vclient(p.client).name}` : ''}</span></span></span>
+            {p.stage === 'returned'
+              ? <span className="vn-returned"><span className="sdot warn" />Returned by the client: check what they asked for</span>
+              : <span className="vn-steps" role="img" aria-label={`Stage: ${STAGE[p.stage][0]}`}>{STEPS.map((s, k) => <span key={s} className={k < at ? 'done' : k === at ? 'now' : ''}><i />{STAGE[s][0]}</span>)}</span>}
           </div>
-          <div className="uploads">{['Passport', 'Visa', 'Emirates ID', 'Photo'].map((d) => <label key={d} className="upload"><input type="file" id={'up-' + d} /><span>{d}</span></label>)}</div>
-          <button className="btn" type="submit">Send to {vclient(form.client).name}</button>
-        </form>
-        <section className="card">
-          <div className="card-head"><h3>Status</h3></div>
-          {items.map((p) => <div key={p.id} className="row-line"><b>{p.name}</b><span className="small muted">{p.role} · {p.where}{client === 'all' && !p.where.startsWith(vclient(p.client).name.split(' ')[0]) ? ` · ${vclient(p.client).name}` : ''}</span><Pill tone={STAGE[p.stage][1]}>{STAGE[p.stage][0]}</Pill></div>)}
-          <Note>A proposal becomes a worker only after the client approves it and issues a staff ID.</Note>
-        </section>
+        ); })}
+        {!rows.length && <p className="vn-empty">Nothing at this stage.</p>}
       </div>
+      <Note>A proposal becomes a worker only after the client approves it and issues a staff ID.</Note>
+
+      <Drawer open={!!form} onClose={() => setForm(null)} title="Propose a candidate" sub={form && `They go to ${vclient(form.client).name} for review. Nothing is shared until you send.`}>
+        {form && <>
+          <div className="wfa-grid">
+            {client === 'all' && <Field label="For"><Select id="pr-client" className="input" value={form.client} onChange={(e) => setClient2(e.target.value)}>{VCLIENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>}
+            <Field label="Full name, as on passport"><input id="pr-name" className={'input' + (form.tried && errs.name ? ' bad' : '')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />{form.tried && errs.name && <span className="wfa-err">{errs.name}</span>}</Field>
+            <Field label="Mobile number"><input id="pr-phone" className={'input' + (form.tried && errs.phone ? ' bad' : '')} inputMode="tel" placeholder="+971 5…" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />{form.tried && errs.phone && <span className="wfa-err">{errs.phone}</span>}</Field>
+            <Field label="Emirates ID or passport no."><input id="pr-id" className="input" value={form.idno} onChange={(e) => setForm({ ...form, idno: e.target.value })} /></Field>
+            <Field label="Role"><Select id="pr-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{rolesOf(form.client).map((r) => <option key={r}>{r}</option>)}</Select></Field>
+            <Field label="Preferred location"><Select id="pr-site" className="input" value={form.where} onChange={(e) => setForm({ ...form, where: e.target.value })}>{sitesOf(form.client).map((x) => <option key={x}>{x}</option>)}</Select></Field>
+          </div>
+          <div className="field"><span className="field-label">Documents</span>
+            <div className="vn-docs">{['Passport', 'Visa', 'Emirates ID', 'Photo'].map((d) => { const has = form.files.includes(d); return (
+              <label key={d} className={'vn-doc' + (has ? ' has' : '')}><input type="file" id={'up-' + d} onChange={(e) => e.target.files.length && setForm({ ...form, files: [...new Set([...form.files, d])] })} /><Icon name={has ? 'check' : 'upload'} size={18} /><span>{d}</span><small>{has ? 'Added' : 'Add a file'}</small></label>
+            ); })}</div>
+          </div>
+          <div className="drawer-actions"><button className="btn ghost" onClick={() => setForm(null)}>Cancel</button><span className="grow" /><button className="btn" onClick={submit}>Send to {vclient(form.client).name}</button></div>
+        </>}
+      </Drawer>
     </>
   );
 }
 
 const REQS = [['deliveroo', '5 Pickers', 'Carrefour Barsha Heights', 'From Mon 12 Oct', '2 proposed'], ['deliveroo', '1 Shift lead', 'Spinneys Majan', 'From Thu 15 Oct', 'None yet'], ['talabat', '4 Pickers', 'Talabat Mart Al Nahda, Sharjah', 'From Sun 18 Oct', '1 proposed'], ['aflog', '2 Forklift operators', 'Jebel Ali DC', 'From Mon 19 Oct', 'None yet'], ['deliveroo', '3 Relievers', 'Any location', 'From Mon 19 Oct', 'None yet']];
-export function VendorRequests({ client = 'all' }) {
-  const toast = useToast();
+// '5 Pickers' → { n: 5, role: 'Picker' }
+const parseReq = (s) => { const [n, ...w] = s.split(' '); const role = w.join(' '); return { n: +n, role: +n > 1 ? role.replace(/s$/, '') : role }; };
+export function VendorRequests({ go, client = 'all', setClient }) {
+  const rows = REQS.filter(([c]) => client === 'all' || c === client);
   return (
     <>
-      <ScreenHeader title="Headcount requests" phase={2} spec="6" />
-      <section className="card">
-        {REQS.filter(([c]) => client === 'all' || c === client).map(([c, n, s, d, st]) => (
-          <div key={c + n + s} className="row-line"><b>{n}</b><span className="small">{client === 'all' ? `${vclient(c).name} · ` : ''}{s} · {d}</span><Pill tone={st === 'None yet' ? 'warn' : 'info'}>{st}</Pill><button className="btn sm" onClick={() => toast('Opened proposal form for this request')}>Propose</button></div>
-        ))}
-      </section>
+      <Head title="Headcount requests" phase={2} spec="6" client={client} setClient={setClient} />
+      <p className="vn-lead">What your clients have asked you for. Propose someone and they go to the client for review.</p>
+      <div className="vn-reqs">
+        {rows.map(([c, need, where, from, st], i) => { const r = parseReq(need); const none = st === 'None yet'; return (
+          <div key={c + need + where} className="vn-req" style={{ '--i': i }}>
+            <span className="vn-req-n"><b>{r.n}</b><span>{r.n > 1 ? need.split(' ').slice(1).join(' ') : r.role}</span></span>
+            <span className="vn-req-w"><b>{where}</b><span>{vclient(c).name}</span></span>
+            <span className="vn-req-d"><b>{from.replace('From ', '')}</b><span>Starts</span></span>
+            <span className="vn-today"><span className={'sdot ' + (none ? 'warn' : 'good')} />{st}</span>
+            <button className="btn" onClick={() => go && go('v-prop', { prefill: { client: c, role: r.role, where } })}>Propose</button>
+          </div>
+        ); })}
+        {!rows.length && <p className="vn-empty">No open requests from {nameOf(client)}.</p>}
+      </div>
     </>
   );
 }
@@ -316,30 +427,42 @@ export function VendorRequests({ client = 'all' }) {
 // Deliveroo's September line is the same figure the client sees under Vendor costs.
 const FV = FIN_VENDORS.find((f) => f.v === ME);
 const STMTS = [['deliveroo', 'September 2026', `${FV.days.toLocaleString('en')} days`, FV.buy, FV.penalty, 'Issued'], ['talabat', 'September 2026', '3,110 hours', 41985, -270, 'Issued'], ['aflog', 'September 2026', '254 days', 26380, 0, 'Paid'], ['deliveroo', 'August 2026', `${Math.round(FV.days * 1.01).toLocaleString('en')} days`, Math.round(FV.buy * 1.01 / 10) * 10, -450, 'Paid'], ['talabat', 'August 2026', '3,050 hours', 41175, 0, 'Paid'], ['aflog', 'August 2026', '249 days', 25860, -100, 'Paid']];
-export function VendorStatements({ client = 'all' }) {
+export function VendorStatements({ client = 'all', setClient }) {
   const rows = STMTS.filter(([c]) => client === 'all' || c === client);
+  const periods = [...new Set(rows.map((r) => r[1]))];
+  const latest = rows.filter((r) => r[1] === periods[0]);
+  const gross = latest.reduce((a, r) => a + r[3], 0), ded = latest.reduce((a, r) => a + r[4], 0);
   return (
     <>
-      <ScreenHeader title="Statements" phase={2} spec="9" />
-      <section className="card flush"><table className="table">
-        <thead><tr><th>Period</th>{client === 'all' && <th>Client</th>}<th className="num">Worked</th><th className="num">Gross</th><th className="num">No-show deductions</th><th className="num">Net payable</th><th>Status</th></tr></thead>
-        <tbody>{rows.map(([c, per, worked, gross, ded, st]) => (
-          <tr key={c + per}><td>{per}</td>{client === 'all' && <td><ClientCell id={c} /></td>}<td className="num mono">{worked}</td><td className="num mono">{aed(gross)}</td><td className="num mono neg">{ded ? aed(ded) : '–'}</td><td className="num mono"><b>{aed(gross + ded)}</b></td><td><Pill tone={st === 'Paid' ? 'good' : 'info'}>{st}</Pill></td></tr>
-        ))}</tbody>
-      </table></section>
+      <Head title="Statements" phase={2} spec="9" client={client} setClient={setClient} />
+      <section className="vc-sum vn-stsum" aria-label={`${periods[0]} totals`}>
+        <div className="vc-net"><span>Net payable to you · {periods[0]}, ex-VAT{client === 'all' ? ` · ${plural(latest.length, 'client')}` : ''}</span><b>{aed(gross + ded)}</b></div>
+        <div className="vc-bridge" aria-hidden="true"><i className="vc-b-net" style={{ flexGrow: gross + ded }} />{ded ? <i className="vc-b-ded" style={{ flexGrow: -ded }} /> : null}</div>
+        <dl className="vc-eq">
+          <div><dt>Gross</dt><dd>{aed(gross)}</dd></div>
+          <span className="vc-op" aria-hidden="true">−</span>
+          <div><dt><span className="sdot crit" />No-show deductions</dt><dd>{aed(-ded)}<small>Under each client's contract</small></dd></div>
+          <span className="vc-op" aria-hidden="true">=</span>
+          <div><dt><span className="sdot good" />Net payable</dt><dd>{aed(gross + ded)}</dd></div>
+        </dl>
+      </section>
+      {periods.map((per) => (
+        <section key={per} className="vn-period">
+          <h3 className="vc-h">{per}</h3>
+          <div className={'vn-st vn-rh' + (client === 'all' ? ' all' : '')} aria-hidden="true">{client === 'all' && <span>Client</span>}<span>Worked</span><span>Gross</span><span>Deductions</span><span>Net payable</span><span>Status</span></div>
+          {rows.filter((r) => r[1] === per).map(([c, , worked, g, d, st], i) => (
+            <div key={c + per} className={'vn-st' + (client === 'all' ? ' all' : '')} style={{ '--i': i }}>
+              {client === 'all' && <b>{vclient(c).name}</b>}
+              <span>{worked}</span>
+              <span className="vn-num">{aed(g)}</span>
+              <span className="vn-num">{d ? `− ${aed(-d)}` : 'None'}</span>
+              <b className="vn-num">{aed(g + d)}</b>
+              <span className="vn-today"><span className={'sdot ' + (st === 'Paid' ? 'good' : 'ring')} />{st}</span>
+            </div>
+          ))}
+        </section>
+      ))}
       {client === 'all' ? <Note>Each client pays you on its own rate card and terms; pick a client to see its rates.</Note> : <Note>Your rate card with {vclient(client).name}: {vclient(client).rate}. Deductions are no-show penalties under that contract.</Note>}
     </>
-  );
-}
-
-// The client picker in the vendor sidebar.
-export function ClientPicker({ value, onChange }) {
-  return (
-    <div className="vc-pick">
-      <label className="side-label" htmlFor="v-client">Client</label>
-      <Select id="v-client" className="input" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Client">
-        <option value="all">All clients</option>{VCLIENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </Select>
-    </div>
   );
 }
