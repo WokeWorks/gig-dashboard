@@ -65,9 +65,19 @@ export function Tabs({ tabs, value, onChange }) {
 }
 
 export function Drawer({ open, onClose, title, children, sub }) {
-  if (!open) return null;
+  // On close the sheet slides out before it unmounts, showing what it last showed (callers usually clear their state at once).
+  const last = React.useRef(null);
+  const [out, setOut] = useState(false);
+  const was = React.useRef(open);
+  if (open) last.current = { title, children, sub };
+  useEffect(() => {
+    if (was.current && !open) { setOut(true); const t = setTimeout(() => setOut(false), 230); was.current = open; return () => clearTimeout(t); }
+    was.current = open;
+  }, [open]);
+  if (!open && !out) return null;
+  if (!open) ({ title, children, sub } = last.current || {});
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className={'overlay' + (open ? '' : ' closing')} onClick={open ? onClose : undefined}>
       <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label={title}>
         <div className="drawer-head">
           <div>
