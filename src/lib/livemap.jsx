@@ -207,8 +207,9 @@ export function SiteMap({ lat, lng, radius, name, height = 132, width = 400 }) {
     <a ref={box} className="sitemap" style={{ height }} href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" aria-label={`Map of ${name}, geofence ${radius} metres. Opens Google Maps.`}>
       <svg viewBox="0 0 240 132" preserveAspectRatio="xMidYMid slice" className="sitemap-ph" aria-hidden="true">
         <rect width="240" height="132" className="geo-bg" />
+        <path d="M0 22 L240 14 M0 48 L240 40 M0 108 L240 98 M0 126 L240 120 M18 0 L30 132 M44 0 L54 132 M124 0 L118 132 M198 0 L186 132 M222 0 L212 132" className="geo-street" />
         <path d="M0 86 L240 62 M70 0 L92 132 M170 0 L150 132" className="geo-road" />
-        <circle cx="120" cy="68" r="34" className="geo-ring" /><circle cx="120" cy="68" r="4" className="geo-pin" />
+        <circle cx="120" cy="68" r={radius * 0.2} className="geo-ring" /><circle cx="120" cy="68" r="3" className="geo-pin" />
       </svg>
       {src && seen && state !== 'failed' && <img className={'sitemap-img' + (state === 'ready' ? ' ready' : '')} src={src} alt="" decoding="async" onLoad={() => setState('ready')} onError={() => setState('failed')} />}
       {state === 'ready' && <span className="sitemap-dot" aria-hidden="true" />}
