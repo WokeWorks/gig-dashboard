@@ -1,12 +1,18 @@
 import { SITES, WORKERS, MANAGERS, siteOf, vendorOf } from './data.js';
-import { ScreenHeader, Pill, Tabs, Drawer, Modal, Field, Toggle, Note, useToast, Icon, Select } from './ui.jsx';
+import { ScreenHeader, Tabs, Drawer, Field, Toggle, useToast, Icon, Select } from './ui.jsx';
 
-const { useState, useMemo } = React;
+const { useState } = React;
 
 /* ---------------- Forms ----------------
    A form is a list of questions plus when it comes up (clock-in, clock-out, on a schedule, or whenever needed),
    who fills it, where, and whether it has to be done before clocking in. Answers can flag the manager.
-   Every submission is stamped with the worker, their shift and location automatically. */
+   Every submission is stamped with the worker, their shift and location automatically.
+
+   Layout: the list and the submissions are rows on the page (status as dots, no table, no cards); New form opens a
+   drawer of templates. The builder is a split pane fixed to the window (.main:has(> .fb2)): the questions scroll on the
+   left with roomy, readable fields; on the right an iPhone frame (.ip) runs the real FormBody, sized to the window
+   height so it always fits. FormBody is shared with the phone app, so builder-only styling is scoped to .ip.
+   CSS: the "Forms" section at the end of style.css. */
 
 export const FIELD_TYPES = [
   ['yesno', 'Yes / No', 'toggleq'],
@@ -110,12 +116,28 @@ const SUBS = [
   { id: 'sb6', form: 'fm1', w: 'w23', site: 's4', at: 'Wed 7 Oct, 06:55', shift: '07:00 shift', ans: { 0: ['Lights and AC on', 'Handheld scanners charged', 'Picking trolleys in place', 'Walkways clear'], 1: 'yes', 2: 'photo', 3: '' } },
 ];
 
-/* ---------- the worker's view, used live in the builder ---------- */
+/* ---------- the worker's view ---------- */
+const TRIGGER_ICON = { clockin: 'clock', clockout: 'logout', schedule: 'calendar', demand: 'document' };
+const initials = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
+
+// An iPhone frame around the live form: side buttons, dynamic island, status bar, home indicator.
 function PhoneForm(props) {
   return (
-    <div className="phone fp-phone">
-      <div className="phone-status"><span>09:41</span><span>●●● 5G</span></div>
-      <div className="phone-screen fp-screen"><FormBody {...props} /></div>
+    <div className="ip">
+      <span className="ip-btn ip-act" /><span className="ip-btn ip-vup" /><span className="ip-btn ip-vdn" /><span className="ip-btn ip-pwr" />
+      <div className="ip-screen">
+        <div className="ip-status" aria-hidden="true">
+          <span className="ip-time">9:41</span>
+          <span className="ip-island" />
+          <span className="ip-sys">
+            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0L8 11.5Z" /><path d="M3.4 6.8a6.5 6.5 0 0 1 9.2 0l-1.4 1.4a4.5 4.5 0 0 0-6.4 0L3.4 6.8Z" /><path d="M1.1 4.5a9.8 9.8 0 0 1 13.8 0l-1.4 1.4a7.8 7.8 0 0 0-11 0L1.1 4.5Z" /></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45" /><rect x="2" y="2" width="18" height="9" rx="2" /><path d="M25 4.5v4a2 2 0 0 0 0-4Z" opacity=".45" /></svg>
+          </span>
+        </div>
+        <div className="ip-body fp-screen"><FormBody {...props} /></div>
+        <span className="ip-home" aria-hidden="true" />
+      </div>
     </div>
   );
 }
@@ -160,75 +182,84 @@ function Builder({ form, onBack, onSave }) {
   const move = (i, d) => { const a = [...f.fields]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); setF({ ...f, fields: a }); };
   const add = (type) => { const q = { id: nid(), type, label: '', req: true, ...(type === 'check' || type === 'choice' ? { opts: ['Option 1', 'Option 2'] } : {}), ...(type === 'number' ? { unit: '', min: '', max: '' } : {}) }; setF({ ...f, fields: [...f.fields, q] }); setSel(q.id); setAdding(false); };
   const flags = f.fields.filter((q) => q.flag).length;
+  const live = f.status === 'live';
   return (
-    <div className="fb">
-      <div className="fb-bar">
-        <button className="btn ghost sm" onClick={onBack}><Icon name="arrowLeft" size={15} /> Forms</button>
-        <input className="fb-name" value={f.name} placeholder="Untitled form" onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Form name" />
-        <Pill tone={f.status === 'live' ? 'good' : 'warn'}>{f.status === 'live' ? 'Live' : 'Draft'}</Pill>
+    <div className="fb2">
+      <div className="fb2-bar">
+        <button className="btn ghost fb2-back" onClick={onBack}><Icon name="arrowLeft" size={16} />Forms</button>
+        <input className="fb2-name" value={f.name} placeholder="Untitled form" onChange={(e) => setF({ ...f, name: e.target.value })} aria-label="Form name" />
+        <span className="fb2-st"><span className={'sdot ' + (live ? 'good' : 'ring')} />{live ? 'Live' : 'Draft'}</span>
         <span className="grow" />
-        <button className="btn ghost sm" onClick={() => { onSave({ ...f }); toast('Saved'); }}>Save draft</button>
-        <button className="btn sm" disabled={!f.name || !f.fields.length} onClick={() => { onSave({ ...f, status: 'live' }); toast(f.status === 'live' ? 'Changes published · the app updates on next open' : 'Published · workers see it ' + whenText(f).toLowerCase()); onBack(); }}>{f.status === 'live' ? 'Publish changes' : 'Publish'}</button>
+        <button className="btn ghost" onClick={() => { onSave({ ...f }); toast('Saved'); }}>Save draft</button>
+        <button className="btn" disabled={!f.name || !f.fields.length} onClick={() => { onSave({ ...f, status: 'live' }); toast(live ? 'Changes published · the app updates on next open' : 'Published · workers see it ' + whenText(f).toLowerCase()); onBack(); }}>{live ? 'Publish changes' : 'Publish'}</button>
       </div>
-      <div className="fb-grid">
-        <div className="fb-left">
-          <section className="card fb-when">
-            <div className="card-head"><h3>When and who</h3></div>
-            <div className="form-grid">
+
+      <div className="fb2-grid">
+        <div className="fb2-left">
+          <section className="fb2-sec">
+            <header className="fb2-h"><h3>When and who</h3><span>When the form comes up, and who fills it in</span></header>
+            <div className="fb2-fields">
               <Field label="Comes up"><Select className="input" value={f.trigger} onChange={(e) => setF({ ...f, trigger: e.target.value })}>{Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-              {f.trigger === 'schedule' ? <Field label="Every"><div className="unit-in"><input className="input" type="number" min="1" max="12" value={f.every || 4} onChange={(e) => setF({ ...f, every: +e.target.value })} /><span>hours on shift</span></div></Field> : null}
+              {f.trigger === 'schedule' && <Field label="Every"><div className="unit-in"><input className="input" type="number" min="1" max="12" value={f.every || 4} onChange={(e) => setF({ ...f, every: +e.target.value })} /><span>hours on shift</span></div></Field>}
               <Field label="Filled in by"><Select className="input" value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })}>{WHO.map((x) => <option key={x}>{x}</option>)}</Select></Field>
               <Field label="At"><Select className="input" value={f.sites === 'all' ? 'all' : 'some'} onChange={(e) => setF({ ...f, sites: e.target.value === 'all' ? 'all' : ['s3'] })}><option value="all">All locations</option><option value="some">Chosen locations</option></Select></Field>
             </div>
-            {f.trigger === 'clockin' && <Toggle id="fb-block" checked={!!f.block} onChange={(v) => setF({ ...f, block: v })} label="Must be done before they can clock in" />}
-            <div className="small muted">Every answer is stamped with who sent it, their shift, location and the time.</div>
+            {f.trigger === 'clockin' && <div className="fb2-toggle"><Toggle id="fb-block" checked={!!f.block} onChange={(v) => setF({ ...f, block: v })} label="Must be done before they can clock in" /></div>}
+            <p className="fb2-note"><Icon name="document" size={16} />Every answer is stamped with who sent it, their shift, location and the time.</p>
           </section>
-          <div className="fb-qhead"><h3>Questions <span className="muted">({f.fields.length})</span></h3>{flags > 0 && <span className="small muted"><Icon name="flag" size={12} /> {flags} can flag the manager</span>}</div>
-          {f.fields.map((q, i) => { const T = typeOf(q.type); const on = sel === q.id; return (
-            <section key={q.id} className={'card fb-q' + (on ? ' on' : '')} onClick={() => setSel(q.id)}>
-              <div className="fb-qrow">
-                <span className="fb-n">{i + 1}</span>
-                <span className="fb-ico"><Icon name={T[2]} size={15} /></span>
-                {on ? <input className="input fb-qlabel" autoFocus={!q.label} value={q.label} placeholder="Type the question" onChange={(e) => setQ(q.id, { label: e.target.value })} />
-                  : <span className="fb-qtext">{q.label || <span className="muted">Untitled question</span>}<span className="small muted"> · {T[1]}{q.req ? '' : ' · optional'}</span>{q.flag && <span className="fb-flagtag"><Icon name="flag" size={11} /></span>}</span>}
-                <span className="fb-qact">
-                  <button className="btn ghost sm icon" disabled={i === 0} onClick={(e) => { e.stopPropagation(); move(i, -1); }} aria-label="Move up"><Icon name="up" size={14} /></button>
-                  <button className="btn ghost sm icon" disabled={i === f.fields.length - 1} onClick={(e) => { e.stopPropagation(); move(i, 1); }} aria-label="Move down"><Icon name="down" size={14} /></button>
-                  <button className="btn ghost sm icon" onClick={(e) => { e.stopPropagation(); setF({ ...f, fields: f.fields.filter((x) => x.id !== q.id) }); }} aria-label="Remove question"><Icon name="trash" size={14} /></button>
-                </span>
-              </div>
-              {on && <div className="fb-qedit">
-                <div className="form-grid">
-                  <Field label="Type"><Select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
-                  <Field label="Answer"><Select className="input" value={q.req ? 'req' : 'opt'} onChange={(e) => setQ(q.id, { req: e.target.value === 'req' })}><option value="req">Required</option><option value="opt">Optional</option></Select></Field>
+
+          <section className="fb2-sec">
+            <header className="fb2-h"><h3>Questions<span className="fb2-count">{f.fields.length}</span></h3>{flags > 0 && <span><Icon name="flag" size={14} />{flags} can flag the manager</span>}</header>
+            <ol className="fb2-qs">
+              {f.fields.map((q, i) => { const T = typeOf(q.type); const on = sel === q.id; return (
+                <li key={q.id} className={'fb2-q' + (on ? ' on' : '')} style={{ '--i': i }}>
+                  <div className="fb2-qrow" onClick={() => setSel(on ? null : q.id)}>
+                    <span className="fb2-n">{i + 1}</span>
+                    <span className="fb2-ico"><Icon name={T[2]} size={18} /></span>
+                    <span className="fb2-qtext"><b>{q.label || 'Untitled question'}</b><span>{T[1]}{q.req ? '' : ' · optional'}{q.flag ? ` · tells the manager when ${flagText(q)}` : ''}</span></span>
+                    <span className="fb2-qact" onClick={(e) => e.stopPropagation()}>
+                      <button className="btn ghost icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up"><Icon name="up" size={16} /></button>
+                      <button className="btn ghost icon" disabled={i === f.fields.length - 1} onClick={() => move(i, 1)} aria-label="Move down"><Icon name="down" size={16} /></button>
+                      <button className="btn ghost icon" onClick={() => setF({ ...f, fields: f.fields.filter((x) => x.id !== q.id) })} aria-label="Remove question"><Icon name="trash" size={16} /></button>
+                    </span>
+                  </div>
+                  {on && <div className="fb2-edit">
+                    <Field label="Question"><input className="input fb2-qlabel" autoFocus={!q.label} value={q.label} placeholder="Type the question" onChange={(e) => setQ(q.id, { label: e.target.value })} /></Field>
+                    <div className="fb2-fields two">
+                      <Field label="Type"><Select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
+                      <Field label="Answer"><Select className="input" value={q.req ? 'req' : 'opt'} onChange={(e) => setQ(q.id, { req: e.target.value === 'req' })}><option value="req">Required</option><option value="opt">Optional</option></Select></Field>
+                    </div>
+                    {(q.type === 'check' || q.type === 'choice') && <Field label={q.type === 'check' ? 'Items to tick' : 'Options'}>
+                      <div className="fb2-opts">{(q.opts || []).map((o, k) => (
+                        <div key={k} className="fb2-opt"><span className={q.type === 'check' ? 'fb2-box' : 'fb2-radio'} aria-hidden="true" /><input className="input" value={o} onChange={(e) => setQ(q.id, { opts: q.opts.map((x, j) => (j === k ? e.target.value : x)) })} /><button className="btn ghost icon" onClick={() => setQ(q.id, { opts: q.opts.filter((_, j) => j !== k) })} aria-label="Remove option"><Icon name="x" size={16} /></button></div>
+                      ))}<button className="btn ghost fb2-addopt" onClick={() => setQ(q.id, { opts: [...(q.opts || []), `Option ${(q.opts || []).length + 1}`] })}><Icon name="plus" size={15} />Add {q.type === 'check' ? 'item' : 'option'}</button></div>
+                    </Field>}
+                    {q.type === 'number' && <div className="fb2-fields three">
+                      <Field label="Unit"><input className="input" value={q.unit || ''} placeholder="°C, km…" onChange={(e) => setQ(q.id, { unit: e.target.value })} /></Field>
+                      <Field label="Expected from"><input className="input" type="number" value={q.min ?? ''} onChange={(e) => setQ(q.id, { min: e.target.value === '' ? '' : +e.target.value })} /></Field>
+                      <Field label="to"><input className="input" type="number" value={q.max ?? ''} onChange={(e) => setQ(q.id, { max: e.target.value === '' ? '' : +e.target.value })} /></Field>
+                    </div>}
+                    {['yesno', 'check', 'number', 'choice'].includes(q.type) && (() => {
+                      const opts = q.type === 'yesno' ? [['no', 'the answer is No'], ['yes', 'the answer is Yes']] : q.type === 'check' ? [['unticked', 'anything is left unticked']] : q.type === 'number' ? [['out', 'it is outside the expected range']] : (q.opts || []).map((o) => ['opt:' + o, `they pick "${o}"`]);
+                      const cur = !q.flag ? '' : q.flag.when === 'opt' ? 'opt:' + q.flag.value : q.flag.when;
+                      return <Field label="Tell the manager when"><Select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }}><option value="">Never</option>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>;
+                    })()}
+                    {q.flag && <p className="fb2-note warn"><Icon name="flag" size={16} />Raises a notification for the location's manager, with the photo and answers attached.</p>}
+                  </div>}
+                </li>
+              ); })}
+            </ol>
+            {adding
+              ? <div className="fb2-add">
+                  <div className="fb2-add-h"><b>What kind of question?</b><button className="btn ghost" onClick={() => setAdding(false)}>Cancel</button></div>
+                  <div className="fb2-types">{FIELD_TYPES.map(([k, l, ic], n) => <button key={k} className="fb2-type" style={{ '--i': n }} onClick={() => add(k)}><span className="fb2-ico"><Icon name={ic} size={18} /></span>{l}</button>)}</div>
                 </div>
-                {(q.type === 'check' || q.type === 'choice') && <Field label={q.type === 'check' ? 'Items to tick' : 'Options'}>
-                  <div className="fb-opts">{(q.opts || []).map((o, k) => (
-                    <div key={k} className="fb-opt"><input className="input sm" value={o} onChange={(e) => setQ(q.id, { opts: q.opts.map((x, j) => (j === k ? e.target.value : x)) })} /><button className="btn ghost sm icon" onClick={() => setQ(q.id, { opts: q.opts.filter((_, j) => j !== k) })} aria-label="Remove option"><Icon name="trash" size={13} /></button></div>
-                  ))}<button className="linkbtn small" onClick={() => setQ(q.id, { opts: [...(q.opts || []), `Option ${(q.opts || []).length + 1}`] })}>+ Add {q.type === 'check' ? 'item' : 'option'}</button></div>
-                </Field>}
-                {q.type === 'number' && <div className="form-grid three">
-                  <Field label="Unit"><input className="input" value={q.unit || ''} placeholder="°C, km…" onChange={(e) => setQ(q.id, { unit: e.target.value })} /></Field>
-                  <Field label="Expected from"><input className="input" type="number" value={q.min ?? ''} onChange={(e) => setQ(q.id, { min: e.target.value === '' ? '' : +e.target.value })} /></Field>
-                  <Field label="to"><input className="input" type="number" value={q.max ?? ''} onChange={(e) => setQ(q.id, { max: e.target.value === '' ? '' : +e.target.value })} /></Field>
-                </div>}
-                {['yesno', 'check', 'number', 'choice'].includes(q.type) && (() => {
-                  const opts = q.type === 'yesno' ? [['no', 'the answer is No'], ['yes', 'the answer is Yes']] : q.type === 'check' ? [['unticked', 'anything is left unticked']] : q.type === 'number' ? [['out', 'it is outside the expected range']] : (q.opts || []).map((o) => ['opt:' + o, `they pick "${o}"`]);
-                  const cur = !q.flag ? '' : q.flag.when === 'opt' ? 'opt:' + q.flag.value : q.flag.when;
-                  return <Field label="Tell the manager when"><Select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }}><option value="">Never</option>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>;
-                })()}
-                {q.flag && <div className="small muted fb-flagnote"><Icon name="flag" size={12} /> Raises a notification for the location's manager, with the photo and answers attached.</div>}
-              </div>}
-            </section>
-          ); })}
-          {adding ? <section className="card fb-add">
-            <div className="small muted">Add a question</div>
-            <div className="fb-types">{FIELD_TYPES.map(([k, l, ic]) => <button key={k} className="fb-type" onClick={() => add(k)}><Icon name={ic} size={16} />{l}</button>)}</div>
-            <button className="btn ghost sm" onClick={() => setAdding(false)}>Cancel</button>
-          </section> : <button className="btn ghost fb-addbtn" onClick={() => setAdding(true)}><Icon name="plus" size={15} /> Add question</button>}
+              : <button className="fb2-addbtn" onClick={() => setAdding(true)}><Icon name="plus" size={18} />Add question</button>}
+          </section>
         </div>
-        <div className="fb-right">
-          <div className="fb-prevhead small"><b>What workers see</b><span className="muted"> · try it, nothing is sent</span>{Object.keys(answers).length > 0 && <button className="linkbtn small" onClick={() => setAnswers({})}>Clear</button>}</div>
+
+        <div className="fb2-right">
+          <div className="fb2-prev"><b>What workers see</b><span>Try it, nothing is sent</span>{Object.keys(answers).length > 0 && <button className="linkbtn" onClick={() => setAnswers({})}>Clear</button>}</div>
           <PhoneForm form={f} answers={answers} setAnswers={setAnswers} onSubmit={() => { const n = f.fields.filter((q) => flagged(q, answers[q.id])).length; toast(n ? `Test submitted · ${n} ${n === 1 ? 'answer' : 'answers'} would flag the manager` : 'Test submitted · nothing flagged'); setAnswers({}); }} />
         </div>
       </div>
@@ -251,77 +282,92 @@ export function Forms({ go }) {
   const subFlags = (s) => { const fm = formOf(s.form); return fm ? fm.fields.filter((q, i) => flagged(q, s.ans[i])) : []; };
   if (editing) return <Builder form={editing} onBack={() => setEditing(null)} onSave={(nf) => setForms((xs) => (xs.some((x) => x.id === nf.id) ? xs.map((x) => (x.id === nf.id ? { ...nf, updated: 'Just now' } : x)) : [{ ...nf, updated: 'Just now' }, ...xs]))} />;
   const subs = SUBS.filter((s) => !onlyFlag || subFlags(s).length);
+  const nFlag = SUBS.filter((s) => subFlags(s).length).length;
   const industries = [...new Set(TEMPLATES.map((t) => t.industry))];
+  const start = (form) => { setPicking(false); setEditing(form); };
   return (
     <>
       <ScreenHeader title="Forms" phase={2} spec="5.11" actions={<button className="btn" onClick={() => setPicking(true)}><Icon name="plus" size={15} /> New form</button>} />
-      <Tabs tabs={[{ id: 'forms', label: 'Forms' }, { id: 'subs', label: `Submissions` }]} value={tab} onChange={setTab} />
-      {tab === 'forms' && <section className="card flush">
-        <div className="table-wrap"><table className="table hover fm-table">
-          <thead><tr><th>Form</th><th>Comes up</th><th>Filled in by</th><th className="num">This week</th><th className="num">Flagged</th><th>Status</th></tr></thead>
-          <tbody>{forms.map((f) => (
-            <tr key={f.id} className="rowlink" tabIndex={0} onClick={() => setEditing(f)} onKeyDown={(e) => e.key === 'Enter' && setEditing(f)}>
-              <td><b>{f.name}</b><div className="small muted">{f.fields.length} questions · edited {f.updated}</div></td>
-              <td>{whenText(f)}{f.block && f.trigger === 'clockin' && <div className="small fm-block">Required to clock in</div>}</td>
-              <td>{f.who}<div className="small muted">{f.sites === 'all' ? 'All locations' : `${f.sites.length} location`}</div></td>
-              <td className="num mono">{f.subs}</td>
-              <td className="num">{f.flagged ? <button className="linkbtn neg mono" onClick={(e) => { e.stopPropagation(); setOnlyFlag(true); setTab('subs'); }}>{f.flagged}</button> : <span className="muted mono">0</span>}</td>
-              <td><Pill tone={f.status === 'live' ? 'good' : 'warn'}>{f.status === 'live' ? 'Live' : 'Draft'}</Pill></td>
-            </tr>
-          ))}</tbody>
-        </table></div>
-      </section>}
-      {tab === 'subs' && <>
-        <div className="toolbar"><label className="wk-rot small"><input type="checkbox" checked={onlyFlag} onChange={(e) => setOnlyFlag(e.target.checked)} /> Only flagged</label></div>
-        <section className="card flush"><div className="table-wrap"><table className="table hover">
-          <thead><tr><th>Form</th><th>Sent by</th><th>Location</th><th>When</th><th>Result</th></tr></thead>
-          <tbody>{subs.map((s) => { const fm = formOf(s.form); const fl = subFlags(s); return (
-            <tr key={s.id} className="rowlink" tabIndex={0} onClick={() => setSub(s)} onKeyDown={(e) => e.key === 'Enter' && setSub(s)}>
-              <td><b>{fm.name}</b></td>
-              <td>{W(s.w).name}<div className="small muted"><span className="vtag">{vendorOf(W(s.w).vendor).code}</span> {s.shift}</div></td>
-              <td>{siteOf(s.site).name}</td>
-              <td className="small nowrap">{s.at}</td>
-              <td>{fl.length ? <Pill tone="crit">{fl.length} flagged</Pill> : <Pill tone="good">All fine</Pill>}</td>
-            </tr>
-          ); })}{subs.length === 0 && <tr><td colSpan={5} className="small muted">Nothing flagged.</td></tr>}</tbody>
-        </table></div></section>
-      </>}
-      <Modal open={picking} onClose={() => setPicking(false)} title="New form">
-        <button className="fm-tpl blank" onClick={() => { setPicking(false); setEditing({ id: 'fm' + Date.now(), name: '', desc: '', trigger: 'demand', who: 'Everyone', sites: 'all', status: 'draft', subs: 0, flagged: 0, fields: [] }); }}><Icon name="plus" size={18} /><div><b>Start from scratch</b><span className="small muted">An empty form</span></div></button>
-        {industries.map((ind) => (
-          <div key={ind} className="fm-ind">
-            <div className="fm-indh small">{ind}</div>
-            {TEMPLATES.filter((t) => t.industry === ind).map((t) => (
-              <button key={t.key} className="fm-tpl" onClick={() => { setPicking(false); setEditing(clone(t, { id: 'fm' + Date.now(), status: 'draft', sites: 'all', subs: 0, flagged: 0 })); }}>
-                <Icon name="document" size={18} /><div><b>{t.name}</b><span className="small muted">{t.desc} · {t.fields.length} questions · {whenText(t).toLowerCase()}</span></div>
-              </button>
-            ))}
+      <Tabs tabs={[{ id: 'forms', label: 'Forms' }, { id: 'subs', label: 'Submissions' }]} value={tab} onChange={setTab} />
+
+      {tab === 'forms' && (
+        <div className="fm2" role="table" aria-label="Forms">
+          <div className="fm2-row fm2-rh" role="row"><span>Form</span><span>Comes up</span><span>Filled in by</span><span>This week</span><span>Flagged</span><span>Status</span></div>
+          {forms.map((f, i) => (
+            <button key={f.id} className="fm2-row" role="row" style={{ '--i': i }} onClick={() => setEditing(f)}>
+              <span className="fm2-name"><span className="fm2-ico"><Icon name={TRIGGER_ICON[f.trigger]} size={18} /></span><span><b>{f.name}</b><span>{f.fields.length} questions · edited {f.updated}</span></span></span>
+              <span className="fm2-cell"><b>{whenText(f)}</b>{f.block && f.trigger === 'clockin' && <span><span className="sdot warn" />Required to clock in</span>}</span>
+              <span className="fm2-cell"><b>{f.who}</b><span>{f.sites === 'all' ? 'All locations' : `${f.sites.length} location`}</span></span>
+              <span className="fm2-n">{f.subs}</span>
+              <span className="fm2-n">{f.flagged ? <span className="fm2-flag" role="link" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOnlyFlag(true); setTab('subs'); }}><span className="sdot crit" />{f.flagged}</span> : <span className="fm2-zero">0</span>}</span>
+              <span className="fm2-st"><span className={'sdot ' + (f.status === 'live' ? 'good' : 'ring')} />{f.status === 'live' ? 'Live' : 'Draft'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'subs' && (
+        <div className="fm2">
+          <div className="ma-chips fm2-chips">
+            <button className={'ma-chip' + (!onlyFlag ? ' on' : '')} onClick={() => setOnlyFlag(false)}>All · {SUBS.length}</button>
+            <button className={'ma-chip' + (onlyFlag ? ' on' : '')} onClick={() => setOnlyFlag(true)}>Flagged · {nFlag}</button>
           </div>
-        ))}
-      </Modal>
+          <div className="sb2-row fm2-rh" role="row"><span>Form</span><span>Sent by</span><span>Location</span><span>When</span><span>Result</span></div>
+          {subs.map((s, i) => { const fm = formOf(s.form); const fl = subFlags(s); const w = W(s.w); return (
+            <button key={s.id} className="sb2-row" style={{ '--i': i }} onClick={() => setSub(s)}>
+              <b className="sb2-form">{fm.name}</b>
+              <span className="sb2-who"><span className={'live-face ' + (fl.length ? 'crit' : 'good')}>{initials(w.name)}</span><span><b>{w.name}</b><span>{vendorOf(w.vendor).code} · {s.shift}</span></span></span>
+              <span>{siteOf(s.site).name}</span>
+              <span className="sb2-when">{s.at}</span>
+              <span className="fm2-st"><span className={'sdot ' + (fl.length ? 'crit' : 'good')} />{fl.length ? `${fl.length} flagged` : 'All fine'}</span>
+            </button>
+          ); })}
+          {subs.length === 0 && <p className="fm2-empty">Nothing flagged.</p>}
+        </div>
+      )}
+
+      <Drawer open={picking} onClose={() => setPicking(false)} title="New form" sub="Start from a template and change anything, or start empty.">
+        <div className="tp2">
+          <button className="tp2-item blank" onClick={() => start({ id: 'fm' + Date.now(), name: '', desc: '', trigger: 'demand', who: 'Everyone', sites: 'all', status: 'draft', subs: 0, flagged: 0, fields: [] })}>
+            <span className="fm2-ico"><Icon name="plus" size={18} /></span><span><b>Start from scratch</b><span>An empty form</span></span>
+          </button>
+          {industries.map((ind) => (
+            <section key={ind} className="tp2-group">
+              <h4>{ind}</h4>
+              {TEMPLATES.filter((t) => t.industry === ind).map((t) => (
+                <button key={t.key} className="tp2-item" onClick={() => start(clone(t, { id: 'fm' + Date.now(), status: 'draft', sites: 'all', subs: 0, flagged: 0 }))}>
+                  <span className="fm2-ico"><Icon name={TRIGGER_ICON[t.trigger]} size={18} /></span>
+                  <span><b>{t.name}</b><span>{t.desc}</span><small>{t.fields.length} questions · {whenText(t).toLowerCase()}</small></span>
+                </button>
+              ))}
+            </section>
+          ))}
+        </div>
+      </Drawer>
+
       <Drawer open={!!sub} onClose={() => setSub(null)} title={sub && formOf(sub.form).name} sub={sub && `${W(sub.w).name} · ${siteOf(sub.site).name} · ${sub.at}`}>
         {sub && (() => { const fm = formOf(sub.form); const fl = subFlags(sub); return <>
-          <dl className="kv">
-            <dt>Sent by</dt><dd>{W(sub.w).name} <span className="small muted">· {vendorOf(W(sub.w).vendor).name} · {W(sub.w).role}</span></dd>
+          <dl className="wfx-kv">
+            <dt>Sent by</dt><dd>{W(sub.w).name}<small>{vendorOf(W(sub.w).vendor).name} · {W(sub.w).role}</small></dd>
             <dt>Shift</dt><dd>{sub.shift} at {siteOf(sub.site).name}</dd>
-            <dt>Where</dt><dd>Inside the location's geofence <span className="small muted">· 24 m from the pin</span></dd>
-            {fl.length > 0 && <><dt>Manager</dt><dd>{MANAGERS.find((m) => m.sites.includes(sub.site)).name} was notified</dd></>}
+            <dt>Where</dt><dd>Inside the location's geofence<small>24 m from the pin</small></dd>
+            {fl.length > 0 && <><dt>Manager</dt><dd><span className="sdot crit" />{MANAGERS.find((m) => m.sites.includes(sub.site)).name} was notified</dd></>}
           </dl>
-          <div className="sb-answers">{fm.fields.map((q, i) => { const v = sub.ans[i]; const bad = flagged(q, v); return (
-            <div key={q.id} className={'sb-a' + (bad ? ' flag' : '')}>
-              <div className="small muted">{q.label}</div>
-              <div className="sb-v">
+          <ol className="sb2-answers">{fm.fields.map((q, i) => { const v = sub.ans[i]; const bad = flagged(q, v); return (
+            <li key={q.id} className={bad ? 'flag' : ''} style={{ '--i': i }}>
+              <span className="sb2-q">{q.label}</span>
+              <div className="sb2-v">
                 {q.type === 'yesno' && (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : '—')}
-                {q.type === 'check' && <ul className="sb-checks">{(q.opts || []).map((o) => <li key={o} className={(v || []).includes(o) ? 'ok' : 'miss'}>{(v || []).includes(o) ? <Icon name="check" size={13} stroke={2.6} /> : <Icon name="alert" size={13} />} {o}</li>)}</ul>}
-                {q.type === 'number' && (v !== undefined ? <span className="mono">{v} {q.unit}</span> : '—')}
-                {(q.type === 'choice' || q.type === 'text') && (v || <span className="muted">No answer</span>)}
-                {q.type === 'photo' && (v ? <span className="sb-photo"><Icon name="camera" size={18} /></span> : <span className="muted">No photo</span>)}
+                {q.type === 'check' && <ul className="sb-checks">{(q.opts || []).map((o) => <li key={o} className={(v || []).includes(o) ? 'is-ok' : 'is-miss'}>{(v || []).includes(o) ? <Icon name="check" size={14} stroke={2.6} /> : <Icon name="x" size={14} stroke={2.4} />} {o}</li>)}</ul>}
+                {q.type === 'number' && (v !== undefined ? `${v} ${q.unit || ''}` : '—')}
+                {(q.type === 'choice' || q.type === 'text') && (v || <span className="sb2-none">No answer</span>)}
+                {q.type === 'photo' && (v ? <span className="sb-photo"><Icon name="camera" size={18} /></span> : <span className="sb2-none">No photo</span>)}
                 {q.type === 'signature' && (v ? <svg className="sb-sig" viewBox="0 0 160 40" aria-label="Signature"><path d="M6 30c10-18 18-22 22-12s-4 16 4 8 12-20 18-8 6 14 14 2 10-14 16-4 8 10 18 0 14-6 22 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg> : '—')}
               </div>
-              {bad && <div className="small neg"><Icon name="flag" size={12} /> Flagged: {flagText(q)}</div>}
-            </div>
-          ); })}</div>
-          <div className="feed-actions"><button className="btn ghost" onClick={() => go('workforce', { worker: sub.w })}>Open {W(sub.w).name.split(' ')[0]}'s page</button>{fl.length > 0 && <button className="btn" onClick={() => { toast('Marked as handled'); setSub(null); }}>Mark handled</button>}</div>
+              {bad && <span className="sb2-flag"><span className="sdot crit" />Flagged: {flagText(q)}</span>}
+            </li>
+          ); })}</ol>
+          <div className="drawer-actions"><button className="btn ghost" onClick={() => go('workforce', { worker: sub.w })}>Open {W(sub.w).name.split(' ')[0]}'s page</button><span className="grow" />{fl.length > 0 && <button className="btn" onClick={() => { toast('Marked as handled'); setSub(null); }}>Mark handled</button>}</div>
         </>; })()}
       </Drawer>
     </>
