@@ -3013,3 +3013,46 @@ button.vc-srow:hover .vc-sbar i { background: var(--accent); }
 @media (max-width: 1400px) { .fb2-grid { grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; } .fb2-edit { padding-left: 20px; } .fm2-row { grid-template-columns: minmax(220px, 1.8fr) minmax(150px, 1.1fr) minmax(120px, 1fr) 80px 80px 80px; gap: 16px; } .sb2-row { grid-template-columns: minmax(170px, 1.2fr) minmax(200px, 1.4fr) minmax(160px, 1.2fr) 150px 110px; gap: 16px; } }
 @media (max-width: 1100px) { .main:has(> .fb2) { height: auto; } .fb2-grid { grid-template-columns: 1fr; } .fb2-left { overflow: visible; padding-right: 0; } .ip { flex: none; height: 720px; max-width: 100%; } }
 @media (max-width: 760px) { .fm2-row, .sb2-row { grid-template-columns: minmax(0, 1fr) auto; } .fm2-row > :nth-child(n+2):not(.fm2-st), .sb2-row > :nth-child(n+3):not(.fm2-st), .fm2-rh { display: none; } .fb2-fields.two, .fb2-fields.three { grid-template-columns: 1fr; } .fb2-name { font-size: 22px; order: -1; flex-basis: 100%; max-width: 100%; } .fb2-n { display: none; } .fb2-qrow { gap: 10px; padding: 12px 10px; } .fb2-ico { width: 34px; height: 34px; } .fb2-qact .btn.icon { width: 32px; height: 32px; } .fb2-edit { padding: 4px 12px 18px; } }
+
+/* builder hierarchy: settings as label-and-control rows; the question editor in titled groups */
+.fb2-h { flex-direction: column; align-items: flex-start; gap: 4px; }
+.fb2-h h3 { font-size: 22px; }
+.fb2-set { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.fb2-srow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); align-items: center; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.fb2-srow > div:first-child { display: flex; flex-direction: column; gap: 3px; }
+.fb2-srow b { font-size: 15.5px; font-weight: 500; }
+.fb2-srow > div:first-child > span { color: var(--ink-mid); font-size: 14px; }
+.fb2-srow .toggle { justify-self: end; color: var(--ink-mid); font-size: 14.5px; }
+.fb2-srow .unit-in .input { width: 90px; }
+.fb2-edit { gap: 22px; padding: 4px 22px 24px 94px; }
+.fb2-group { display: flex; flex-direction: column; gap: 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+.fb2-group h5 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--fg); font-size: 15px; font-weight: 500; }
+.fb2-group h5 span { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--surface-2); color: var(--ink-mid); font-size: 13px; }
+.fb2-ans { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.fb2-seg { height: 46px; padding: 4px; align-items: stretch; }
+.fb2-seg button { padding: 0 16px; font-size: 14.5px; font-weight: 500; }
+.fb2-flagbox h5 .icon { color: var(--ink-mid); }
+.fb2-flagbox.on h5 .icon { color: var(--warn); }
+.fb2-flagbox .fb2-note { color: var(--ink-mid); }
+.fb2 .input, .fb2 .select { height: 44px; font-size: 15px; }
+.fb2-qlabel { height: 50px !important; font-size: 17px !important; }
+
+/* the form inside the iPhone at real phone proportions (the frame is ~0.85 of a 393pt screen) */
+.ip-status { height: 46px; padding: 4px 26px 0 30px; } .ip-time { font-size: 14px; } .ip-island { top: 9px; height: 27px; }
+.ip .fp-top { padding: 4px 16px 12px; }
+.ip .fp-ctx { font-size: 11px; }
+.ip .fp-title { margin: 6px 0 2px; font-size: 20px; }
+.ip .fp-top .small { font-size: 12px; }
+.ip .fp-block { margin-top: 10px; padding: 7px 10px; border-radius: 10px; font-size: 12px; }
+.ip .fp-q { margin: 8px 10px 0; padding: 12px; border-radius: 16px; }
+.ip .fp-label { font-size: 13.5px; margin-bottom: 9px; }
+.ip .fp-yn button, .ip .fp-opts button, .ip .fp-check { padding: 10px; border-radius: 10px; font-size: 12.5px; }
+.ip .fp-checks, .ip .fp-opts { gap: 5px; }
+.ip .fp-box { width: 17px; height: 17px; border-radius: 5px; }
+.ip .fp-num input, .ip .fp-q textarea { padding: 10px; border-radius: 10px; font-size: 12.5px; }
+.ip .fp-photo, .ip .fp-sig { padding: 16px; font-size: 12.5px; }
+.ip .fp-flag { font-size: 11.5px; }
+.ip .fp-foot { padding: 14px 10px 0; }
+.ip .fp-submit { padding: 13px; border-radius: 14px; font-size: 14px; }
+@media (max-width: 1400px) { .fb2-edit { padding-left: 22px; } }
+@media (max-width: 760px) { .fb2-srow { grid-template-columns: 1fr; gap: 10px; } .fb2-srow .toggle { justify-self: start; } .fb2-ans { grid-template-columns: 1fr; } .fb2-edit { padding: 4px 12px 18px; } }

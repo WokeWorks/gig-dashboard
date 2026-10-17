@@ -198,13 +198,13 @@ function Builder({ form, onBack, onSave }) {
         <div className="fb2-left">
           <section className="fb2-sec">
             <header className="fb2-h"><h3>When and who</h3><span>When the form comes up, and who fills it in</span></header>
-            <div className="fb2-fields">
-              <Field label="Comes up"><Select className="input" value={f.trigger} onChange={(e) => setF({ ...f, trigger: e.target.value })}>{Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
-              {f.trigger === 'schedule' && <Field label="Every"><div className="unit-in"><input className="input" type="number" min="1" max="12" value={f.every || 4} onChange={(e) => setF({ ...f, every: +e.target.value })} /><span>hours on shift</span></div></Field>}
-              <Field label="Filled in by"><Select className="input" value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })}>{WHO.map((x) => <option key={x}>{x}</option>)}</Select></Field>
-              <Field label="At"><Select className="input" value={f.sites === 'all' ? 'all' : 'some'} onChange={(e) => setF({ ...f, sites: e.target.value === 'all' ? 'all' : ['s3'] })}><option value="all">All locations</option><option value="some">Chosen locations</option></Select></Field>
+            <div className="fb2-set">
+              <div className="fb2-srow"><div><b>Comes up</b><span>When it appears on their phone</span></div><Select className="input" value={f.trigger} onChange={(e) => setF({ ...f, trigger: e.target.value })}>{Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></div>
+              {f.trigger === 'schedule' && <div className="fb2-srow"><div><b>Every</b><span>Hours between each one, while on shift</span></div><div className="unit-in"><input className="input" type="number" min="1" max="12" value={f.every || 4} onChange={(e) => setF({ ...f, every: +e.target.value })} aria-label="Hours between" /><span>hours on shift</span></div></div>}
+              <div className="fb2-srow"><div><b>Filled in by</b><span>Who has to fill it in</span></div><Select className="input" value={f.who} onChange={(e) => setF({ ...f, who: e.target.value })}>{WHO.map((x) => <option key={x}>{x}</option>)}</Select></div>
+              <div className="fb2-srow"><div><b>At</b><span>Which locations use it</span></div><Select className="input" value={f.sites === 'all' ? 'all' : 'some'} onChange={(e) => setF({ ...f, sites: e.target.value === 'all' ? 'all' : ['s3'] })}><option value="all">All locations</option><option value="some">Chosen locations</option></Select></div>
+              {f.trigger === 'clockin' && <div className="fb2-srow"><div><b>Required to clock in</b><span>They can't clock in until it's done</span></div><Toggle id="fb-block" checked={!!f.block} onChange={(v) => setF({ ...f, block: v })} label={f.block ? 'On' : 'Off'} /></div>}
             </div>
-            {f.trigger === 'clockin' && <div className="fb2-toggle"><Toggle id="fb-block" checked={!!f.block} onChange={(v) => setF({ ...f, block: v })} label="Must be done before they can clock in" /></div>}
             <p className="fb2-note"><Icon name="document" size={16} />Every answer is stamped with who sent it, their shift, location and the time.</p>
           </section>
 
@@ -225,26 +225,36 @@ function Builder({ form, onBack, onSave }) {
                   </div>
                   {on && <div className="fb2-edit">
                     <Field label="Question"><input className="input fb2-qlabel" autoFocus={!q.label} value={q.label} placeholder="Type the question" onChange={(e) => setQ(q.id, { label: e.target.value })} /></Field>
-                    <div className="fb2-fields two">
-                      <Field label="Type"><Select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>
-                      <Field label="Answer"><Select className="input" value={q.req ? 'req' : 'opt'} onChange={(e) => setQ(q.id, { req: e.target.value === 'req' })}><option value="req">Required</option><option value="opt">Optional</option></Select></Field>
+                    <div className="fb2-group">
+                      <h5>Answer</h5>
+                      <div className="fb2-ans">
+                        <Select className="input" value={q.type} onChange={(e) => setQ(q.id, { type: e.target.value, flag: undefined, ...(['check', 'choice'].includes(e.target.value) && !q.opts ? { opts: ['Option 1', 'Option 2'] } : {}) })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+                        <div className="seg fb2-seg" role="group" aria-label="Required or optional"><button className={q.req ? 'on' : ''} onClick={() => setQ(q.id, { req: true })}>Required</button><button className={!q.req ? 'on' : ''} onClick={() => setQ(q.id, { req: false })}>Optional</button></div>
+                      </div>
                     </div>
-                    {(q.type === 'check' || q.type === 'choice') && <Field label={q.type === 'check' ? 'Items to tick' : 'Options'}>
+                    {(q.type === 'check' || q.type === 'choice') && <div className="fb2-group">
+                      <h5>{q.type === 'check' ? 'Items to tick' : 'Options'}<span>{(q.opts || []).length}</span></h5>
                       <div className="fb2-opts">{(q.opts || []).map((o, k) => (
-                        <div key={k} className="fb2-opt"><span className={q.type === 'check' ? 'fb2-box' : 'fb2-radio'} aria-hidden="true" /><input className="input" value={o} onChange={(e) => setQ(q.id, { opts: q.opts.map((x, j) => (j === k ? e.target.value : x)) })} /><button className="btn ghost icon" onClick={() => setQ(q.id, { opts: q.opts.filter((_, j) => j !== k) })} aria-label="Remove option"><Icon name="x" size={16} /></button></div>
+                        <div key={k} className="fb2-opt"><span className={q.type === 'check' ? 'fb2-box' : 'fb2-radio'} aria-hidden="true" /><input className="input" value={o} onChange={(e) => setQ(q.id, { opts: q.opts.map((x, j) => (j === k ? e.target.value : x)) })} aria-label={`${q.type === 'check' ? 'Item' : 'Option'} ${k + 1}`} /><button className="btn ghost icon" onClick={() => setQ(q.id, { opts: q.opts.filter((_, j) => j !== k) })} aria-label="Remove option"><Icon name="x" size={16} /></button></div>
                       ))}<button className="btn ghost fb2-addopt" onClick={() => setQ(q.id, { opts: [...(q.opts || []), `Option ${(q.opts || []).length + 1}`] })}><Icon name="plus" size={15} />Add {q.type === 'check' ? 'item' : 'option'}</button></div>
-                    </Field>}
-                    {q.type === 'number' && <div className="fb2-fields three">
-                      <Field label="Unit"><input className="input" value={q.unit || ''} placeholder="°C, km…" onChange={(e) => setQ(q.id, { unit: e.target.value })} /></Field>
-                      <Field label="Expected from"><input className="input" type="number" value={q.min ?? ''} onChange={(e) => setQ(q.id, { min: e.target.value === '' ? '' : +e.target.value })} /></Field>
-                      <Field label="to"><input className="input" type="number" value={q.max ?? ''} onChange={(e) => setQ(q.id, { max: e.target.value === '' ? '' : +e.target.value })} /></Field>
+                    </div>}
+                    {q.type === 'number' && <div className="fb2-group">
+                      <h5>Expected reading</h5>
+                      <div className="fb2-fields three">
+                        <Field label="Unit"><input className="input" value={q.unit || ''} placeholder="°C, km…" onChange={(e) => setQ(q.id, { unit: e.target.value })} /></Field>
+                        <Field label="From"><input className="input" type="number" value={q.min ?? ''} onChange={(e) => setQ(q.id, { min: e.target.value === '' ? '' : +e.target.value })} /></Field>
+                        <Field label="To"><input className="input" type="number" value={q.max ?? ''} onChange={(e) => setQ(q.id, { max: e.target.value === '' ? '' : +e.target.value })} /></Field>
+                      </div>
                     </div>}
                     {['yesno', 'check', 'number', 'choice'].includes(q.type) && (() => {
                       const opts = q.type === 'yesno' ? [['no', 'the answer is No'], ['yes', 'the answer is Yes']] : q.type === 'check' ? [['unticked', 'anything is left unticked']] : q.type === 'number' ? [['out', 'it is outside the expected range']] : (q.opts || []).map((o) => ['opt:' + o, `they pick "${o}"`]);
                       const cur = !q.flag ? '' : q.flag.when === 'opt' ? 'opt:' + q.flag.value : q.flag.when;
-                      return <Field label="Tell the manager when"><Select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }}><option value="">Never</option>{opts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Field>;
+                      return <div className={'fb2-group fb2-flagbox' + (q.flag ? ' on' : '')}>
+                        <h5><Icon name="flag" size={15} />Tell the manager</h5>
+                        <Select className="input" value={cur} onChange={(e) => { const v = e.target.value; setQ(q.id, { flag: !v ? undefined : v.startsWith('opt:') ? { when: 'opt', value: v.slice(4) } : { when: v } }); }} aria-label="Tell the manager when">{[['', 'Never'], ...opts.map(([k, l]) => [k, 'When ' + l])].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+                        {q.flag && <p className="fb2-note">Raises a notification for the location's manager, with the photo and answers attached.</p>}
+                      </div>;
                     })()}
-                    {q.flag && <p className="fb2-note warn"><Icon name="flag" size={16} />Raises a notification for the location's manager, with the photo and answers attached.</p>}
                   </div>}
                 </li>
               ); })}
