@@ -15,16 +15,14 @@ const day = (iso) => new Date(iso + 'T00:00:00');
 const TYPE_DOT = { Annual: 'good', Sick: 'warn', Emergency: 'crit', Unpaid: 'idle' };
 const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`;
 
-// The dates as a little calendar block: month above, the day or range large, the length under it.
-function DateBlock({ l }) {
-  const a = day(l.from), b = day(l.to);
-  const mon = a.getMonth() === b.getMonth() ? MON[a.getMonth()] : `${MON[a.getMonth()]} – ${MON[b.getMonth()]}`;
+// The dates as day pills, start and end joined by a line that says how long, like the drawer shows them.
+const Pill2 = ({ iso }) => { const d = day(iso); return <span className="lvx-day"><small>{WD[d.getDay()]}</small><b>{d.getDate()}</b><small className="lvx-mon">{MON[d.getMonth()]}</small></span>; };
+function Dates({ l }) {
   return (
-    <div className="lvd" aria-label={fmtRange(l.from, l.to)}>
-      <span className="lvd-m">{mon}</span>
-      <b className="lvd-d">{l.from === l.to ? a.getDate() : `${a.getDate()}–${b.getDate()}`}</b>
-      <span className="lvd-n">{l.half ? 'Half day' : days(l.days)}</span>
-    </div>
+    <span className="lvr-dates" aria-label={fmtRange(l.from, l.to)}>
+      <Pill2 iso={l.from} />
+      {l.from !== l.to ? <><span className="lvr-span"><span>{days(l.days)}</span></span><Pill2 iso={l.to} /></> : <span className="lvr-one">{l.half ? 'Half day' : '1 day'}</span>}
+    </span>
   );
 }
 
@@ -60,7 +58,6 @@ export function Leave({ go }) {
     return (
       <li key={l.id} className={'lvr' + (leaving[l.id] ? ' leaving' : '')} style={{ '--i': i }}>
         <button className="lvr-main" onClick={() => setOpen(l)} aria-label={`${w.name}, ${l.type} leave, ${fmtRange(l.from, l.to)}`}>
-          <DateBlock l={l} />
           <span className="lvr-who">
             <span className="lvr-name"><b>{w.name}</b><span className="lvr-type"><span className={'sdot ' + TYPE_DOT[l.type]} />{l.type}</span></span>
             <span className="lvr-sub">{siteOf(w.site).name.replace(/^(Spinneys|Carrefour) /, '')} · {vendorOf(w.vendor).code}</span>
@@ -70,6 +67,7 @@ export function Leave({ go }) {
               {ov > 0 && <span><span className="sdot warn" />{ov} other {ov === 1 ? 'person' : 'people'} off here then</span>}
             </span>}
           </span>
+          <Dates l={l} />
         </button>
         {l.status === 'Pending' ? (
           <span className="lvr-act"><button className="btn ghost" onClick={() => reject(l)}>Reject</button><button className="btn" onClick={() => startApprove(l)}>Approve</button></span>
@@ -85,7 +83,12 @@ export function Leave({ go }) {
       <ScreenHeader title="Leave" phase={1} spec="5.8" />
       <Tabs tabs={[{ id: 'wait', label: `Waiting for you${pending.length ? ` (${pending.length})` : ''}` }, { id: 'done', label: `Decided (${done.length})` }]} value={tab} onChange={setTab} />
       {tab === 'wait' && (pending.length === 0
-        ? <div className="lv-none"><span className="lv-none-ic"><Icon name="check" size={22} /></span><b>Nothing waiting</b><span>New requests from the worker app land here.</span></div>
+        ? <div className="lv-none">
+            <span className="lv-none-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+            <b>You're all caught up</b>
+            <span>New leave requests from the worker app land here.</span>
+            {done.length > 0 && <button className="btn ghost" onClick={() => setTab('done')}>See {done.length} decided</button>}
+          </div>
         : <ul className="lvl" key="wait">{pending.map(row)}</ul>)}
       {tab === 'done' && <ul className="lvl" key="done">{done.map(row)}</ul>}
       <p className="lv-foot2">Leave types, allowances and the people-off limit are set in <button className="linkbtn" onClick={() => go('settings', { tab: 'leave' })}>Settings → Leave types</button>.</p>
