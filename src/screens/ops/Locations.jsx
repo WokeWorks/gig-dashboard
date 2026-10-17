@@ -8,6 +8,9 @@ const { useState } = React;
 
 // Locations: every location on one shared day axis, grouped by area, so opening hours, team and geofence compare at
 // a glance. Picking a row opens it on the right: map with the geofence, hours as a 24-hour dial, the team, the rules.
+// Layout: a split pane fixed to the window (.main:has(> .lc)); the list scrolls under its pinned column names, the panel
+// always fits, so any number of locations works. Everything in a row is plain words (no colour codes to learn); the
+// panel is keyed by location so it animates in on every pick. Below 1100px it becomes one scrolling page. CSS: .lc-*.
 const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 // '06:00 – 02:00' → [360, 1560]: a close at or before the open is the next day
 const span = (hours) => { const [a, b] = hours.split(/\s*[–-]\s*/).map(mins); return [a, b <= a ? b + 1440 : b]; };

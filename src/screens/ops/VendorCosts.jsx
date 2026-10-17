@@ -6,6 +6,9 @@ const { useState } = React;
 // Vendor costs. Period close reads as a sum: gross, minus deductions, is what we pay; then each vendor's statement and,
 // beside them, what has to be fixed before the month is issued. Rate cards are grouped by vendor; cost by location is a
 // ranked bar chart with the locations that cost more than usual marked.
+// Layout: secondary text is --ink-mid, not grey; grey (--muted) is only for column names. Status and outliers are dots.
+// Rate cards wrap onto more rows as vendors are added (auto-fill grid); the side checklist scrolls inside itself if it
+// grows. Add rate saves into this screen's state and clears the missing-rate exception. CSS: .vc-* in style.css.
 const minus = (n) => `− ${aed(Math.abs(n))}`;
 // How a vendor bills decides how a part month is prorated.
 const UNITS = { 'month / head': 'Days present ÷ 26', day: 'Days worked', hour: 'Hours worked' };

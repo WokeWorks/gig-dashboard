@@ -14,6 +14,8 @@ const { useState } = React;
 // Liveboard: the totals across the top (each one filters the map and the list), the map filling the screen, and a
 // column beside it that leads with the people who need action. Opening a location swaps the column for that location
 // and puts today's timeline under the map. Status is carried by small dots; text stays in the two neutral tones.
+// Layout: the page is fixed to the window (.main:has(> .live)); the map fills it and the column scrolls on its own, so any
+// number of locations or people fits. CSS: the "Liveboard" section of style.css.
 const short = (n) => n.replace(/^(Spinneys|Carrefour) /, '');
 const mgrOf = (sid) => MANAGERS.find((m) => m.sites.includes(sid));
 const byStatus = (a, b) => LV[a.status][2] - LV[b.status][2];

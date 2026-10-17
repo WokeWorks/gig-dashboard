@@ -12,11 +12,29 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - One file per Ops screen in `src/screens/ops/`, registered in `index.js`. Logic shared by more than one screen goes in `src/lib/`. Screens never import other screens.
 - `React`, `useState`, `useEffect` and friends are globals from the UMD build. Don't `import React`.
 - All UI copy is plain, sentence-case English. No uppercase labels, no jargon. Status words are short ("In", "Late", "Absent", "Leave", "Off").
-- Metric tiles use `Stat` from `ui.jsx`: plain card, the number coloured by tone, sentence-case label. Status chips use `Pill`. Day outcomes in week grids use `.dchip`.
+- Totals are plain numbers on the page (a big number, a label, thin dividers between them), not `Stat` cards. Roster and Settings still use `Stat` and `Pill`; the other redesigned screens use dots and plain words instead. Day outcomes in week grids use `.dchip`.
 - Colours come from CSS tokens on `:root` (`--good`, `--warn`, `--crit`, `--info`, their `-soft` variants, `--line`, `--muted`); never hard-code colours. The palette is black with one accent (teal `--accent`) and two text tones (`--fg`, `--muted`). In lists, status is a dot (`.sdot` with `good`, `warn`, `crit`, `idle` or `ring`), not coloured text.
 - Type is Satoshi in two weights (400, 500), inlined by `build.mjs` from `src/fonts/`. No mono font: numbers line up with `tabular-nums`.
 - Drawers (`Drawer`) are for editing one thing; modals only for confirmations. Toasts confirm actions.
 - Each screen header shows its phase (P1, P2, P3) and spec section via `ScreenHeader`.
+
+## Design (read before changing a screen)
+
+Every redesigned screen opens with a comment saying how it is laid out and how it copes with more data; keep it true when you change the screen. The rules below are what the redesign settled on with the client, usually after something else was tried and rejected.
+
+- **No cards.** Content sits on the page as rows separated by 1px lines (`--line`). A side panel is a column with a left border, not a box. A filled block (`--surface-2`) is only for a header that must stand apart from what is under it (the vendor headers on Rate cards). Drawers and menus are the only floating surfaces.
+- **Few colours.** Black, one teal (`--accent`), and red/amber only as status. Status is a dot (`.sdot`) next to plain words, never coloured text; the one exception is a single headline number (e.g. flagged count on Performance). Lower-is-better bars are grey with "Lower is better" in the header, so a long bar never reads as good.
+- **Text tones.** `--fg` for content, `--ink-mid` for secondary content (a worker's vendor and location, a rate's unit), `--muted` only for labels and column names, `--faint` for hints. Information in grey was a repeated complaint.
+- **Type.** Body 15px, nothing under 13px. Satoshi 400/500 only. `tabular-nums` on numbers in columns, but not on big standalone numbers (Satoshi's tabular "1" looks wrong at size).
+- **Plain words over encodings.** If a reader has to learn a code (dot colours for roles, bars for opening hours that all look the same), write it out instead. Keep a chart only when its shape tells you something.
+- **Layouts that scale.** Two patterns:
+  - *Split pane* (Liveboard, Locations, Performance): `.main:has(> .x) { height: 100vh }` fixes the page to the window; the list scrolls on its own and the detail panel always fits. The panel is keyed by the selected id so it animates in on every pick; the change must be obvious. Below 1100px it becomes one scrolling page.
+  - *Rows* (Workforce, Vendors, Vendor costs, Leave): each row is its own CSS grid with the same tracks as its header row. Never use `auto` tracks (they size per row and the header drifts). Use `minmax`, and check the minimums add up to less than a 1440px window minus the rail. Grids of repeated blocks use `repeat(auto-fill, minmax(…))` so they wrap.
+  - Mock data that varies per item is keyed by id, never by position, so adding a vendor or location doesn't crash a screen.
+- **Drawers** are 600px and edit one thing; a quick add is a bottom sheet (`<Drawer bottom>`). Buttons that say they do something must do it (open the drawer, save into the screen's state), not just jump to another tab.
+- **Motion.** Rows enter with `lv-in`, staggered by a `--i` custom property; removed rows leave with `lv-out` before the state changes; bars grow with `vd-grow`. Empty states are centred and animated (`.lv-none`). Respect what is there rather than adding new keyframes.
+- **CSS.** `style.css` has the old styles first and one appended section per redesigned screen, each with its own class prefix (`live-`, `ro-`, `lvr-`, `wf-`, `ob2-`, `vd-`, `lc-`, `pf-`, `vc-`). Later rules win; add to the screen's section instead of editing the old rules, which other screens may still use.
+- **Before you commit**, look at the screen at 1440 and 1800 wide and at 390 (phone), click through its drawers, and run `npm run check`. To see how a screen copes with more data, append a few items to the arrays in `data.js` temporarily, look, then `git checkout src/data.js`.
 
 ## Domain model (the parts that bite)
 

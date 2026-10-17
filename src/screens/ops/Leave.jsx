@@ -9,6 +9,8 @@ const { useState, useMemo } = React;
 
 // Leave: requests as rows that lead with their dates. A row opens a drawer with the whole request; Approve opens a
 // second drawer that settles each rostered day (cover or leave uncovered) before the roster changes.
+// Layout: pending requests first, decided ones behind a link; when nothing is pending the centred empty state (.lv-none)
+// shows instead. Approve and Reject animate the row out before it leaves the list. CSS: .lvr-*, .lvx-*, .apx in style.css.
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const day = (iso) => new Date(iso + 'T00:00:00');

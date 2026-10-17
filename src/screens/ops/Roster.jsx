@@ -81,6 +81,9 @@ export function DayTimeline({ list, home, ghost, acts, note }) {
   );
 }
 
+// Roster: the original bordered week grid, kept on purpose (two redesigns were tried and rejected). Location bands with
+// their people and hours, a sun or moon on every shift, past days filled teal (worked) or red (missed), covers striped.
+// Upload and Publish are drawers with a step tracker. CSS: the Roster and upload/publish sections of style.css.
 export function Scheduling({ go }) {
   const [mgr, setMgr] = useState(isAdmin() ? 'all' : SCOPE.mgr);
   const [loc, setLoc] = useState('all');

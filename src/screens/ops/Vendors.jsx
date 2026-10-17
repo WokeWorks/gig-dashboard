@@ -5,8 +5,14 @@ const { useState } = React;
 
 // Vendors: how the deployed workforce splits across vendors, then one row per vendor where every measure is a value
 // with a bar scaled against the others (a dot marks the best). A row opens that vendor's workers; Scorecard opens the drawer.
-const TREND = [[80, 82, 81, 84, 85, 86], [82, 80, 81, 78, 79, 79], [78, 76, 75, 73, 74, 72], [89, 90, 90, 91, 90, 91]];
+// Layout: bars are scaled to the best vendor, and lower-is-better measures use grey bars with a note in the header so
+// a long bar never reads as good. Grid tracks are fixed (never auto) so the header lines up; their minimums must fit a
+// 1440px window. Any number of vendors works: thin slices of the split drop their label, every vendor keeps its row.
+// CSS: .vd-* in style.css.
+// Mock score history, keyed by vendor; a vendor without history draws a flat line at today's score.
+const TREND = { v1: [80, 82, 81, 84, 85, 86], v2: [82, 80, 81, 78, 79, 79], v3: [78, 76, 75, 73, 74, 72], v4: [89, 90, 90, 91, 90, 91] };
 const MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+const trendOf = (v) => TREND[v.id] || Array(MONTHS.length).fill(v.score);
 
 function Ring({ value, size = 64, stroke = 6 }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r;
@@ -59,7 +65,8 @@ export function Vendors({ go }) {
         <div className="vd-split-head"><h2>{total} workers deployed</h2><span>across {VENDORS.length} vendors</span></div>
         {/* each vendor's share as a segment, labelled right under it, so no colour key is needed */}
         <div className="vd-split-bar">{VENDORS.map((v, i) => (
-          <div key={v.id} className="vd-seg" style={{ flexGrow: v.heads, '--i': i }}>
+          // a sliver too thin for its name keeps just the tooltip; every vendor has its own row below anyway
+          <div key={v.id} className={'vd-seg' + (v.heads / total < 0.08 ? ' tiny' : '')} style={{ flexGrow: v.heads, '--i': i }} title={`${v.name}: ${v.heads} workers`}>
             <i />
             <span className="vd-seg-l"><b>{v.name}</b><span>{v.heads} · {Math.round((v.heads / total) * 100)}%</span></span>
           </div>
@@ -78,7 +85,7 @@ export function Vendors({ go }) {
             {metric(`${v.noshow}%`, 'no-show rate', (v.noshow / max.noshow) * 100, v.noshow === best.noshow, true)}
             {metric(v.ttf ? `${v.ttf} h` : '—', 'time to fill', v.ttf ? (v.ttf / max.ttf) * 100 : 0, v.ttf === best.ttf, true)}
             <span className="vd-rate">{rate(v)}<span>{v.unit.includes('hour') ? 'per hour worked' : 'per head, monthly'}</span></span>
-            <Trend data={TREND[i]} />
+            <Trend data={trendOf(v)} />
             <span className="vd-act">
               <button className="btn ghost sm" onClick={() => go('workforce', { vendor: v.id })}><Icon name="users" size={15} />Workers</button>
               <button className="btn sm" onClick={() => setSel({ ...v, i })}>Scorecard</button>
@@ -91,7 +98,7 @@ export function Vendors({ go }) {
         {sel && <>
           <div className="vdx-top">
             <Ring value={sel.score} size={104} stroke={9} />
-            <div className="vdx-trend"><span>Score, last 6 months</span><Trend data={TREND[sel.i]} w={320} h={70} labels /></div>
+            <div className="vdx-trend"><span>Score, last 6 months</span><Trend data={trendOf(sel)} w={320} h={70} labels /></div>
           </div>
           <ul className="vdx-kpis">
             {[['Average worker score', sel.score + 2], ['Fill rate', sel.fill], ['Retention at 90 days', sel.retention], ['Document compliance', sel.compliance], ['Attendance', 100 - sel.noshow * 2]].map(([k, val], n) => (

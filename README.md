@@ -39,7 +39,7 @@ src/
   main.jsx         app shell: icon rail (navigation, persona switch, account), routing
   data.js          all mock data: workers, sites, vendors, roster, shift templates, alerts, leave
   ui.jsx           shared components: Stat, Pill, Tabs, Drawer, Modal, Field, Toggle, Icon, toasts
-  style.css        all styles, light and dark
+  style.css        all styles (dark only): older rules first, then one section per redesigned screen
   screens/ops/     one file per Ops dashboard screen (index.js lists them in nav order)
   vendor.jsx       Vendor portal screens
   phone.jsx        Phone app (picker and supervisor flows) with its screen list

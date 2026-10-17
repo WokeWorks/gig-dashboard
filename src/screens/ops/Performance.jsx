@@ -64,6 +64,10 @@ export function StripPlot({ m, th, values, w: W = 280, h: H = 78 }) {
   );
 }
 
+// Performance: the summary as three numbers beside the tabs; the metrics as a list on the left (each with its flagged
+// count and share); the picked metric on the right, its chart drawn at the panel's width with the slider aligned under
+// it, then its people. The right panel scrolls as one with the list's toolbar and column names pinned, so the chart and
+// the list change together and the list gets the full height. Fixed to the window (.main:has(> .pf)). CSS: .pf-*.
 export function Performance() {
   const PEOPLE = scopedWorkers();
   const [tab, setTab] = useState('th');

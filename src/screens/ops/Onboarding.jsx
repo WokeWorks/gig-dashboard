@@ -6,6 +6,8 @@ const { useState } = React;
 
 // Same flow as the current OpsPro setup: a short wizard, then an app invite. Gig workers, so no approval pipeline.
 // The page leads with the people vendors have suggested; the wizard and bulk import open from the header.
+// Layout: suggestions as rows (Decline animates the row out); everything with steps lives in a 600px drawer.
+// CSS: .ob2-* in style.css.
 export const OB_STEPS = [['Personal details', 'Name, mobile, dates'], ['Work', 'Type, location, shift, vendor'], ['Reference photo', 'For face check at clock-in'], ['Review', 'Check, then create']];
 
 export const OB_EMPTY = { first: '', last: '', phone: '', nat: '', start: '2026-10-08', end: '2027-04-07', reliever: false, home: 'Al Quoz', site: 's3', shift: 'f5', shiftStart: '07:00', vendor: 'v4', desig: 'Picker', photo: false };

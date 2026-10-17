@@ -9,6 +9,8 @@ const { useState } = React;
 
 // Workforce: everyone, one row each, faces first. A row opens the person; Add worker is one sheet of fields from the
 // bottom (onboarding, with its steps, is for vendor proposals).
+// Layout: rows on the page, no cards; every row is a grid with the same tracks as the header row. The list grows with
+// the page and the filter chips narrow it. CSS: .wf-* in style.css.
 const short = (n) => n.replace(/^(Spinneys|Carrefour) /, '');
 const initials = (n) => n.split(' ').map((x) => x[0]).join('').slice(0, 2);
 const TONE = { good: 'good', warn: 'warn', crit: 'crit', info: 'idle', muted: 'ring' };
