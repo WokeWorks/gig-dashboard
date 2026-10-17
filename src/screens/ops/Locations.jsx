@@ -16,12 +16,10 @@ const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m
 const span = (hours) => { const [a, b] = hours.split(/\s*[–-]\s*/).map(mins); return [a, b <= a ? b + 1440 : b]; };
 const team = (s) => Object.values(s.roles).reduce((n, x) => n + x, 0);
 // shift leads first, so the dots read the same way in every row
-const people = (s) => Object.entries(s.roles).sort(([a], [b]) => (b === 'Shift lead') - (a === 'Shift lead')).flatMap(([r, n]) => Array(n).fill(r));
 const plural = (n, w) => `${n} ${w.toLowerCase()}${n === 1 ? '' : 's'}`;
-
-function Dots({ s }) {
-  return <span className="lc-dots" aria-hidden="true">{people(s).map((r, i) => <i key={i} className={r === 'Shift lead' ? 'lead' : ''} style={{ '--i': i }} />)}</span>;
-}
+// '4 pickers, 2 shift leads'
+const roleLine = (s) => Object.entries(s.roles).map(([r, k]) => plural(k, r)).join(', ');
+const AXIS = { 6: '06:00', 12: '12:00', 18: '18:00', 24: 'Midnight' };
 
 function Dial({ hours }) {
   const [a, b] = span(hours), S = 132, r = 56, c = 2 * Math.PI * r, arc = ((b - a) / 1440) * c;
@@ -55,7 +53,7 @@ export function ClientsSites() {
         <section className="lc-list" aria-label="Locations">
           <div className="lc-row lc-head" aria-hidden="true">
             <span>Location</span><span>Team</span>
-            <span className="lc-axis">{TICKS.map((h) => <span key={h} style={{ left: at(h * 60) }}>{String(h % 24).padStart(2, '0')}:00</span>)}</span>
+            <span className="lc-open-h">Open hours<span className="lc-axis">{TICKS.map((h) => <span key={h} style={{ left: at(h * 60) }}>{AXIS[h]}</span>)}</span></span>
             <span>Geofence</span>
           </div>
           {areas.map((a) => {
@@ -64,14 +62,17 @@ export function ClientsSites() {
               <div key={a} className="lc-area">
                 <h3 className="lc-area-h">{a}<span>{plural(here.length, 'location')} · {here.reduce((x, s) => x + team(s), 0)} people</span></h3>
                 {here.map((s) => {
-                  const [o, cl] = span(s.hours), d = 8 + (s.radius / maxR) * 22;
+                  const [o, cl] = span(s.hours), d = 8 + (s.radius / maxR) * 16;
                   return (
                     <button key={s.id} className={'lc-row' + (s.id === sel?.id ? ' on' : '')} aria-pressed={s.id === sel?.id} onClick={() => { setPick(s.id); if (matchMedia('(max-width: 1100px)').matches) document.querySelector('.lc-panel')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ '--i': n++ }}>
                       <span className="lc-name"><b>{s.name}</b><span>{s.code}</span></span>
-                      <span className="lc-team"><Dots s={s} /><span>{team(s)}</span></span>
-                      <span className="lc-hours">
-                        {TICKS.map((h) => <i key={h} className="lc-tick" style={{ left: at(h * 60) }} />)}
-                        <span className="lc-bar" style={{ left: at(o), width: `${((cl - o) / AX) * 100}%` }}><span>{s.hours}</span></span>
+                      <span className="lc-cell"><b>{team(s)} people</b><span>{roleLine(s)}</span></span>
+                      <span className="lc-open">
+                        <span className="lc-open-t"><b>{s.hours}</b><span>{(cl - o) / 60} h</span></span>
+                        <span className="lc-hours" aria-hidden="true">
+                          {TICKS.map((h) => <i key={h} className="lc-tick" style={{ left: at(h * 60) }} />)}
+                          <span className="lc-bar" style={{ left: at(o), width: `${((cl - o) / AX) * 100}%` }} />
+                        </span>
                       </span>
                       <span className="lc-fence"><i style={{ width: d, height: d }} />{s.radius} m</span>
                     </button>
@@ -95,7 +96,7 @@ export function ClientsSites() {
                 <div><span className="lc-k">Hours</span><b>{sel.hours}</b></div>
                 <div>
                   <span className="lc-k">Team of {team(sel)}</span>
-                  <span className="lc-roles">{Object.entries(sel.roles).map(([r, k]) => <span key={r}><i className={r === 'Shift lead' ? 'lead' : ''} />{plural(k, r)}</span>)}</span>
+                  <span className="lc-roles">{roleLine(sel)}</span>
                 </div>
               </div>
             </div>
