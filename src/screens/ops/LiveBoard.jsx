@@ -7,7 +7,7 @@ import { GEO, LEFT } from '../../lib/geo.js';
 import { LiveMap } from '../../lib/livemap.jsx';
 import { isAdmin, SCOPE, siteInScope } from '../../lib/scope.js';
 import { NOW_MIN, liveOf, LV } from '../../lib/live.js';
-import { Bell } from '../../lib/alerts.jsx';
+import { Bell, Megaphone } from '../../lib/alerts.jsx';
 
 const { useState } = React;
 
@@ -110,7 +110,7 @@ export function LiveBoard({ go }) {
               <option value="all">All managers</option>{MANAGERS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </Select>
           </label>
-        )}<Bell /></div>
+        )}<Megaphone /><Bell /></div>
       </header>
 
       <div className="live-kpis" role="group" aria-label="Show locations with">

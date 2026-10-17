@@ -1,4 +1,4 @@
-import { Bell } from './lib/alerts.jsx';
+import { Bell, Megaphone } from './lib/alerts.jsx';
 
 const { useState, useEffect, createContext, useContext } = React;
 
@@ -35,7 +35,7 @@ export function ScreenHeader({ title, phase, spec, actions }) {
         </div>
         <h1>{title}</h1>
       </div>
-      <div className="screen-actions">{actions}<Bell /></div>
+      <div className="screen-actions">{actions}<Megaphone /><Bell /></div>
     </header>
   );
 }
@@ -64,8 +64,9 @@ export function Tabs({ tabs, value, onChange }) {
   );
 }
 
-export function Drawer({ open, onClose, title, children, sub, bottom }) {
+export function Drawer({ open, onClose, title, children, sub, bottom, corner }) {
   // bottom: a sheet that rises from the foot of the screen (forms that are quicker as one page) instead of a side drawer.
+  // corner: a panel that grows out of the bottom right corner, for notification-style lists (the bell, the megaphone).
   // On close the sheet slides out before it unmounts, showing what it last showed (callers usually clear their state at once).
   const last = React.useRef(null);
   const [out, setOut] = useState(false);
@@ -78,8 +79,8 @@ export function Drawer({ open, onClose, title, children, sub, bottom }) {
   if (!open && !out) return null;
   if (!open) ({ title, children, sub } = last.current || {});
   return (
-    <div className={'overlay' + (bottom ? ' from-bottom' : '') + (open ? '' : ' closing')} onClick={open ? onClose : undefined}>
-      <aside className={'drawer' + (bottom ? ' bottom' : '')} onClick={(e) => e.stopPropagation()} aria-label={title}>
+    <div className={'overlay' + (bottom ? ' from-bottom' : corner ? ' from-corner' : '') + (open ? '' : ' closing')} onClick={open ? onClose : undefined}>
+      <aside className={'drawer' + (bottom ? ' bottom' : corner ? ' corner' : '')} onClick={(e) => e.stopPropagation()} aria-label={title}>
         <div className="drawer-head">
           <div>
             <h2>{title}</h2>

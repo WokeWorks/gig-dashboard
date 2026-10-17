@@ -13,13 +13,13 @@ const { useState, useEffect } = React;
 const OPERATOR = [
   ['Operations', [['live', 'Liveboard', 1, Op.LiveBoard], ['schedule', 'Roster', 1, Op.Scheduling], ['leave', 'Leave', 1, Op.Leave]]],
   ['People', [['workforce', 'Workforce', 1, Op.Workforce], ['onboarding', 'Onboarding', 1, Op.Onboarding], ['vendors', 'Vendors', 1, Op.Vendors], ['clients', 'Locations', 1, Op.ClientsSites]]],
-  ['Insight', [['performance', 'Performance', 2, Op.Performance], ['finance', 'Vendor costs', 2, Op.Finance], ['forms', 'Forms', 2, Forms], ['comms', 'Announcements', 2, Op.Communication]]],
+  ['Insight', [['performance', 'Performance', 2, Op.Performance], ['finance', 'Vendor costs', 2, Op.Finance], ['forms', 'Forms', 2, Forms]]],
   ['Admin', [['settings', 'Settings', 1, Op.Settings]]],
 ];
 const VENDOR = [
   ['Vendor', [['v-overview', 'Overview', 1, Vd.VendorOverview], ['v-workers', 'My workers', 1, Vd.VendorWorkers], ['v-att', 'Attendance', 1, Vd.VendorAttendance], ['v-score', 'Scorecard', 2, Vd.VendorScorecard], ['v-prop', 'Proposals', 1, Vd.VendorProposals], ['v-req', 'Requests', 2, Vd.VendorRequests], ['v-stmt', 'Statements', 2, Vd.VendorStatements]]],
 ];
-const NAV_ICONS = { live: 'activity', alerts: 'bell', schedule: 'calendar', timesheets: 'clock', leave: 'umbrella', workforce: 'users', onboarding: 'userPlus', vendors: 'building', clients: 'pin', performance: 'chart', finance: 'wallet', comms: 'megaphone', forms: 'checkCircle', settings: 'gear',
+const NAV_ICONS = { live: 'activity', alerts: 'bell', schedule: 'calendar', timesheets: 'clock', leave: 'umbrella', workforce: 'users', onboarding: 'userPlus', vendors: 'building', clients: 'pin', performance: 'chart', finance: 'wallet', forms: 'checkCircle', settings: 'gear',
   'v-overview': 'home', 'v-workers': 'users', 'v-att': 'calendar', 'v-score': 'star', 'v-prop': 'userPlus', 'v-req': 'flag', 'v-stmt': 'document' };
 const PERSONAS = [
   { id: 'operator', label: 'Client', icon: 'building', nav: OPERATOR, first: 'live' },
