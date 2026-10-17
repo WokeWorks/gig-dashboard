@@ -3235,3 +3235,50 @@ button.st-shift:focus-visible { outline: 2px solid var(--accent); outline-offset
 @media (max-width: 1250px) { .st-policy { grid-template-columns: 1fr; } .st-sum { position: static; order: -1; } .st-sum ul { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; } }
 @media (max-width: 1250px) { .st { grid-template-columns: 1fr; gap: 20px; } .st-nav { display: none; } .st-tabs { display: block; } .st-levels { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; } .st-level:nth-child(3) { padding-left: 0; border-left: 0; } }
 @media (max-width: 760px) { .st-row { grid-template-columns: 1fr; gap: 10px; } .st-c { justify-content: flex-start; } .st-shift { grid-template-columns: auto minmax(0, 1fr); } .st-shift > :nth-child(n+3) { display: none; } .st-lt { grid-template-columns: 90px minmax(0, 1fr); } .st-lt > :nth-child(n+3) { display: none; } .st-hol { grid-template-columns: 1fr auto; } .st-hol > :nth-child(3), .st-hol > :nth-child(1) { display: none; } .st-choices, .st-ot-l, .st-sum ul { grid-template-columns: 1fr; } .st-levels { grid-template-columns: 1fr; } .st-level { padding: 0 !important; border: 0 !important; } .st-sec-h { flex-wrap: wrap; } }
+
+/* Settings, second pass: bigger type throughout and each group set apart as its own block */
+.st-main { gap: 0; }
+.st-sec { gap: 10px; padding: 40px 0 8px; border-top: 1px solid var(--line-strong); }
+.st-main > .st-sec:first-child, .st-policy-main > .st-sec:first-of-type, .st-policy-main > .st-rolebar + .st-sec { border-top: 0; padding-top: 4px; }
+.st-policy-main { gap: 0; }
+.st-policy-main > .st-rolebar { margin-bottom: 32px; }
+.st-sec + .st-explain, .st-sec + .note { margin-top: 32px; }
+.st-sec-h { padding-bottom: 14px; }
+.st-sec-h h3 { font-size: 24px; letter-spacing: -0.02em; }
+.st-sec-h p { margin-top: 8px; font-size: 16px; }
+.st-scope { font-size: 14.5px; padding: 6px 14px; }
+.st-sec-h .btn { height: 44px; font-size: 15.5px; padding: 0 18px; }
+.st-rows { border-top-color: var(--line); }
+.st-row { padding: 20px 0; gap: 32px; }
+.st-l { gap: 5px; }
+.st-l b { font-size: 17px; }
+.st-l > span { font-size: 15.5px; }
+.st .input, .st .select { height: 48px; font-size: 16px; }
+.st-num { height: 48px; } .st-num .input { width: 84px; font-size: 17px; } .st-num > span { font-size: 15.5px; }
+.st-c .toggle { font-size: 16px; }
+.st-navi { padding: 14px; gap: 14px; }
+.st-navic { width: 40px; height: 40px; }
+.st-navi b { font-size: 17px; } .st-navi > span:last-child > span { font-size: 14.5px; }
+.st-rolebar { padding: 16px 18px; } .st-rolebar > span:first-child { font-size: 16px; } .st-rolebar .seg-btn { font-size: 16px; padding: 9px 16px; } .st-rolebar-d { font-size: 15px; }
+.st-sum { padding: 24px; gap: 10px; } .st-sum h4 { font-size: 19px; } .st-sum-k { font-size: 14.5px; } .st-sum li { font-size: 15.5px; }
+.st-days-t, .st-days-l { font-size: 15px; } .st-days-n { font-size: 14.5px; } .st-days-bar { height: 16px; }
+.st-choice { padding: 18px; } .st-choice b { font-size: 17px; } .st-choice > span:last-child > span { font-size: 15px; }
+.st-ot-bar i { height: 36px; font-size: 15px; } .st-ot-l span { font-size: 15px; } .st-ot-l b { font-size: 16.5px; }
+/* shifts */
+.st-shift { grid-template-columns: 120px minmax(240px, 2fr) 90px 90px 140px; padding: 20px 12px; font-size: 17px; }
+.st-shift-h { font-size: 15px; padding-top: 0; padding-bottom: 14px; }
+.st-chip { font-size: 16.5px; padding: 7px 14px; }
+.st-bar-t { height: 16px; } .st-bar-t i { border-radius: 5px; }
+.st-bar > span:last-child { font-size: 15.5px; width: 46px; }
+.st-key { font-size: 15.5px; padding-top: 16px; } .st-key i { width: 26px; height: 12px; }
+.st-explain { padding: 22px; } .st-explain p { font-size: 16px; }
+/* leave */
+.st-lt { padding: 20px 12px; grid-template-columns: 120px minmax(0, 1fr) 120px 140px; }
+.st-lt-n b { font-size: 28px; } .st-lt-n b.inf { font-size: 18px; } .st-lt-n span { font-size: 14px; }
+.st-lt-t b { font-size: 18px; } .st-lt-t span, .st-lt-p { font-size: 15.5px; }
+.st-hol { padding: 16px 12px; font-size: 16.5px; } .st-hol > span:nth-child(3), .st-hol > span:last-child { font-size: 15px; }
+/* roles */
+.st-level > b { font-size: 21px; } .st-level-d { font-size: 15.5px; } .st-level li { font-size: 16px; } .st-level-s { font-size: 16px; } .st-level-s span { font-size: 14px; }
+.st-locked { height: 44px; font-size: 16px; }
+.st .note { font-size: 15.5px; }
+.st-rows > :last-child, .st-rows > .st-days:last-child { border-bottom: 0; } /* the next group's divider closes this one */
