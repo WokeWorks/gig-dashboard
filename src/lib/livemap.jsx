@@ -191,9 +191,9 @@ const useDark = () => {
   }, []);
   return d;
 };
-export function SiteMap({ lat, lng, radius, name, height = 132 }) {
+export function SiteMap({ lat, lng, radius, name, height = 132, width = 400 }) {
   const dark = useDark();
-  const src = staticMapUrl({ lat, lng, radius, w: 400, h: height, dark });
+  const src = staticMapUrl({ lat, lng, radius, w: width, h: height, dark });
   const [state, setState] = useState('loading'); // loading | ready | failed
   useEffect(() => { setState('loading'); }, [src]);
   // Only fetch once the card is on screen or about to be (native lazy loading starts far too early).
