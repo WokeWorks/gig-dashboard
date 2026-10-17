@@ -12,7 +12,7 @@ OpsPro prototype: React 18 (UMD globals, no imports of react), esbuild, one HTML
 - One file per Ops screen in `src/screens/ops/`, registered in `index.js`. Logic shared by more than one screen goes in `src/lib/`. Screens never import other screens.
 - `React`, `useState`, `useEffect` and friends are globals from the UMD build. Don't `import React`.
 - All UI copy is plain, sentence-case English. No uppercase labels, no jargon. Status words are short ("In", "Late", "Absent", "Leave", "Off").
-- Totals are plain numbers on the page (a big number, a label, thin dividers between them), not `Stat` cards. Roster and Settings still use `Stat` and `Pill`; the other redesigned screens use dots and plain words instead. Day outcomes in week grids use `.dchip`.
+- Totals are plain numbers on the page (a big number, a label, thin dividers between them), not `Stat` cards. Roster still uses `Stat` and `Pill`; the other redesigned screens use dots and plain words instead. Day outcomes in week grids use `.dchip`.
 - Colours come from CSS tokens on `:root` (`--good`, `--warn`, `--crit`, `--info`, their `-soft` variants, `--line`, `--muted`); never hard-code colours. The palette is black with one accent (teal `--accent`) and two text tones (`--fg`, `--muted`). In lists, status is a dot (`.sdot` with `good`, `warn`, `crit`, `idle` or `ring`), not coloured text.
 - Type is Satoshi in two weights (400, 500), inlined by `build.mjs` from `src/fonts/`. No mono font: numbers line up with `tabular-nums`.
 - Drawers (`Drawer`) are for editing one thing; modals only for confirmations. Toasts confirm actions.
