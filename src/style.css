@@ -2410,3 +2410,6 @@ html, * { scrollbar-width: thin; scrollbar-color: #2E3535 transparent; }
 @keyframes lv-draw { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .lv-none-ic path { stroke-dashoffset: 0; } }
 @media (max-width: 760px) { .lvr-main { grid-template-columns: 1fr; gap: 14px; } }
+/* a single day sits in the middle of the dates column, its length as a caption under it */
+.lvr-dates.one { flex-direction: column; justify-content: center; gap: 6px; }
+.lvr-dates.one .lvr-one { color: var(--muted); font-size: 13px; }

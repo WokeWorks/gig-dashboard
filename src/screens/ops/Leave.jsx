@@ -19,7 +19,7 @@ const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`;
 const Pill2 = ({ iso }) => { const d = day(iso); return <span className="lvx-day"><small>{WD[d.getDay()]}</small><b>{d.getDate()}</b><small className="lvx-mon">{MON[d.getMonth()]}</small></span>; };
 function Dates({ l }) {
   return (
-    <span className="lvr-dates" aria-label={fmtRange(l.from, l.to)}>
+    <span className={'lvr-dates' + (l.from === l.to ? ' one' : '')} aria-label={fmtRange(l.from, l.to)}>
       <Pill2 iso={l.from} />
       {l.from !== l.to ? <><span className="lvr-span"><span>{days(l.days)}</span></span><Pill2 iso={l.to} /></> : <span className="lvr-one">{l.half ? 'Half day' : '1 day'}</span>}
     </span>
