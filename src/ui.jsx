@@ -64,7 +64,8 @@ export function Tabs({ tabs, value, onChange }) {
   );
 }
 
-export function Drawer({ open, onClose, title, children, sub }) {
+export function Drawer({ open, onClose, title, children, sub, bottom }) {
+  // bottom: a sheet that rises from the foot of the screen (forms that are quicker as one page) instead of a side drawer.
   // On close the sheet slides out before it unmounts, showing what it last showed (callers usually clear their state at once).
   const last = React.useRef(null);
   const [out, setOut] = useState(false);
@@ -77,8 +78,8 @@ export function Drawer({ open, onClose, title, children, sub }) {
   if (!open && !out) return null;
   if (!open) ({ title, children, sub } = last.current || {});
   return (
-    <div className={'overlay' + (open ? '' : ' closing')} onClick={open ? onClose : undefined}>
-      <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label={title}>
+    <div className={'overlay' + (bottom ? ' from-bottom' : '') + (open ? '' : ' closing')} onClick={open ? onClose : undefined}>
+      <aside className={'drawer' + (bottom ? ' bottom' : '')} onClick={(e) => e.stopPropagation()} aria-label={title}>
         <div className="drawer-head">
           <div>
             <h2>{title}</h2>
