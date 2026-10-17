@@ -128,7 +128,7 @@ export function Performance() {
             </header>
 
             <div className="pf-chart" ref={chartRef}>
-              <StripPlot m={m} th={th[m.id]} values={vals(m.id)} w={cw} h={190} />
+              <StripPlot m={m} th={th[m.id]} values={vals(m.id)} w={cw} h={160} />
               <label className="pf-slide" style={{ '--in': inset }}>
                 <input id={'th-' + m.id} type="range" className="pf-range" min={m.min} max={m.max} step={m.step} value={th[m.id]} onChange={(e) => setTh({ ...th, [m.id]: +e.target.value })} aria-label={`${m.name} threshold`} />
               </label>
@@ -139,6 +139,7 @@ export function Performance() {
               </div>
             </div>
 
+            <div className="pf-sticky">
             <div className="pf-tools">
               <h3>{showAll ? `Everyone by ${m.name.toLowerCase()}` : `${rows.length} flagged`}<span>Worst first</span></h3>
               <input id="pf-q" className="input sm" placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -146,8 +147,10 @@ export function Performance() {
               <div className="seg"><button className={!showAll ? 'on' : ''} onClick={() => setShowAll(false)}>Flagged</button><button className={showAll ? 'on' : ''} onClick={() => setShowAll(true)}>Everyone</button></div>
             </div>
 
+            <div className="pf-row pf-rh" aria-hidden="true"><span>Worker</span><span>{m.name}</span><span>Gap to line</span><span>Also flagged on</span></div>
+            </div>
+
             <div className="pf-list" role="table" aria-label={`Workers by ${m.name.toLowerCase()}`}>
-              <div className="pf-row pf-rh" role="row"><span>Worker</span><span>{m.name}</span><span>Gap to line</span><span>Also flagged on</span></div>
               {rows.map((w, i) => {
                 const v = val(w, m.id), bad = fails(m, v, th[m.id]);
                 const gap = m.dir === 'higher' ? v - th[m.id] : th[m.id] - v;
