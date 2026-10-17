@@ -613,7 +613,12 @@ export function Scheduling({ go }) {
             <button className="btn ghost sm" onClick={() => downloadTemplate(up.wk)}><Icon name="download" size={14} />Download</button>
           </div>
           <details className="up-help"><summary>What to type in a day</summary>
-            <dl>{HOW.slice(1, 9).map(([a, b]) => <React.Fragment key={a}><dt>{a}</dt><dd>{b}</dd></React.Fragment>)}</dl>
+            {/* The same examples as the template's "How to fill" sheet, grouped so they scan */}
+            {[['Shifts', HOW.slice(1, 4)], ['Special days', HOW.slice(4, 6)], ['Days off', HOW.slice(6, 9)]].map(([g, rows]) => (
+              <div key={g} className="up-fmt-group"><span>{g}</span>
+                <div className="up-fmt-grid">{rows.map(([a, b]) => <div key={a} className="up-fmt-tile"><code>{a}</code><span>{b}</span></div>)}</div>
+              </div>
+            ))}
             <p>Columns are matched by name, so your own sheet works too.</p>
           </details>
           <p className="up-note"><Icon name="alert" size={15} />{fixedMode ? `${OFF_RULES.days.map((d) => FULL_DAYS[d]).join(' and ')} ${OFF_RULES.days.length === 1 ? 'is' : 'are'} off for everyone. A file with any shift on ${OFF_RULES.days.length === 1 ? 'that day' : 'those days'} is rejected as a whole.` : `Every worker needs at least ${OFF_RULES.perWeek} weekly off. If any row has a problem, nothing is imported and you get a list of exactly what to fix.`}</p>
