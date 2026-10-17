@@ -2272,3 +2272,31 @@ html, * { scrollbar-width: thin; scrollbar-color: #2E3535 transparent; }
 ::-webkit-scrollbar-thumb:hover { background-color: #3D4646; }
 ::-webkit-scrollbar-button { display: none; }
 .up-fmt-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } /* a group of 3 sits on one row */
+
+/* ---------- no cards inside drawers: spacing and hairlines group things, not boxes ---------- */
+/* format help: plain rows, example on the left, meaning on the right */
+.up-fmt-grid { display: flex; flex-direction: column; gap: 0; }
+.up-fmt-tile { display: grid; grid-template-columns: 230px minmax(0, 1fr); align-items: baseline; gap: 16px; padding: 9px 0; border: 0; border-radius: 0; border-top: 1px solid var(--line); }
+.up-fmt-tile:first-child { border-top: 0; }
+.up-fmt-tile code { padding: 0; background: none; font-size: 14.5px; }
+.up-fmt-tile span { font-size: 14px; }
+.up-fmt-group > span { margin-bottom: 2px; }
+/* template and file rows, notification options: rows, not boxes */
+.up-row { padding: 4px 0; border: 0; border-radius: 0; }
+.pub-opts { gap: 0; }
+.pub-opts .ma-row, .drawer .ma-row { padding: 12px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+/* stats: numbers with dividers, no outline */
+.up-stats { border: 0; border-radius: 0; }
+.up-stats > div { padding: 4px 16px; } .up-stats > div:first-child { padding-left: 0; }
+/* weeks: a list of choices, the chosen one tinted */
+.up-week { border-color: transparent; background: var(--surface-2); }
+.up-week.on { border-color: transparent; box-shadow: none; background: rgba(0,204,188,.12); }
+/* results: a status line and its list, no panel */
+.up-result, .up-result.is-bad, .up-result.is-ok { padding: 0; border: 0; border-radius: 0; background: none; }
+.up-result .up-stats { border: 0; }
+.up-errs { border-top: 1px solid var(--line); } .up-errs li { border-bottom: 1px solid var(--line); }
+.up-weeks { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.up-week { background: none; padding: 8px 10px; }
+.up-week:hover { background: var(--surface-2); }
+.up-week.on { background: rgba(0,204,188,.12); }
+.up-week > span { white-space: nowrap; font-size: 12.5px; }

@@ -597,7 +597,7 @@ export function Scheduling({ go }) {
             <div className="up-weeks" role="radiogroup" aria-label="Week">
               {Array.from({ length: MAXWK + 1 }, (_, k) => k).map((k) => (
                 <button key={k} role="radio" aria-checked={up.wk === k} className={'up-week' + (up.wk === k ? ' on' : '')} onClick={() => setUp({ ...up, wk: k })}>
-                  <b>{k === 0 ? 'This week' : k === 1 ? 'Next week' : `In ${k} weeks`}</b><span>{weekLabel(k)}</span>
+                  <b>{k === 0 ? 'This week' : k === 1 ? 'Next week' : `In ${k} weeks`}</b><span>{weekLabel(k).replace(/ \d{4}$/, '')}</span>
                   <em className={!has(k) ? '' : pub[k] === 'draft' ? 'draft' : 'live'}>{!has(k) ? 'Empty' : pub[k] === 'draft' ? 'Draft' : 'Published'}</em>
                 </button>
               ))}
