@@ -2582,3 +2582,15 @@ html, * { scrollbar-width: thin; scrollbar-color: #2E3535 transparent; }
 /* lower-is-better measures: the bar shows the amount in grey, so a long bar never reads as good */
 .vd-m.low .vd-bar > i { background: var(--muted); }
 .vd-head small { display: block; color: var(--faint); font-size: 12px; font-weight: 500; }
+/* split bar v2: one teal, each segment labelled underneath */
+.vd-split-bar { height: auto; gap: 6px; align-items: flex-start; }
+.vd-seg { flex-basis: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.vd-seg > i { display: block; height: 12px; border-radius: 4px; background: var(--accent); transform-origin: left; animation: vd-grow .7s var(--ease) backwards; animation-delay: calc(var(--i) * 90ms + 150ms); }
+.vd-seg-l { display: flex; flex-direction: column; min-width: 0; animation: lv-in .4s var(--ease) backwards; animation-delay: calc(var(--i) * 90ms + 300ms); }
+.vd-seg-l b { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-seg-l > span { color: var(--muted); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+/* every row uses the same fixed tracks, so the header lines up with the cells under it */
+.vd-row { grid-template-columns: minmax(210px, 1.3fr) 110px repeat(3, minmax(120px, 1fr)) minmax(140px, .9fr) 150px 220px; }
+.vd-act { justify-content: flex-end; }
+@media (max-width: 1400px) { .vd-row { grid-template-columns: minmax(200px, 1.3fr) 90px repeat(3, minmax(110px, 1fr)) 220px; } }
+.vd-seg > i { flex: none; width: 100%; }

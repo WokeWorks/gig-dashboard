@@ -57,10 +57,13 @@ export function Vendors({ go }) {
 
       <section className="vd-split" aria-label="Deployed workers by vendor">
         <div className="vd-split-head"><h2>{total} workers deployed</h2><span>across {VENDORS.length} vendors</span></div>
-        <div className="vd-split-bar">{VENDORS.map((v, i) => <i key={v.id} className={'vd-s' + i} style={{ flexGrow: v.heads, '--i': i }} title={`${v.name}: ${v.heads}`} />)}</div>
-        <ul className="vd-split-key">{VENDORS.map((v, i) => (
-          <li key={v.id}><span className={'vd-key vd-s' + i} /><span className="vtag">{v.code}</span><b>{v.name}</b><span>{v.heads} · {Math.round((v.heads / total) * 100)}%</span></li>
-        ))}</ul>
+        {/* each vendor's share as a segment, labelled right under it, so no colour key is needed */}
+        <div className="vd-split-bar">{VENDORS.map((v, i) => (
+          <div key={v.id} className="vd-seg" style={{ flexGrow: v.heads, '--i': i }}>
+            <i />
+            <span className="vd-seg-l"><b>{v.name}</b><span>{v.heads} · {Math.round((v.heads / total) * 100)}%</span></span>
+          </div>
+        ))}</div>
       </section>
 
       <section className="vd-list" role="table" aria-label="Vendors">
