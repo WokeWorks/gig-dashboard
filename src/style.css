@@ -2602,14 +2602,12 @@ html, * { scrollbar-width: thin; scrollbar-color: #2E3535 transparent; }
 .lc-lead b { color: var(--fg); font-size: 26px; font-weight: 500; letter-spacing: -0.02em; margin-right: 4px; }
 .lc { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 520px); gap: 0; }
 .lc-list { min-width: 0; overflow-y: auto; padding-right: 28px; padding-bottom: 24px; }
-.lc-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(140px, 180px) minmax(200px, 1.6fr) 96px; align-items: center; gap: 18px; padding: 14px 14px; border: 0; border-radius: 12px; background: none; color: var(--fg); font: inherit; text-align: left; width: 100%; cursor: pointer; position: relative; transition: background-color .15s; }
+.lc-row { display: grid; grid-template-columns: minmax(170px, 1.4fr) minmax(150px, 1fr) minmax(170px, 1fr) 110px; align-items: center; gap: 20px; padding: 14px 14px; border: 0; border-radius: 12px; background: none; color: var(--fg); font: inherit; text-align: left; width: 100%; cursor: pointer; position: relative; transition: background-color .15s; }
 button.lc-row { animation: lv-in .45s var(--ease) backwards; animation-delay: calc(var(--i) * 35ms + 80ms); }
 button.lc-row:hover { background: var(--surface); }
 button.lc-row.on { background: var(--surface-2); }
 button.lc-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.lc-head { position: sticky; top: 0; z-index: 2; align-items: end; cursor: default; padding-top: 4px; padding-bottom: 12px; border-radius: 0; background: var(--bg); box-shadow: 0 1px 0 var(--line); color: var(--muted); font-size: 14px; font-weight: 500; }
-.lc-axis { position: relative; height: 18px; }
-.lc-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lc-head { position: sticky; top: 0; z-index: 2; cursor: default; padding-top: 4px; padding-bottom: 12px; border-radius: 0; background: var(--bg); box-shadow: 0 1px 0 var(--line); color: var(--muted); font-size: 14px; font-weight: 500; }
 .lc-area-h { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 6px; padding: 0 14px; font-size: 17px; font-weight: 500; }
 .lc-area:first-of-type .lc-area-h { margin-top: 18px; }
 .lc-area-h span { color: var(--muted); font-size: 14px; font-weight: 500; }
@@ -2619,17 +2617,6 @@ button.lc-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .lc-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .lc-cell b { font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lc-cell span { color: var(--muted); font-size: 13.5px; font-weight: 500; text-wrap: pretty; }
-/* open hours: the times, then the day from 05:00 to 03:00 with the open hours as a bar on it */
-.lc-open, .lc-open-h { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.lc-open-t { display: flex; align-items: baseline; gap: 10px; }
-.lc-open-t b { font-weight: 500; font-size: 15px; font-variant-numeric: tabular-nums; }
-.lc-open-t span { color: var(--muted); font-size: 13.5px; font-weight: 500; }
-.lc-hours { position: relative; height: 14px; }
-.lc-hours::before { content: ''; position: absolute; left: 0; right: 0; top: 3px; height: 8px; border-radius: 8px; background: var(--surface-2); }
-.lc-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-strong); }
-.lc-bar { position: absolute; top: 3px; height: 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 42%, var(--bg)); transform-origin: left; animation: vd-grow .6s var(--ease) backwards; animation-delay: calc(var(--i) * 35ms + 200ms); transition: background-color .2s, box-shadow .2s; }
-button.lc-row:hover .lc-bar { background: var(--accent); }
-.lc-row.on .lc-bar { background: var(--accent); box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
 .lc-fence { display: flex; align-items: center; gap: 10px; color: var(--ink-mid); font-weight: 500; font-variant-numeric: tabular-nums; }
 .lc-fence i { flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px dashed var(--accent); background: var(--accent-soft); }
 
@@ -2641,15 +2628,15 @@ button.lc-row:hover .lc-bar { background: var(--accent); }
 @keyframes lc-fence { from { opacity: 0; transform: scale(.6); } }
 .lc-map-tag { position: absolute; right: 12px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.72); color: var(--ink-mid); font-size: 13px; font-weight: 500; pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
 .lc-map:hover .lc-map-tag, .lc-map:focus-within .lc-map-tag { opacity: 1; transform: none; }
-.lc-title h2 { margin: 0; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
-.lc-title span { display: block; margin-top: 4px; color: var(--muted); font-size: 15px; font-weight: 500; }
+.lc-title h2 { margin: 0; font-size: 32px; line-height: 1.15; font-weight: 500; letter-spacing: -0.03em; text-wrap: balance; }
+.lc-title > span { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--ink-mid); font-size: 15px; font-weight: 500; }
+.lc-code { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent); font-size: 13.5px; }
 .lc-facts { display: flex; align-items: center; gap: 26px; }
 .lc-dial { position: relative; flex: none; display: grid; place-items: center; width: 132px; height: 132px; }
 .lc-dial svg { position: absolute; inset: 0; }
 .lc-dial-track { fill: none; stroke: var(--surface-2); stroke-width: 11; }
 .lc-dial-arc { fill: none; stroke: var(--accent); stroke-width: 11; stroke-linecap: round; animation: lc-arc .9s var(--ease) backwards .15s; }
 @keyframes lc-arc { from { stroke-dashoffset: var(--len); } }
-.lc-dial line { stroke: var(--bg); stroke-width: 2.5; } /* notches at 00, 06, 12 and 18 */
 .lc-dial-c { position: relative; display: flex; flex-direction: column; align-items: center; }
 .lc-dial-c b { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .lc-dial-c span { color: var(--muted); font-size: 13px; font-weight: 500; }
@@ -2666,4 +2653,4 @@ button.lc-row:hover .lc-bar { background: var(--accent); }
 .lc-strip small { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; font-weight: 500; }
 @media (max-width: 1400px) { .lc { grid-template-columns: minmax(0, 1fr) 420px; } .lc-list { padding-right: 20px; } .lc-panel { padding-left: 20px; } }
 @media (max-width: 1100px) { .main:has(> .lc) { height: auto; } .lc { grid-template-columns: 1fr; gap: 24px; } .lc-list { overflow: visible; padding-right: 0; } .lc-panel { order: -1; padding-left: 0; border-left: 0; } .lc-map { flex: none; height: 280px; } }
-@media (max-width: 700px) { .lc-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name fence' 'team team' 'open open'; gap: 12px 16px; } .lc-name { grid-area: name; } .lc-fence { grid-area: fence; } .lc-cell { grid-area: team; } .lc-open { grid-area: open; } .lc-head { display: none; } .lc-strip { grid-template-columns: 1fr; gap: 14px; } .lc-strip > div { padding: 0; border: 0; } }
+@media (max-width: 700px) { .lc-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name fence' 'team open'; gap: 12px 16px; } .lc-name { grid-area: name; } .lc-fence { grid-area: fence; } .lc-cell:nth-child(2) { grid-area: team; } .lc-cell:nth-child(3) { grid-area: open; } .lc-head { display: none; } .lc-strip { grid-template-columns: 1fr; gap: 14px; } .lc-strip > div { padding: 0; border: 0; } }

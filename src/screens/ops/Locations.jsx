@@ -8,9 +8,6 @@ const { useState } = React;
 
 // Locations: every location on one shared day axis, grouped by area, so opening hours, team and geofence compare at
 // a glance. Picking a row opens it on the right: map with the geofence, hours as a 24-hour dial, the team, the rules.
-const AX0 = 5 * 60, AX = 22 * 60; // axis runs 05:00 to 03:00 the next day
-const TICKS = [6, 12, 18, 24];
-const at = (m) => `${((m - AX0) / AX) * 100}%`;
 const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 // '06:00 – 02:00' → [360, 1560]: a close at or before the open is the next day
 const span = (hours) => { const [a, b] = hours.split(/\s*[–-]\s*/).map(mins); return [a, b <= a ? b + 1440 : b]; };
@@ -19,7 +16,6 @@ const team = (s) => Object.values(s.roles).reduce((n, x) => n + x, 0);
 const plural = (n, w) => `${n} ${w.toLowerCase()}${n === 1 ? '' : 's'}`;
 // '4 pickers, 2 shift leads'
 const roleLine = (s) => Object.entries(s.roles).map(([r, k]) => plural(k, r)).join(', ');
-const AXIS = { 6: '06:00', 12: '12:00', 18: '18:00', 24: 'Midnight' };
 
 function Dial({ hours }) {
   const [a, b] = span(hours), S = 132, r = 56, c = 2 * Math.PI * r, arc = ((b - a) / 1440) * c;
@@ -28,7 +24,6 @@ function Dial({ hours }) {
       <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} aria-hidden="true">
         <circle cx={S / 2} cy={S / 2} r={r} className="lc-dial-track" />
         <circle cx={S / 2} cy={S / 2} r={r} className="lc-dial-arc" strokeDasharray={`${arc} ${c}`} style={{ '--len': arc }} transform={`rotate(${(a / 1440) * 360 - 90} ${S / 2} ${S / 2})`} />
-        {[0, 6, 12, 18].map((h) => <line key={h} x1={S / 2} y1={S / 2 - r - 7} x2={S / 2} y2={S / 2 - r + 7} transform={`rotate(${h * 15} ${S / 2} ${S / 2})`} />)}
       </svg>
       <span className="lc-dial-c"><b>{(b - a) / 60} h</b><span>a day</span></span>
     </span>
@@ -53,7 +48,7 @@ export function ClientsSites() {
         <section className="lc-list" aria-label="Locations">
           <div className="lc-row lc-head" aria-hidden="true">
             <span>Location</span><span>Team</span>
-            <span className="lc-open-h">Open hours<span className="lc-axis">{TICKS.map((h) => <span key={h} style={{ left: at(h * 60) }}>{AXIS[h]}</span>)}</span></span>
+            <span>Open hours</span>
             <span>Geofence</span>
           </div>
           {areas.map((a) => {
@@ -67,13 +62,7 @@ export function ClientsSites() {
                     <button key={s.id} className={'lc-row' + (s.id === sel?.id ? ' on' : '')} aria-pressed={s.id === sel?.id} onClick={() => { setPick(s.id); if (matchMedia('(max-width: 1100px)').matches) document.querySelector('.lc-panel')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ '--i': n++ }}>
                       <span className="lc-name"><b>{s.name}</b><span>{s.code}</span></span>
                       <span className="lc-cell"><b>{team(s)} people</b><span>{roleLine(s)}</span></span>
-                      <span className="lc-open">
-                        <span className="lc-open-t"><b>{s.hours}</b><span>{(cl - o) / 60} h</span></span>
-                        <span className="lc-hours" aria-hidden="true">
-                          {TICKS.map((h) => <i key={h} className="lc-tick" style={{ left: at(h * 60) }} />)}
-                          <span className="lc-bar" style={{ left: at(o), width: `${((cl - o) / AX) * 100}%` }} />
-                        </span>
-                      </span>
+                      <span className="lc-cell"><b>{s.hours}</b><span>{(cl - o) / 60} hours{cl > 1440 ? ', closes next day' : ''}</span></span>
                       <span className="lc-fence"><i style={{ width: d, height: d }} />{s.radius} m</span>
                     </button>
                   );
@@ -85,11 +74,11 @@ export function ClientsSites() {
 
         {sel && (
           <aside className="lc-panel" key={sel.id} aria-label={sel.name}>
+            <header className="lc-title"><h2>{sel.name}</h2><span><span className="lc-code">{sel.code}</span>{sel.area}</span></header>
             <div className="lc-map">
               <SiteMap lat={GEO[sel.id][1]} lng={GEO[sel.id][0]} radius={sel.radius} name={sel.name} height={420} width={560} />
               <span className="lc-map-tag">Open in Google Maps</span>
             </div>
-            <div className="lc-title"><h2>{sel.name}</h2><span>{sel.code} · {sel.area}</span></div>
             <div className="lc-facts">
               <Dial hours={sel.hours} />
               <div className="lc-side">
