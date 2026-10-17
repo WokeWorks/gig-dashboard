@@ -135,11 +135,13 @@ export function Settings({ params }) {
       <div className="st-tabs"><Tabs tabs={SECTIONS.map(([id, label]) => ({ id, label }))} value={tab} onChange={setTab} /></div>
       <div className="st">
         <nav className="st-nav" aria-label="Settings sections">
-          {SECTIONS.map(([id, label, ic, d]) => (
+          <span className="st-nav-h">Sections</span>
+          {SECTIONS.map(([id, label, ic, d]) => { const meta = { templates: `${tpl.length} shifts`, policy: '3 access levels', leave: `${lts.length} types`, roles: `${desig.length} designations` }[id]; return (
             <button key={id} className={'st-navi' + (tab === id ? ' on' : '')} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}>
-              <span className="st-navic"><Icon name={ic} size={18} /></span><span><b>{label}</b><span>{d}</span></span>
+              <span className="st-navic"><Icon name={ic} size={18} /></span>
+              <span className="st-navt"><b>{label}</b><span title={d}>{meta}</span></span>
             </button>
-          ))}
+          ); })}
         </nav>
 
         <div className="st-main" key={tab}>

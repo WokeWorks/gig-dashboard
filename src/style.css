@@ -3282,3 +3282,19 @@ button.st-shift:focus-visible { outline: 2px solid var(--accent); outline-offset
 .st-locked { height: 44px; font-size: 16px; }
 .st .note { font-size: 15.5px; }
 .st-rows > :last-child, .st-rows > .st-days:last-child { border-bottom: 0; } /* the next group's divider closes this one */
+
+/* Settings section list: its own panel, a count per section, the description only on the open one */
+.st-nav { padding: 10px; gap: 2px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.st-nav-h { padding: 8px 12px 10px; color: var(--ink-mid); font-size: 14px; font-weight: 500; }
+.st-navi { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 14px; padding: 12px; border-radius: 14px; }
+.st-navi::before { display: none; }
+.st-navi:hover { background: var(--surface-2); }
+.st-navi.on { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.st-navic { width: 40px; height: 40px; border-radius: 12px; background: var(--bg); transition: background-color .2s, color .2s; }
+.st-navi.on .st-navic { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.st-navt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.st-navt b { font-size: 16.5px; font-weight: 500; }
+.st-navt span { color: var(--ink-mid); font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.st-navi.on .st-navt span { color: var(--fg); }
+.st-navm { align-self: center; color: var(--ink-mid); font-size: 13.5px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.st-navi.on .st-navm { color: var(--fg); }
