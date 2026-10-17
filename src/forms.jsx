@@ -338,16 +338,25 @@ export function Forms({ go }) {
 
       <Drawer open={picking} onClose={() => setPicking(false)} title="New form" sub="Start from a template and change anything, or start empty.">
         <div className="tp2">
-          <button className="tp2-item blank" onClick={() => start({ id: 'fm' + Date.now(), name: '', desc: '', trigger: 'demand', who: 'Everyone', sites: 'all', status: 'draft', subs: 0, flagged: 0, fields: [] })}>
-            <span className="fm2-ico"><Icon name="plus" size={18} /></span><span><b>Start from scratch</b><span>An empty form</span></span>
+          <button className="tp2-blank" onClick={() => start({ id: 'fm' + Date.now(), name: '', desc: '', trigger: 'demand', who: 'Everyone', sites: 'all', status: 'draft', subs: 0, flagged: 0, fields: [] })}>
+            <span className="tp2-plus"><Icon name="plus" size={20} stroke={2.4} /></span>
+            <span><b>Start from scratch</b><span>An empty form: add your own questions</span></span>
+            <Icon name="arrowLeft" size={18} className="tp2-go" />
           </button>
+          <div className="tp2-or"><span>Or start from a template</span><span>{TEMPLATES.length}</span></div>
           {industries.map((ind) => (
             <section key={ind} className="tp2-group">
               <h4>{ind}</h4>
               {TEMPLATES.filter((t) => t.industry === ind).map((t) => (
                 <button key={t.key} className="tp2-item" onClick={() => start(clone(t, { id: 'fm' + Date.now(), status: 'draft', sites: 'all', subs: 0, flagged: 0 }))}>
-                  <span className="fm2-ico"><Icon name={TRIGGER_ICON[t.trigger]} size={18} /></span>
-                  <span><b>{t.name}</b><span>{t.desc}</span><small>{t.fields.length} questions · {whenText(t).toLowerCase()}</small></span>
+                  <span className="tp2-ico"><Icon name={TRIGGER_ICON[t.trigger]} size={18} /></span>
+                  <span className="tp2-txt"><b>{t.name}</b><span>{t.desc}</span>
+                    <small><span>{whenText(t)}</span><span>{t.fields.length} questions</span>
+                      {/* what's inside: one small icon per kind of question */}
+                      <span className="tp2-kinds" aria-label={'Has ' + [...new Set(t.fields.map((q) => typeOf(q.type)[1].toLowerCase()))].join(', ')}>{[...new Set(t.fields.map((q) => q.type))].map((k) => <Icon key={k} name={typeOf(k)[2]} size={14} />)}</span>
+                    </small>
+                  </span>
+                  <Icon name="arrowLeft" size={18} className="tp2-go" />
                 </button>
               ))}
             </section>
