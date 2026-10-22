@@ -4,7 +4,7 @@ import * as Vd from './vendor.jsx';
 import { Forms } from './forms.jsx';
 import { PhoneApp } from './phone.jsx';
 import { SCOPE, ADMIN_ONLY } from './lib/scope.js';
-import { applyTheme } from './lib/theme.js';
+import { applyTheme, getTheme, setTheme } from './lib/theme.js';
 import { AlertsHost } from './lib/alerts.jsx';
 applyTheme();
 
@@ -40,6 +40,7 @@ function Account({ who, viewAs, setViewAs }) {
       // Temporary, until real sign-in: see the client dashboard as an admin or as one manager.
       setViewAs && { icon: viewAs === 'admin' ? 'check' : 'person', label: 'View as admin', sub: 'Every location and every screen', on: () => setViewAs('admin') },
       setViewAs && { icon: viewAs === 'manager' ? 'check' : 'person', label: 'View as manager', sub: 'Only Omar Haddad\'s 3 locations', on: () => setViewAs('manager') },
+      { seg: [['dark', 'Dark', 'moon'], ['light', 'Light', 'sun']], value: getTheme(), onPick: setTheme, label: 'Theme' },
       { icon: 'logout', label: 'Log out', danger: !!setViewAs, on: () => toast('Logged out (prototype: nothing happens)') },
     ], who.role)}>
       <span className="acct-av" aria-hidden="true">{initials}</span>
