@@ -3479,13 +3479,17 @@ button.st-shift:focus-visible { outline: 2px solid var(--accent); outline-offset
 .ph-flows .op-flow .op-apphead.on { background: var(--accent-soft); box-shadow: none; }
 
 /* ---------- Roster: two or more shifts in a day ----------
-   Each segment stacks its times (start, "to", end) as Hisham's roster does, so the two never run together;
+   Each segment stacks its times (start, "to", end) as Hisham's roster does, so they never run together;
    the day or night icon sits at the right, level with "to", clear of both times. */
 .cell-split > .cell.cseg { align-items: flex-start; justify-content: center; padding: 8px 10px; }
 .cell-split > .cell.cseg .sc-time { flex-direction: column; align-items: flex-start; gap: 0; font-size: 14px !important; line-height: 1.2; }
 .cell-split > .cell.cseg .sc-to { display: block; margin: 1px 0; font-size: 12px; color: var(--muted); }
 .cell-split > .cell.cseg .sc-to::before { content: none; }
 .cell-split > .cell.cseg .sc-moon { top: 50%; right: 8px; transform: translateY(-50%); } /* level with the short "to" line, clear of both times */
+/* three or more shifts: each segment is too narrow for the icon, so the times sit centred on their own (they already say day or night) */
+.cell-split.many > .cell.cseg { align-items: center; padding: 8px 2px; }
+.cell-split.many > .cell.cseg .sc-time { align-items: center; font-size: 13.5px !important; }
+.cell-split.many > .cell.cseg .sc-moon { display: none; }
 
 /* ---------- Leave: a one-day leave's date sits at the right, where a range's end date sits ---------- */
 .lvr-dates.one { align-items: flex-end; }

@@ -219,7 +219,7 @@ export function Scheduling({ go }) {
   const segTitle = (sid, wid, ci, k) => (ci < nowIdx ? (missed(sid, wid, ci + k * 3) ? 'Missed: no clock-in' : 'Clocked in') : undefined);
   // Two or more shifts in a day: the cell splits into side-by-side segments, one per shift, same height as a single shift.
   const split = (list, sid, wid, ci, onOpen, label) => (
-    <div className="cell-split">{[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x, k) => (
+    <div className={'cell-split' + (list.length > 2 ? ' many' : '')}>{[...list].sort((a, b) => toMin(a[1]) - toMin(b[1])).map((x, k) => (
       <button key={k} className={'cell one cseg' + segCls(sid, wid, ci, k)} title={segTitle(sid, wid, ci, k)} onClick={onOpen} aria-label={`${label}, shift ${k + 1} of ${list.length}`}>{ring(!!segCls(sid, wid, ci, k).includes('today-in'))}{chip(x, k, sid)}</button>
     ))}</div>
   );
